@@ -2,7 +2,7 @@
 
 A conveyor-belt sorting puzzle built on the "Bus Jam" loop: seat diners, match plate colours, and keep the belt from jamming.
 
-**Play:** open `index.html` in any browser, or enable GitHub Pages on this repo and use `https://<your-user>.github.io/sushi-jam/`.
+**Play:** https://a9inedev.github.io/sushi-jam/ (or open `index.html` locally)
 
 Single file, no build step, no dependencies. Progress and coins save in the browser's local storage.
 
