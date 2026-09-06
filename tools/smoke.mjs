@@ -94,6 +94,37 @@ await step('daily bonus shows and collects', async () => {
   if (!(after > before)) throw new Error(`coins did not increase (${before} -> ${after})`);
   return `+${after - before} coins`;
 });
+await step('audio unlocked by the first tap, sound set rendered, music running', async () => {
+  const a = await sj(
+    '(() => ({ state: window.__SJ.audio.state(), buffers: window.__SJ.audio.buffers(), events: window.__SJ.audio.events() }))()'
+  );
+  if (a.state !== 'running') throw new Error('context state ' + a.state + ' events ' + a.events.join(','));
+  if (a.buffers < 27) throw new Error('expected 27 rendered buffers, got ' + a.buffers);
+  if (!a.events.includes('music:start')) throw new Error('music did not start: ' + a.events.join(','));
+  await sj("window.__SJ.audio.play('bell')");
+  return a.buffers + ' buffers, ' + a.state;
+});
+await step('backgrounding suspends audio and returning resumes it without errors', async () => {
+  // Drive the real visibilitychange listener: override visibilityState, dispatch, then restore.
+  const hidden = await page.evaluate(async () => {
+    Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => 'hidden' });
+    document.dispatchEvent(new Event('visibilitychange'));
+    await new Promise((r) => setTimeout(r, 400));
+    return { state: window.__SJ.audio.state(), events: window.__SJ.audio.events() };
+  });
+  const back = await page.evaluate(async () => {
+    Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => 'visible' });
+    document.dispatchEvent(new Event('visibilitychange'));
+    await new Promise((r) => setTimeout(r, 600));
+    return { state: window.__SJ.audio.state(), events: window.__SJ.audio.events() };
+  });
+  if (!hidden.events.includes('background')) throw new Error('no background event: ' + hidden.events.join(','));
+  if (hidden.state !== 'suspended') throw new Error('context not suspended while hidden: ' + hidden.state);
+  if (!back.events.includes('foreground')) throw new Error('no foreground event: ' + back.events.join(','));
+  if (back.state !== 'running') throw new Error('context did not resume: ' + back.state + ' ' + back.events.join(','));
+  const resyncs = back.events.filter((e) => e === 'music:resync').length;
+  return 'hidden: ' + hidden.state + ', back: ' + back.state + ', loop resyncs: ' + resyncs;
+});
 await step('level 1 autoplays to a win', async () => {
   await sj('window.__SJ.jump(1)');
   const ms = await autoplayUntil('win', 90000);
@@ -182,27 +213,47 @@ await step('settings screen toggles haptics and sound', async () => {
   await sleep(150);
   await page.screenshot({ path: path.join(OUT, 'smoke-settings.png') });
   const h0 = await sj('window.__SJ.S.haptics');
-  await tapCanvas(240, 316); // haptics row
+  await tapCanvas(240, 416); // haptics row
   await sleep(120);
   const h1 = await sj('window.__SJ.S.haptics');
   if (h1 === h0) throw new Error('haptics toggle did not flip');
-  await tapCanvas(240, 316);
+  await tapCanvas(240, 416);
   await sleep(120);
   if ((await sj('window.__SJ.S.haptics')) !== h0) throw new Error('haptics toggle did not flip back');
   const s0 = await sj('window.__SJ.S.sound');
-  await tapCanvas(240, 250); // sound row
+  await tapCanvas(240, 218); // sound row
   await sleep(120);
   if ((await sj('window.__SJ.S.sound')) === s0) throw new Error('sound toggle did not flip');
-  await tapCanvas(240, 250);
+  await tapCanvas(240, 218);
   await sleep(120);
   const rm0 = await sj('window.__SJ.S.reduceMotion');
-  await tapCanvas(240, 382); // reduce motion row
+  await tapCanvas(240, 482); // reduce motion row
   await sleep(120);
   if ((await sj('window.__SJ.S.reduceMotion')) === rm0) throw new Error('reduce motion toggle did not flip');
-  await tapCanvas(240, 382);
+  await tapCanvas(240, 482);
   await sleep(120);
   if ((await sj('window.__SJ.S.reduceMotion')) !== rm0) throw new Error('reduce motion toggle did not flip back');
-  await tapCanvas(240, 683); // Done
+  // Sliders: a press sets the value, a drag follows the pointer.
+  await tapCanvas(186 + 170 * 0.25, 270); // music slider at 25 percent
+  await sleep(120);
+  const vm = await sj('window.__SJ.S.volMusic');
+  if (Math.abs(vm - 0.25) > 0.06) throw new Error('music slider press gave ' + vm);
+  const box = await page.$eval('#c', (c) => {
+    const r = c.getBoundingClientRect();
+    return { x: r.left, y: r.top, w: r.width, h: r.height };
+  });
+  const gx = (x) => box.x + (x / 480) * box.w,
+    gy = (y) => box.y + (y / 900) * box.h;
+  await page.mouse.move(gx(200), gy(314));
+  await page.mouse.down();
+  await page.mouse.move(gx(280), gy(314), { steps: 6 });
+  await page.mouse.move(gx(356), gy(314), { steps: 6 });
+  await page.mouse.up();
+  await sleep(120);
+  const vs = await sj('window.__SJ.S.volSfx');
+  if (vs < 0.95) throw new Error('sfx slider drag to the end gave ' + vs);
+  await sj('window.__SJ.S.volMusic = 0.6; window.__SJ.S.volSfx = 1; window.__SJ.saveApi.save(true);');
+  await tapCanvas(240, 745); // Done
   await sleep(120);
   if ((await screenType()) !== null) throw new Error('settings did not close');
 });
@@ -325,7 +376,7 @@ await step('save is a versioned envelope with a valid checksum', async () => {
     const e = JSON.parse(localStorage.getItem('sushijam.save'));
     return { v: e.v, hasSum: typeof e.sum === 'number', level: e.data.level, src: window.__SJ.saveApi.info().source };
   })()`);
-  if (info.v !== 4 || !info.hasSum) throw new Error('bad envelope ' + JSON.stringify(info));
+  if (info.v !== 5 || !info.hasSum) throw new Error('bad envelope ' + JSON.stringify(info));
   return `v${info.v}, loaded from ${info.src}`;
 });
 await step('legacy v2 save migrates with level, coins, decor and stats intact', async () => {
@@ -372,7 +423,7 @@ await step('settings: restore progress from backup with confirmation', async () 
   await sj("window.__SJ.setScreen({ type: 'settings', t: 0 })");
   await sleep(150);
   await page.screenshot({ path: path.join(OUT, 'smoke-settings-save.png') });
-  await tapCanvas(240, 498); // Restore progress
+  await tapCanvas(240, 582); // Restore progress
   await sleep(150);
   if ((await screenType()) !== 'confirm') throw new Error('confirm dialog not shown');
   await page.screenshot({ path: path.join(OUT, 'smoke-confirm.png') });
@@ -380,7 +431,7 @@ await step('settings: restore progress from backup with confirmation', async () 
   await sleep(150);
   if ((await screenType()) !== 'settings') throw new Error('cancel did not return to settings');
   if ((await sj('window.__SJ.S.coins')) !== 1) throw new Error('cancel changed the state');
-  await tapCanvas(240, 498);
+  await tapCanvas(240, 582);
   await sleep(150);
   await tapCanvas(165, 494); // Restore
   await sleep(300);
@@ -391,7 +442,7 @@ await step('settings: restore progress from backup with confirmation', async () 
 await step('settings: reset progress wipes the save and reloads', async () => {
   await sj("window.__SJ.setScreen({ type: 'settings', t: 0 })");
   await sleep(150);
-  await tapCanvas(240, 554); // Reset progress
+  await tapCanvas(240, 638); // Reset progress
   await sleep(150);
   if ((await screenType()) !== 'confirm') throw new Error('confirm dialog not shown');
   await tapCanvas(165, 494); // Reset

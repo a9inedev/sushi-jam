@@ -90,7 +90,7 @@ function drawAd(sc: Screen): void {
       tone: '#3B3F4A',
       size: 14,
       onTap: () => {
-        sfx.tap();
+        sfx.ui();
         G.screen = { type: 'shop', t: 0, back: sc };
       },
     });
@@ -99,7 +99,7 @@ function drawAd(sc: Screen): void {
 function drawShop(sc: Screen): void {
   card(30, 80, 420, 740, '#E5484D', 'Shop');
   closeBtn(() => {
-    sfx.tap();
+    sfx.ui();
     if (sc.back) G.screen = sc.back;
     else G.screen = null;
   });
@@ -178,7 +178,7 @@ function drawOffer(): void {
   button(90, 532, 300, 44, 'No thanks', null, {
     tone: '#3B3F4A',
     onTap: () => {
-      sfx.tap();
+      sfx.ui();
       S.starterShown = true;
       save();
       G.screen = null;
@@ -247,7 +247,7 @@ function drawDev(): void {
   const bx = 50,
     bw = 184;
   const go = (n: number) => () => {
-    sfx.tap();
+    sfx.ui();
     G.screen = null;
     newLevel(n);
   };
@@ -257,7 +257,7 @@ function drawDev(): void {
   button(bx + 196, 364, bw, 44, 'All mechanics: ' + (S.devAllMech ? 'ON' : 'off'), 'from level 1', {
     tone: S.devAllMech ? '#E25E12' : '#6B6560',
     onTap: () => {
-      sfx.tap();
+      sfx.ui();
       S.devAllMech = !S.devAllMech;
       save();
       newLevel(L.n);
@@ -266,7 +266,7 @@ function drawDev(): void {
   button(bx, 418, bw, 44, 'Demo ads: ' + (S.demoAds ? 'ON' : 'off'), null, {
     tone: S.demoAds ? '#E25E12' : '#6B6560',
     onTap: () => {
-      sfx.tap();
+      sfx.ui();
       S.demoAds = !S.demoAds;
       save();
     },
@@ -283,14 +283,14 @@ function drawDev(): void {
   button(bx, 472, bw, 44, 'Export stats JSON', null, {
     tone: '#3E7BFA',
     onTap: () => {
-      sfx.tap();
+      sfx.ui();
       showStats();
     },
   });
   button(bx + 196, 472, bw, 44, 'Clear stats', null, {
     tone: '#6B6560',
     onTap: () => {
-      sfx.tap();
+      sfx.ui();
       S.stats = [];
       save();
     },
@@ -298,7 +298,7 @@ function drawDev(): void {
   button(bx, 526, bw * 2 + 12, 44, 'Reset all progress', null, {
     tone: '#E5484D',
     onTap: () => {
-      sfx.tap();
+      sfx.ui();
       clearSave();
       location.reload();
     },
@@ -330,7 +330,7 @@ function drawMap(sc: Screen): void {
     button(50 + i * 130, 160, 120, 38, label, null, {
       tone: sc.tab === id ? '#6A4C93' : '#B9B2A5',
       onTap: () => {
-        sfx.tap();
+        sfx.ui();
         sc.tab = id;
       },
     })

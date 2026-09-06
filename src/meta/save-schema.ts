@@ -5,12 +5,13 @@
      v2  sushijam.v2   flat SaveState blob, no version field
      v3  sushijam.save { v: 3, savedAt, sum, data: SaveState }  (checksummed envelope, atomic writes, backup copy)
      v4  same envelope, data gains reduceMotion
+     v5  data gains volMusic, volSfx, volUi
 */
 
 import { hashStr } from '../engine/rng';
 import type { MechKind, StatRecord } from '../engine/types';
 
-export const SAVE_VERSION = 4;
+export const SAVE_VERSION = 5;
 
 export interface Inventory {
   vip: number;
@@ -41,6 +42,10 @@ export interface SaveState {
   haptics: boolean;
   /** Player-chosen reduce motion. Added in v4; the OS preference is honoured on top of this. */
   reduceMotion: boolean;
+  /** Mixer bus volumes 0..1. Added in v5. `sound` stays the master switch. */
+  volMusic: number;
+  volSfx: number;
+  volUi: number;
 }
 
 export function defaultSave(): SaveState {
@@ -65,6 +70,9 @@ export function defaultSave(): SaveState {
     demoAds: true,
     haptics: true,
     reduceMotion: false,
+    volMusic: 0.6,
+    volSfx: 1,
+    volUi: 0.8,
   };
 }
 
@@ -140,11 +148,18 @@ export function migrateV3toV4(v3: Blob): Blob {
   return { ...v3, reduceMotion: typeof v3.reduceMotion === 'boolean' ? v3.reduceMotion : false };
 }
 
+/** v5 adds the three mixer volumes with their defaults. */
+export function migrateV4toV5(v4: Blob): Blob {
+  const vol = (k: string, def: number) => (typeof v4[k] === 'number' ? (v4[k] as number) : def);
+  return { ...v4, volMusic: vol('volMusic', 0.6), volSfx: vol('volSfx', 1), volUi: vol('volUi', 0.8) };
+}
+
 /** Keyed by the version the migration starts from. */
 export const MIGRATIONS: Record<number, Migration> = {
   1: migrateV1toV2,
   2: migrateV2toV3,
   3: migrateV3toV4,
+  4: migrateV4toV5,
 };
 
 /** Which schema a parsed blob belongs to, or null if it is not a save at all. */
@@ -168,6 +183,10 @@ export function normalize(x: unknown): SaveState {
     return typeof v === 'number' && Number.isFinite(v) && v >= min ? Math.floor(v) : def;
   };
   const bool = (k: keyof SaveState, def: boolean) => (typeof o[k] === 'boolean' ? (o[k] as boolean) : def);
+  const unit = (k: keyof SaveState, def: number) => {
+    const v = o[k];
+    return typeof v === 'number' && Number.isFinite(v) ? Math.max(0, Math.min(1, v)) : def;
+  };
   const str = (k: keyof SaveState, def: string) => (typeof o[k] === 'string' ? (o[k] as string) : def);
   const invIn = (o.inv && typeof o.inv === 'object' ? o.inv : {}) as Blob;
   const invInt = (k: keyof Inventory) => {
@@ -197,6 +216,9 @@ export function normalize(x: unknown): SaveState {
     demoAds: bool('demoAds', d.demoAds),
     haptics: bool('haptics', d.haptics),
     reduceMotion: bool('reduceMotion', d.reduceMotion),
+    volMusic: unit('volMusic', d.volMusic),
+    volSfx: unit('volSfx', d.volSfx),
+    volUi: unit('volUi', d.volUi),
   };
 }
 

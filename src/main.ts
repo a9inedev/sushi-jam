@@ -6,7 +6,9 @@ import { backgroundSvg } from './art/background';
 import { characterSvg, SPRITE_STATES } from './art/characters';
 import { foodSvg } from './art/plates';
 import { clearSprites, dpr, preload, type PreloadEntry } from './art/svg';
-import { audioContext, setRumble } from './audio/audio';
+import { applyVolumes, audio, setTension } from './audio/audio';
+import { bindAudio, engine } from './audio/engine';
+import type { SfxName } from './audio/patches';
 import { DINER_R, H, W } from './data/constants';
 import { getLevel } from './engine/levels';
 import { canMove, checkDeadlock, devAuto, fail, newLevel, nextMechCard, updateBelt, win } from './engine/rules';
@@ -101,7 +103,7 @@ function update(dt: number): void {
     if (L.status === 'fail') L.failT = Math.max(0, L.failT - dt);
   }
   const playing = L.status === 'play' && !G.screen;
-  if (audioContext()) setRumble(playing ? L.tension : 0);
+  setTension(playing ? L.tension : 0);
   keepAwake(playing);
   particles.update(G.screen ? 0 : dt);
   for (let i = G.toasts.length - 1; i >= 0; i--) {
@@ -228,6 +230,7 @@ function bindNative(): void {
   hideStatusBar();
   onBackButton(handleBack);
   onAppActive((active) => {
+    engine.setBackground(!active);
     if (!active && G.L && G.L.status === 'play' && !G.screen) G.screen = { type: 'pause', t: 0 };
     if (active) resize();
   });
@@ -271,6 +274,8 @@ if (window.visualViewport) window.visualViewport.addEventListener('resize', onRe
 setCloudProvider(cloudProviderFor(platform));
 const loaded = load();
 initMotion();
+bindAudio();
+applyVolumes();
 checkWeekly();
 resize();
 installPWA();
@@ -324,6 +329,14 @@ export interface DevApi {
     fps: () => number;
     reduce: (on: boolean) => void;
   };
+  audio: {
+    state: () => string;
+    unlock: () => void;
+    play: (name: SfxName) => void;
+    buffers: () => number;
+    events: () => string[];
+    background: (on: boolean) => void;
+  };
 }
 
 declare global {
@@ -375,5 +388,13 @@ window.__SJ = {
       applyMotion();
       save();
     },
+  },
+  audio: {
+    state: () => engine.state(),
+    unlock: () => audio(),
+    play: (name) => engine.play(name),
+    buffers: () => engine.bufferCount(),
+    events: () => engine.events.slice(),
+    background: (on) => engine.setBackground(on),
   },
 };

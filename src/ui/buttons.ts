@@ -87,7 +87,7 @@ export function closeBtn(onTap?: () => void): void {
     onTap:
       onTap ||
       (() => {
-        sfx.tap();
+        sfx.ui();
         const back = G.screen && G.screen.back;
         if (back) G.screen = back;
         else closeScreen();

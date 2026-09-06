@@ -52,7 +52,7 @@ export function drawStatusOverlay(): void {
     button(120, 516, 240, 46, L.mechIdx + 1 < L.newMechs.length ? 'Next rule' : 'Got it', null, {
       primary: true,
       onTap: () => {
-        sfx.tap();
+        sfx.ui();
         nextMechCard();
       },
     });
@@ -139,7 +139,7 @@ export function drawStatusOverlay(): void {
         tone: '#148F82',
         disabled: !S.demoAds,
         onTap: () => {
-          sfx.tap();
+          sfx.ui();
           adRescue();
         },
       }
@@ -147,7 +147,7 @@ export function drawStatusOverlay(): void {
     button(cx + 24, cy + 344, cw - 48, 40, 'Retry level', null, {
       tone: '#3B3F4A',
       onTap: () => {
-        sfx.tap();
+        sfx.ui();
         newLevel(L.n);
       },
     });
@@ -182,21 +182,21 @@ export function drawStatusOverlay(): void {
     button(cx + 24, cy + 224, cw - 48, 56, 'Next: Level ' + nn, nt, {
       primary: true,
       onTap: () => {
-        sfx.tap();
+        sfx.ui();
         afterWin();
       },
     });
     button(cx + 24, cy + 292, cw - 48, 44, 'Replay level', null, {
       tone: '#3B3F4A',
       onTap: () => {
-        sfx.tap();
+        sfx.ui();
         newLevel(L.n);
       },
     });
     button(cx + 24, cy + 344, cw - 48, 40, 'Map & decor', null, {
       tone: '#6A4C93',
       onTap: () => {
-        sfx.tap();
+        sfx.ui();
         G.screen = { type: 'map', tab: 'decor', t: 0 };
       },
     });

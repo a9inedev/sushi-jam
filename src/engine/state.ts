@@ -9,6 +9,8 @@ export interface Button {
   w: number;
   h: number;
   onTap: () => void;
+  /** Sliders: called with the pointer position on press and while dragging. */
+  onDrag?: (x: number, y: number) => void;
 }
 
 export interface Toast {
@@ -51,6 +53,8 @@ export const G = {
   devTaps: [] as number[],
   /** Smoothed frames per second, for the dev panel and the smoke test. */
   fps: 60,
+  /** The slider currently being dragged, if any. */
+  drag: null as Button | null,
 };
 
 /** The current level. Only call from code paths that run after newLevel(). */

@@ -1,4 +1,4 @@
-import { setRumble, sfx } from '../audio/audio';
+import { applyVolumes, sfx } from '../audio/audio';
 import { COIN_POS, GOLD, TIER_COLOR } from '../data/constants';
 import { logStat, newLevel } from '../engine/rules';
 import { cur, G } from '../engine/state';
@@ -49,7 +49,7 @@ export function drawHud(): void {
     tone: '#4A4540',
     size: 20,
     onTap: () => {
-      sfx.tap();
+      sfx.ui();
       G.screen = { type: 'settings', t: 0 };
     },
   });
@@ -58,14 +58,14 @@ export function drawHud(): void {
     onTap: () => {
       S.sound = !S.sound;
       save();
-      if (S.sound) sfx.tap();
-      else setRumble(0);
+      applyVolumes();
+      if (S.sound) sfx.ui();
     },
   });
   button(304, 20, 36, 36, '↻', null, {
     tone: '#4A4540',
     onTap: () => {
-      sfx.tap();
+      sfx.ui();
       if (L.status === 'play' && L.stat.taps > 0) logStat('restart');
       newLevel(L.n);
     },
@@ -78,11 +78,11 @@ export function drawHud(): void {
   ctx.restore();
   txt(S.coins.toLocaleString(), 382, 39, 22, 800, GOLD, 'left', 'middle');
   iconBtn(34, 100, 66, 52, 'map', 'MAP', () => {
-    sfx.tap();
+    sfx.ui();
     G.screen = { type: 'map', tab: 'path', t: 0 };
   });
   iconBtn(380, 100, 66, 52, 'shop', 'SHOP', () => {
-    sfx.tap();
+    sfx.ui();
     G.screen = { type: 'shop', t: 0 };
   });
 }

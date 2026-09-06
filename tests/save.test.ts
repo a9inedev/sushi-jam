@@ -18,6 +18,7 @@ import {
   migrateV1toV2,
   migrateV2toV3,
   migrateV3toV4,
+  migrateV4toV5,
   normalize,
   parseEnvelope,
 } from '../src/meta/save-schema';
@@ -151,6 +152,22 @@ describe('migrate (chain)', () => {
     expect(m?.state.haptics).toBe(false);
     expect(m?.state.reduceMotion).toBe(false);
     expect(migrateV3toV4({ reduceMotion: true }).reduceMotion).toBe(true);
+  });
+
+  it('v4 envelope gains the three volumes with defaults, and keeps explicit ones', () => {
+    const data = defaultSave() as unknown as Record<string, unknown>;
+    delete data.volMusic;
+    delete data.volSfx;
+    delete data.volUi;
+    data.level = 12;
+    const m = migrate({ v: 4, savedAt: 1, sum: checksum(JSON.stringify(data)), data });
+    expect(m?.from).toBe(4);
+    expect(m?.state.level).toBe(12);
+    expect(m?.state.volMusic).toBe(0.6);
+    expect(m?.state.volSfx).toBe(1);
+    expect(m?.state.volUi).toBe(0.8);
+    expect(migrateV4toV5({ volMusic: 0.2 }).volMusic).toBe(0.2);
+    expect(normalize({ volMusic: 7, volSfx: -1, volUi: 'loud' })).toMatchObject({ volMusic: 1, volSfx: 0, volUi: 0.8 });
   });
 
   it('a save from a newer build is read best-effort', () => {

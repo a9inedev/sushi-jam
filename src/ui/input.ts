@@ -11,7 +11,10 @@ export function onTap(x: number, y: number): void {
   audio();
   for (const b of G.buttons)
     if (inRect(x, y, b)) {
-      b.onTap();
+      if (b.onDrag) {
+        b.onDrag(x, y);
+        G.drag = b;
+      } else b.onTap();
       return;
     }
   const L = G.L;
@@ -34,12 +37,35 @@ export function onTap(x: number, y: number): void {
   if (d) tryMove(d);
 }
 
+function toGame(e: PointerEvent): { x: number; y: number } {
+  const r = cv.getBoundingClientRect();
+  return { x: ((e.clientX - r.left) / r.width) * W, y: ((e.clientY - r.top) / r.height) * H };
+}
+
 export function bindInput(): void {
   cv.addEventListener('pointerdown', (e) => {
     e.preventDefault();
-    const r = cv.getBoundingClientRect();
-    onTap(((e.clientX - r.left) / r.width) * W, ((e.clientY - r.top) / r.height) * H);
+    const p = toGame(e);
+    onTap(p.x, p.y);
+    if (G.drag) {
+      try {
+        cv.setPointerCapture(e.pointerId);
+      } catch {
+        /* not all browsers allow capture here */
+      }
+    }
   });
+  cv.addEventListener('pointermove', (e) => {
+    if (!G.drag || !G.drag.onDrag) return;
+    e.preventDefault();
+    const p = toGame(e);
+    G.drag.onDrag(p.x, p.y);
+  });
+  const end = () => {
+    G.drag = null;
+  };
+  cv.addEventListener('pointerup', end);
+  cv.addEventListener('pointercancel', end);
   window.addEventListener('pagehide', () => {
     if (G.L && G.L.status === 'play' && G.L.stat.taps > 0) {
       logStat('quit');

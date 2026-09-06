@@ -1,7 +1,7 @@
 /* Settings, Pause and Confirm. All of them freeze the level while open. */
 
 import { applyMotion, systemReducedMotion } from '../anim/motion';
-import { setRumble, sfx } from '../audio/audio';
+import { applyVolumes, sfx } from '../audio/audio';
 import { logStat, newLevel } from '../engine/rules';
 import { closeScreen, cur, G, toast, type Screen } from '../engine/state';
 import { backupInfo, clearSave, cloudProvider, restoreFromBackup, S, save } from '../meta/save';
@@ -29,6 +29,32 @@ function toggleRow(y: number, label: string, sub: string | null, on: boolean, on
   ctx.restore();
 }
 
+/** A horizontal slider row. The whole row is the hit box; press or drag sets the value. */
+function sliderRow(y: number, label: string, value: number, onChange: (v: number) => void): void {
+  const tx = 186,
+    tw = 170;
+  const set = (x: number) => onChange(Math.max(0, Math.min(1, (x - tx) / tw)));
+  G.buttons.push({ x: 80, y: y - 22, w: 320, h: 44, onTap: () => {}, onDrag: (x) => set(x) });
+  txt(label, 92, y + 1, 16, 800, '#2A2320', 'left', 'middle');
+  ctx.save();
+  ctx.fillStyle = '#E4D6B4';
+  rrect(tx, y - 4, tw, 8, 4);
+  ctx.fill();
+  ctx.fillStyle = '#2FB36B';
+  rrect(tx, y - 4, Math.max(8, tw * value), 8, 4);
+  ctx.fill();
+  const kx = tx + tw * value;
+  ctx.fillStyle = '#FFFDF7';
+  ctx.strokeStyle = '#2A2320';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.arc(kx, y, 11, 0, 7);
+  ctx.fill();
+  ctx.stroke();
+  ctx.restore();
+  txt(Math.round(value * 100) + '%', 396, y + 1, 12, 700, '#8A8378', 'right', 'middle');
+}
+
 function hapticsHint(): string {
   if (isNative) return 'Vibration on seat, grab, jam and clear';
   if (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function')
@@ -46,21 +72,29 @@ function ago(ts: number): string {
 }
 
 export function drawSettings(sc: Screen): void {
-  card(60, 150, 360, 620, '#3B3F4A', 'Settings');
-  toggleRow(250, 'Sound', 'Effects and belt rumble', S.sound, () => {
+  card(60, 120, 360, 740, '#3B3F4A', 'Settings');
+  toggleRow(218, 'Sound', 'Master switch for music and effects', S.sound, () => {
     S.sound = !S.sound;
     save();
-    if (S.sound) sfx.tap();
-    else setRumble(0);
+    applyVolumes();
+    if (S.sound) sfx.ui();
   });
-  toggleRow(316, 'Haptics', hapticsHint(), S.haptics, () => {
+  const vol = (key: 'volMusic' | 'volSfx' | 'volUi') => (v: number) => {
+    S[key] = Math.round(v * 20) / 20;
+    applyVolumes();
+    save();
+  };
+  sliderRow(270, 'Music', S.volMusic, vol('volMusic'));
+  sliderRow(314, 'Sound effects', S.volSfx, vol('volSfx'));
+  sliderRow(358, 'Interface', S.volUi, vol('volUi'));
+  toggleRow(416, 'Haptics', hapticsHint(), S.haptics, () => {
     S.haptics = !S.haptics;
     save();
-    sfx.tap();
+    sfx.ui();
     if (S.haptics) haptic('medium');
   });
   toggleRow(
-    382,
+    482,
     'Reduce motion',
     systemReducedMotion() ? 'On because of your system setting' : 'Fewer bounces, shakes and particles',
     S.reduceMotion || systemReducedMotion(),
@@ -68,14 +102,14 @@ export function drawSettings(sc: Screen): void {
       S.reduceMotion = !S.reduceMotion;
       save();
       applyMotion();
-      sfx.tap();
+      sfx.ui();
     }
   );
   const c = cloudProvider();
   txt(
     c ? c.label + ' cloud save · not connected yet' : 'Cloud save arrives with the mobile apps',
     240,
-    438,
+    536,
     12,
     700,
     '#8A8378',
@@ -85,7 +119,7 @@ export function drawSettings(sc: Screen): void {
   const bak = backupInfo();
   button(
     100,
-    476,
+    560,
     280,
     44,
     'Restore progress',
@@ -96,7 +130,7 @@ export function drawSettings(sc: Screen): void {
       tone: '#148F82',
       disabled: !bak,
       onTap: () => {
-        sfx.tap();
+        sfx.ui();
         if (!bak) return;
         G.screen = {
           type: 'confirm',
@@ -121,10 +155,10 @@ export function drawSettings(sc: Screen): void {
       },
     }
   );
-  button(100, 532, 280, 44, 'Reset progress', 'Deletes level, coins, decor, boosters and stats', {
+  button(100, 616, 280, 44, 'Reset progress', 'Deletes level, coins, decor, boosters and stats', {
     tone: '#E5484D',
     onTap: () => {
-      sfx.tap();
+      sfx.ui();
       G.screen = {
         type: 'confirm',
         t: 0,
@@ -143,17 +177,17 @@ export function drawSettings(sc: Screen): void {
   txt(
     'Sushi Jam v' + __APP_VERSION__ + ' · ' + (isNative ? platform : 'web'),
     240,
-    636,
+    700,
     12,
     700,
     '#8A8378',
     'center',
     'middle'
   );
-  button(150, 660, 180, 46, 'Done', null, {
+  button(150, 722, 180, 46, 'Done', null, {
     primary: true,
     onTap: () => {
-      sfx.tap();
+      sfx.ui();
       G.screen = sc.back || null;
     },
   });
@@ -166,14 +200,14 @@ export function drawConfirm(sc: Screen): void {
     primary: !!sc.danger,
     tone: '#148F82',
     onTap: () => {
-      sfx.tap();
+      sfx.ui();
       if (sc.onYes) sc.onYes();
     },
   });
   button(250, 470, 130, 48, 'Cancel', null, {
     tone: '#6B6560',
     onTap: () => {
-      sfx.tap();
+      sfx.ui();
       G.screen = sc.back || null;
     },
   });
@@ -186,14 +220,14 @@ export function drawPause(sc: Screen): void {
   button(100, 360, 280, 52, 'Resume', null, {
     primary: true,
     onTap: () => {
-      sfx.tap();
+      sfx.ui();
       closeScreen();
     },
   });
   button(100, 424, 280, 44, 'Restart level', null, {
     tone: '#3B3F4A',
     onTap: () => {
-      sfx.tap();
+      sfx.ui();
       if (L.status === 'play' && L.stat.taps > 0) logStat('restart');
       closeScreen();
       newLevel(L.n);
@@ -202,14 +236,14 @@ export function drawPause(sc: Screen): void {
   button(100, 480, 280, 44, 'Settings', null, {
     tone: '#4A4540',
     onTap: () => {
-      sfx.tap();
+      sfx.ui();
       G.screen = { type: 'settings', t: 0, back: sc };
     },
   });
   button(100, 536, 280, 44, 'Map', null, {
     tone: '#6A4C93',
     onTap: () => {
-      sfx.tap();
+      sfx.ui();
       G.screen = { type: 'map', tab: 'path', t: 0, back: sc };
     },
   });

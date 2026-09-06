@@ -6,7 +6,7 @@ Progress lives in the browser's local storage (or the WebView's, in the native a
 
 | Key                 | Content                                                  |
 | ------------------- | -------------------------------------------------------- |
-| `sushijam.save`     | Primary copy, v4 envelope                                |
+| `sushijam.save`     | Primary copy, v5 envelope                                |
 | `sushijam.save.tmp` | In-flight write; only present if a write was interrupted |
 | `sushijam.save.bak` | Last good copy; rotates on level change or every 30 s    |
 | `sushijam.v2`       | Legacy flat blob (read once, migrated, left in place)    |
@@ -44,6 +44,7 @@ Every loaded blob passes through `normalize()`, which coerces each field to its 
 | v1   | v2  | Keep level, coins, sound; everything else takes the v2 defaults |
 | v2   | v3  | Add `haptics: true`; guarantee `inv.vip/takeout/sendback` exist |
 | v3   | v4  | Add `reduceMotion: false`                                       |
+| v4   | v5  | Add `volMusic 0.6`, `volSfx 1`, `volUi 0.8`                     |
 
 `migrate(x)` detects the version (envelope `v`, else v2 markers like `inv`/`stats`, else v1 markers) and applies each step in order. A save written by a newer build is read best-effort: known fields survive, unknown fields are dropped.
 
