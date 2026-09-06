@@ -1,70 +1,40 @@
+import { characterSvg, type DinerSpriteState } from '../art/characters';
+import { sprite } from '../art/svg';
 import { COLORS, GOLD } from '../data/constants';
 import { isLocked } from '../engine/rules';
 import { G, cur } from '../engine/state';
 import type { Diner, ExprType } from '../engine/types';
 import { easeBack } from '../engine/util';
 import { ctx } from './canvas';
+import { drawDinerProcedural } from './diner-fallback';
 import { drawPlate } from './plate';
-import { glyph, rrect, shade, txt } from './primitives';
+import { glyph, rrect, txt } from './primitives';
 
 export type DinerMode = 'grid' | 'seat' | 'free';
 
-function face(r: number, expr: ExprType, blink: boolean): void {
-  const gt = G.gt;
-  const eyeH = blink ? 0.05 : 1;
-  ctx.fillStyle = '#fff';
-  ctx.beginPath();
-  ctx.ellipse(-r * 0.3, -r * 0.08, r * 0.17, r * 0.17 * eyeH + 0.5, 0, 0, 7);
-  ctx.ellipse(r * 0.3, -r * 0.08, r * 0.17, r * 0.17 * eyeH + 0.5, 0, 0, 7);
-  ctx.fill();
-  ctx.fillStyle = '#2A2320';
-  ctx.strokeStyle = '#2A2320';
-  ctx.lineCap = 'round';
-  ctx.lineWidth = r * 0.09;
-  if (expr === 'happy') {
-    ctx.beginPath();
-    ctx.arc(-r * 0.3, -r * 0.02, r * 0.12, Math.PI, 0);
-    ctx.arc(r * 0.3, -r * 0.02, r * 0.12, Math.PI, 0);
-    ctx.fill();
-    ctx.fillStyle = '#5A1C1C';
-    ctx.beginPath();
-    ctx.arc(0, r * 0.2, r * 0.26, 0, Math.PI);
-    ctx.fill();
-    ctx.fillStyle = '#F06B7A';
-    ctx.beginPath();
-    ctx.ellipse(0, r * 0.36, r * 0.14, r * 0.07, 0, 0, 7);
-    ctx.fill();
-    return;
-  }
-  if (!blink) {
-    ctx.beginPath();
-    ctx.arc(-r * 0.27, -r * 0.06, r * 0.08, 0, 7);
-    ctx.arc(r * 0.33, -r * 0.06, r * 0.08, 0, 7);
-    ctx.fill();
-  }
-  if (expr === 'chew') {
-    const w = 1 + Math.sin(gt * 40) * 0.4;
-    ctx.beginPath();
-    ctx.ellipse(0, r * 0.24, r * 0.14 * w, (r * 0.09) / w, 0, 0, 7);
-    ctx.fill();
-    return;
-  }
-  if (expr === 'grumpy') {
-    ctx.beginPath();
-    ctx.moveTo(-r * 0.48, -r * 0.38);
-    ctx.lineTo(-r * 0.14, -r * 0.26);
-    ctx.moveTo(r * 0.48, -r * 0.38);
-    ctx.lineTo(r * 0.14, -r * 0.26);
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.moveTo(-r * 0.2, r * 0.3);
-    ctx.lineTo(r * 0.2, r * 0.26);
-    ctx.stroke();
-    return;
-  }
-  ctx.beginPath();
-  ctx.arc(0, r * 0.2, r * 0.22, 0.15 * Math.PI, 0.85 * Math.PI);
-  ctx.stroke();
+/** Sprite box per unit of body radius: the body is 36 units of a 100 unit box. */
+export const SPRITE_BOX = 100 / 36;
+
+function spriteState(d: Diner, expr: ExprType, blink: boolean): DinerSpriteState {
+  if (d.state === 'walking') return 'walk';
+  if (expr === 'chew') return Math.floor(G.gt * 12) % 2 ? 'idle' : 'chew';
+  if (expr === 'happy') return 'happy';
+  if (expr === 'grumpy') return 'grumpy';
+  return blink ? 'blink' : 'idle';
+}
+
+/** Draw a character sprite centred on the origin with body radius r. Returns false if not decoded yet. */
+export function drawCharacter(color: number, state: DinerSpriteState, vip: boolean, r: number, dim = false): boolean {
+  const box = Math.round(r * SPRITE_BOX);
+  const img = sprite(
+    `c${color}:${state}${vip ? ':v' : ''}${dim ? ':d' : ''}`,
+    () => characterSvg(color, state, vip, dim),
+    box,
+    box
+  );
+  if (!img) return false;
+  ctx.drawImage(img, -box / 2, -box * 0.56, box, box);
+  return true;
 }
 
 export function drawDiner(d: Diner, r: number, mode: DinerMode): void {
@@ -102,73 +72,57 @@ export function drawDiner(d: Diner, r: number, mode: DinerMode): void {
     ctx.arc(0, 0, r + 1.5, 0, 7);
     ctx.stroke();
   }
-  ctx.shadowColor = 'rgba(0,0,0,.22)';
-  ctx.shadowBlur = 8;
-  ctx.shadowOffsetY = 3;
-  ctx.fillStyle = mode === 'grid' && !d.movable ? shade(col.hex, 0.78) : col.hex;
-  ctx.beginPath();
-  ctx.arc(0, 0, r, 0, 7);
-  ctx.fill();
-  ctx.shadowColor = 'transparent';
-  ctx.fillStyle = 'rgba(255,255,255,.18)';
-  ctx.beginPath();
-  ctx.arc(-r * 0.3, -r * 0.35, r * 0.36, 0, 7);
-  ctx.fill();
-  face(r, expr, blink);
+  const dimmed = mode === 'grid' && !d.movable;
+  const state = spriteState(d, expr, blink);
+  ctx.save();
+  if (state === 'walk') ctx.rotate(Math.sin(gt * 18) * 0.06);
+  if (!drawCharacter(d.color, state, d.vip, r, dimmed)) drawDinerProcedural(d.color, r, expr, blink, dimmed);
+  ctx.restore();
+  // Colour badge with the shape glyph: the accessibility cue, always drawn.
   ctx.fillStyle = '#FFFDF7';
   ctx.beginPath();
-  ctx.arc(-r * 0.62, -r * 0.62, r * 0.34, 0, 7);
+  ctx.arc(-r * 0.7, -r * 0.7, r * 0.32, 0, 7);
   ctx.fill();
-  glyph(-r * 0.62, -r * 0.62, col.glyph, r * 0.42, col.hex);
-  if (d.vip) {
-    ctx.fillStyle = GOLD;
-    ctx.beginPath();
-    ctx.moveTo(-r * 0.38, -r * 0.82);
-    ctx.lineTo(-r * 0.22, -r * 1.12);
-    ctx.lineTo(-r * 0.05, -r * 0.9);
-    ctx.lineTo(r * 0.12, -r * 1.16);
-    ctx.lineTo(r * 0.3, -r * 0.9);
-    ctx.lineTo(r * 0.46, -r * 1.12);
-    ctx.lineTo(r * 0.56, -r * 0.78);
-    ctx.closePath();
-    ctx.fill();
-  }
+  glyph(-r * 0.7, -r * 0.7, col.glyph, r * 0.4, col.hex);
   if (mode === 'grid') {
     const ang = [-Math.PI / 2, 0, Math.PI / 2, Math.PI][d.dir];
     ctx.save();
     ctx.rotate(ang);
     ctx.fillStyle = '#fff';
+    ctx.strokeStyle = 'rgba(42,35,32,.55)';
+    ctx.lineWidth = 1.5;
     ctx.beginPath();
-    ctx.moveTo(r * 0.98, 0);
-    ctx.lineTo(r * 0.6, -r * 0.32);
-    ctx.lineTo(r * 0.7, 0);
-    ctx.lineTo(r * 0.6, r * 0.32);
+    ctx.moveTo(r * 1.02, 0);
+    ctx.lineTo(r * 0.62, -r * 0.34);
+    ctx.lineTo(r * 0.72, 0);
+    ctx.lineTo(r * 0.62, r * 0.34);
     ctx.closePath();
     ctx.fill();
+    ctx.stroke();
     ctx.restore();
     ctx.fillStyle = '#2A2320';
     ctx.beginPath();
-    ctx.arc(r * 0.62, r * 0.62, r * 0.36, 0, 7);
+    ctx.arc(r * 0.66, r * 0.66, r * 0.36, 0, 7);
     ctx.fill();
-    txt(d.need, r * 0.62, r * 0.66, r * 0.62, 800, '#fff', 'center', 'middle');
+    txt(d.need, r * 0.66, r * 0.7, r * 0.62, 800, '#fff', 'center', 'middle');
     if (d.lockColor >= 0 && isLocked(d)) {
       ctx.fillStyle = 'rgba(42,35,32,.92)';
-      rrect(-r * 0.5, -r * 1.25, r, r * 0.62, r * 0.12);
+      rrect(-r * 0.5, -r * 1.35, r, r * 0.62, r * 0.12);
       ctx.fill();
       ctx.strokeStyle = '#FFF7E8';
       ctx.lineWidth = r * 0.1;
       ctx.beginPath();
-      ctx.arc(-r * 0.2, -r * 1.25, r * 0.16, Math.PI, 0);
+      ctx.arc(-r * 0.2, -r * 1.35, r * 0.16, Math.PI, 0);
       ctx.stroke();
-      glyph(r * 0.18, -r * 0.94, COLORS[d.lockColor].glyph, r * 0.38, COLORS[d.lockColor].hex);
+      glyph(r * 0.18, -r * 1.04, COLORS[d.lockColor].glyph, r * 0.38, COLORS[d.lockColor].hex);
     }
     if (d.ice > 0) {
       ctx.fillStyle = 'rgba(160,215,255,.55)';
-      rrect(-r * 1.05, -r * 1.05, r * 2.1, r * 2.1, r * 0.35);
+      rrect(-r * 1.05, -r * 1.15, r * 2.1, r * 2.2, r * 0.35);
       ctx.fill();
       ctx.strokeStyle = 'rgba(255,255,255,.85)';
       ctx.lineWidth = 2;
-      rrect(-r * 1.05, -r * 1.05, r * 2.1, r * 2.1, r * 0.35);
+      rrect(-r * 1.05, -r * 1.15, r * 2.1, r * 2.2, r * 0.35);
       ctx.stroke();
       const cracks = (d.iceMax || 3) - d.ice;
       ctx.strokeStyle = 'rgba(40,80,120,.7)';

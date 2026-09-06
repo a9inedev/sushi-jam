@@ -1,3 +1,5 @@
+import { foodSvg } from '../art/plates';
+import { sprite } from '../art/svg';
 import { COLORS, GOLD } from '../data/constants';
 import type { PlateLike } from '../engine/types';
 import { ctx } from './canvas';
@@ -7,6 +9,15 @@ export interface PlateDrawOpts {
   timer?: number;
   timerMax?: number;
   showHidden?: boolean;
+}
+
+/** The sushi for a colour, centred on the origin, sized to sit inside a plate of radius r. */
+export function drawFood(color: number, r: number): boolean {
+  const box = Math.round(r * 1.7);
+  const img = sprite(`f${color}`, () => foodSvg(color), box, box);
+  if (!img) return false;
+  ctx.drawImage(img, -box / 2, -box * 0.52, box, box);
+  return true;
 }
 
 export function drawPlate(x: number, y: number, p: PlateLike, r: number, opts: PlateDrawOpts = {}): void {
@@ -37,6 +48,12 @@ export function drawPlate(x: number, y: number, p: PlateLike, r: number, opts: P
   ctx.beginPath();
   ctx.arc(0, 0, r - r * 0.16, 0, 7);
   ctx.stroke();
+  // Inner plate lip: a soft ring that sells the ceramic.
+  ctx.lineWidth = r * 0.06;
+  ctx.strokeStyle = 'rgba(42,35,32,.08)';
+  ctx.beginPath();
+  ctx.arc(0, 0, r * 0.66, 0, 7);
+  ctx.stroke();
   if (p.vip) {
     ctx.lineWidth = r * 0.1;
     ctx.strokeStyle = GOLD;
@@ -59,11 +76,22 @@ export function drawPlate(x: number, y: number, p: PlateLike, r: number, opts: P
     ctx.arc(0, -r * 0.68, r * 0.12, 0, 7);
     ctx.fill();
   } else {
-    ctx.fillStyle = '#F1EAD6';
+    if (!drawFood(p.color, r)) {
+      ctx.fillStyle = '#F1EAD6';
+      ctx.beginPath();
+      ctx.ellipse(0, r * 0.14, r * 0.5, r * 0.28, 0, 0, 7);
+      ctx.fill();
+      glyph(0, -r * 0.06, col.glyph, r * 0.72, col.hex);
+    }
+    // Shape glyph badge on the rim: the colour-blind cue, always drawn.
+    ctx.fillStyle = '#FFFDF7';
+    ctx.strokeStyle = col.hex;
+    ctx.lineWidth = Math.max(1, r * 0.08);
     ctx.beginPath();
-    ctx.ellipse(0, r * 0.14, r * 0.5, r * 0.28, 0, 0, 7);
+    ctx.arc(-r * 0.62, -r * 0.62, r * 0.3, 0, 7);
     ctx.fill();
-    glyph(0, -r * 0.06, col.glyph, r * 0.72, col.hex);
+    ctx.stroke();
+    glyph(-r * 0.62, -r * 0.62, col.glyph, r * 0.38, col.hex);
     if (p.covered && opts.showHidden) {
       ctx.fillStyle = 'rgba(138,143,156,.9)';
       ctx.beginPath();

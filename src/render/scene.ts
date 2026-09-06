@@ -1,5 +1,7 @@
 /* The play scene: background, decor, belt, kitchen, seats, grid and effects. */
 
+import { backgroundSvg, bonsaiSvg, lanternSvg, norenSvg, tankSvg } from '../art/background';
+import { sprite } from '../art/svg';
 import { COIN_POS, COLORS, DINER_R, GOLD, H, KITCHEN, W } from '../data/constants';
 import { BELT } from '../engine/belt';
 import { G, cur } from '../engine/state';
@@ -11,6 +13,12 @@ import { drawPlate } from './plate';
 import { coinIcon, rrect, textW, txt } from './primitives';
 
 export function drawBg(): void {
+  const img = sprite('bg', backgroundSvg, W, H);
+  if (img) {
+    ctx.drawImage(img, 0, 0, W, H);
+    return;
+  }
+  // Flat fallback until the layered background has decoded.
   ctx.fillStyle = '#FBF3E4';
   ctx.fillRect(0, 0, W, H);
   ctx.fillStyle = '#2B2622';
@@ -35,7 +43,20 @@ export function drawBg(): void {
 export function drawDecor(): void {
   const gt = G.gt;
   const has = (id: string) => S.decor.includes(id);
-  if (has('lantern'))
+  const lantern = has('lantern') ? sprite('lantern', lanternSvg, 48, 72) : null;
+  const noren = has('noren') ? sprite('noren', norenSvg, 320, 44) : null;
+  const bonsai = has('plant') ? sprite('bonsai', bonsaiSvg, 64, 64) : null;
+  const tank = has('tank') ? sprite('tank', tankSvg, 92, 52) : null;
+  if (lantern)
+    for (const x of [18, 462]) {
+      const sw = Math.sin(gt * 1.3 + x) * 3;
+      ctx.save();
+      ctx.translate(x + sw, 80);
+      ctx.rotate(sw * 0.025);
+      ctx.drawImage(lantern, -24, 0, 48, 72);
+      ctx.restore();
+    }
+  else if (has('lantern'))
     for (const x of [18, 462]) {
       ctx.save();
       ctx.strokeStyle = '#5A4E45';
@@ -62,7 +83,13 @@ export function drawDecor(): void {
       ctx.fillRect(-7, 21, 14, 5);
       ctx.restore();
     }
-  if (has('noren')) {
+  if (noren) {
+    ctx.save();
+    ctx.translate(80, 192);
+    ctx.transform(1, 0, Math.sin(gt * 1.6) * 0.03, 1, 0, 0);
+    ctx.drawImage(noren, 0, 0, 320, 44);
+    ctx.restore();
+  } else if (has('noren')) {
     ctx.save();
     const y0 = 196;
     for (let i = 0; i < 6; i++) {
@@ -83,7 +110,8 @@ export function drawDecor(): void {
     ctx.fillRect(80, 192, 320, 4);
     ctx.restore();
   }
-  if (has('plant')) {
+  if (bonsai) ctx.drawImage(bonsai, 60, 314, 64, 64);
+  else if (has('plant')) {
     ctx.save();
     ctx.translate(92, 372);
     ctx.fillStyle = '#7A4B22';
@@ -113,13 +141,16 @@ export function drawDecor(): void {
       y = 328,
       w = 92,
       h = 52;
-    ctx.fillStyle = 'rgba(93,182,240,.35)';
-    rrect(x, y, w, h, 6);
-    ctx.fill();
-    ctx.strokeStyle = '#5A4E45';
-    ctx.lineWidth = 3;
-    rrect(x, y, w, h, 6);
-    ctx.stroke();
+    if (tank) ctx.drawImage(tank, x, y, w, h);
+    else {
+      ctx.fillStyle = 'rgba(93,182,240,.35)';
+      rrect(x, y, w, h, 6);
+      ctx.fill();
+      ctx.strokeStyle = '#5A4E45';
+      ctx.lineWidth = 3;
+      rrect(x, y, w, h, 6);
+      ctx.stroke();
+    }
     for (let i = 0; i < 3; i++) {
       const fx0 = x + 14 + ((gt * (18 + i * 7) + i * 40) % (w - 28)),
         fy = y + 14 + i * 13 + Math.sin(gt * 3 + i) * 3,

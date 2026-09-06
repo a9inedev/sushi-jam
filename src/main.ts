@@ -1,5 +1,10 @@
 import './style.css';
+import { backgroundSvg } from './art/background';
+import { characterSvg, SPRITE_STATES } from './art/characters';
+import { foodSvg } from './art/plates';
+import { clearSprites, dpr, preload, type PreloadEntry } from './art/svg';
 import { audioContext, setRumble, sfx } from './audio/audio';
+import { DINER_R, H, W } from './data/constants';
 import { getLevel } from './engine/levels';
 import { canMove, checkDeadlock, devAuto, fail, newLevel, nextMechCard, updateBelt, win } from './engine/rules';
 import { closeScreen, G, toast, type Screen } from './engine/state';
@@ -40,6 +45,7 @@ import {
   drawSeats,
   drawToasts,
 } from './render/scene';
+import { SPRITE_BOX } from './render/diner';
 import { drawBoosters, drawHud } from './ui/hud';
 import { bindInput } from './ui/input';
 import { drawStatusOverlay } from './ui/overlays';
@@ -248,10 +254,41 @@ function bindNative(): void {
   });
 }
 
+/* ---------- art ---------- */
+
+/** Decode the sprites the first frames need: every character state at the sizes in use, the sushi, the room. */
+function artPreload(): Promise<{ ok: number; failed: number }> {
+  const entries: PreloadEntry[] = [];
+  const boxes = new Set<number>([Math.round(DINER_R * SPRITE_BOX), Math.round(26 * SPRITE_BOX)]);
+  if (G.L) boxes.add(Math.round(G.L.cell * 0.36 * SPRITE_BOX));
+  for (const box of boxes)
+    for (let c = 0; c < 7; c++)
+      for (const st of SPRITE_STATES) {
+        entries.push({ key: `c${c}:${st}`, svg: () => characterSvg(c, st, false), w: box, h: box });
+        entries.push({ key: `c${c}:${st}:d`, svg: () => characterSvg(c, st, false, true), w: box, h: box });
+      }
+  for (const r of [9, 12, 15])
+    for (let c = 0; c < 7; c++) {
+      const box = Math.round(r * 1.7);
+      entries.push({ key: `f${c}`, svg: () => foodSvg(c), w: box, h: box });
+    }
+  entries.push({ key: 'bg', svg: backgroundSvg, w: W, h: H });
+  return preload(entries);
+}
+
+let lastDpr = dpr();
+function onResize(): void {
+  resize();
+  if (dpr() !== lastDpr) {
+    lastDpr = dpr();
+    clearSprites();
+  }
+}
+
 /* ---------- boot ---------- */
 
-window.addEventListener('resize', resize);
-if (window.visualViewport) window.visualViewport.addEventListener('resize', resize);
+window.addEventListener('resize', onResize);
+if (window.visualViewport) window.visualViewport.addEventListener('resize', onResize);
 setCloudProvider(cloudProviderFor(platform));
 const loaded = load();
 checkWeekly();
@@ -268,12 +305,14 @@ const startLoop = () =>
     frame(ts);
     hideSplash();
   });
-if (document.fonts && document.fonts.load) {
-  Promise.race([document.fonts.load('800 20px "Baloo 2"'), new Promise((r) => setTimeout(r, 1500))]).then(
-    startLoop,
-    startLoop
-  );
-} else startLoop();
+const fontsReady: Promise<unknown> =
+  document.fonts && document.fonts.load
+    ? document.fonts.load('800 20px "Baloo 2"').catch(() => null)
+    : Promise.resolve();
+Promise.race([Promise.all([fontsReady, artPreload()]), new Promise((r) => setTimeout(r, 2500))]).then(
+  startLoop,
+  startLoop
+);
 
 /* ---------- dev API for automated checks ---------- */
 

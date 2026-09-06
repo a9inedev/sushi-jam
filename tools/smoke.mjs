@@ -221,9 +221,33 @@ await step('pause freezes the level and resumes; back button pauses', async () =
   await sleep(100);
   if ((await screenType()) !== null) throw new Error('back did not close pause');
 });
-await step('play screenshot', async () => {
+await step('6x6 grid with every mechanic renders (art readability check)', async () => {
+  await sj('window.__SJ.S.devAllMech = true');
+  await sj('window.__SJ.jump(30)');
+  await sleep(300);
   await sj('window.__SJ.skipIntro()');
-  await sleep(400);
+  for (let i = 0; i < 10; i++) {
+    if ((await status()) === 'mech') await sj('window.__SJ.mechCard()');
+    await sleep(80);
+  }
+  await sleep(700);
+  await page.screenshot({ path: path.join(OUT, 'smoke-grid6.png') });
+  const st = await sj(
+    '(() => { const L = window.__SJ.state(); return { rows: L.rows, cols: L.cols, cell: L.cell }; })()'
+  );
+  await sj('window.__SJ.S.devAllMech = false');
+  if (st.rows !== 6 || st.cols !== 6) throw new Error('expected a 6x6 board, got ' + st.rows + 'x' + st.cols);
+  return '6x6, cell ' + st.cell.toFixed(1) + ' px, diner radius ' + (st.cell * 0.36).toFixed(1) + ' px';
+});
+await step('play screenshot (level 2, a few moves in)', async () => {
+  await sj('window.__SJ.jump(2)');
+  await sleep(150);
+  await sj('window.__SJ.skipIntro()');
+  for (let i = 0; i < 3; i++) {
+    await sj('window.__SJ.auto()');
+    await sleep(700);
+  }
+  await sleep(2200);
   await page.screenshot({ path: path.join(OUT, 'smoke-play.png') });
 });
 await step('save persists across reload', async () => {
