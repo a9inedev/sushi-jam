@@ -4,12 +4,13 @@
      v1  sushijam.v1   { level, coins, sound }
      v2  sushijam.v2   flat SaveState blob, no version field
      v3  sushijam.save { v: 3, savedAt, sum, data: SaveState }  (checksummed envelope, atomic writes, backup copy)
+     v4  same envelope, data gains reduceMotion
 */
 
 import { hashStr } from '../engine/rng';
 import type { MechKind, StatRecord } from '../engine/types';
 
-export const SAVE_VERSION = 3;
+export const SAVE_VERSION = 4;
 
 export interface Inventory {
   vip: number;
@@ -38,6 +39,8 @@ export interface SaveState {
   demoAds: boolean;
   /** Vibration on seat, grab, jam and clear. Added in v3; older saves default to on. */
   haptics: boolean;
+  /** Player-chosen reduce motion. Added in v4; the OS preference is honoured on top of this. */
+  reduceMotion: boolean;
 }
 
 export function defaultSave(): SaveState {
@@ -61,6 +64,7 @@ export function defaultSave(): SaveState {
     devAllMech: false,
     demoAds: true,
     haptics: true,
+    reduceMotion: false,
   };
 }
 
@@ -131,10 +135,16 @@ export function migrateV2toV3(v2: Blob): Blob {
   };
 }
 
+/** v4 adds the reduce-motion preference, off by default. */
+export function migrateV3toV4(v3: Blob): Blob {
+  return { ...v3, reduceMotion: typeof v3.reduceMotion === 'boolean' ? v3.reduceMotion : false };
+}
+
 /** Keyed by the version the migration starts from. */
 export const MIGRATIONS: Record<number, Migration> = {
   1: migrateV1toV2,
   2: migrateV2toV3,
+  3: migrateV3toV4,
 };
 
 /** Which schema a parsed blob belongs to, or null if it is not a save at all. */
@@ -186,6 +196,7 @@ export function normalize(x: unknown): SaveState {
     devAllMech: bool('devAllMech', d.devAllMech),
     demoAds: bool('demoAds', d.demoAds),
     haptics: bool('haptics', d.haptics),
+    reduceMotion: bool('reduceMotion', d.reduceMotion),
   };
 }
 

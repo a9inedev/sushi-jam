@@ -17,6 +17,7 @@ import {
   migrate,
   migrateV1toV2,
   migrateV2toV3,
+  migrateV3toV4,
   normalize,
   parseEnvelope,
 } from '../src/meta/save-schema';
@@ -128,15 +129,28 @@ describe('migrate (chain)', () => {
     expect(m?.state.inv).toEqual({ vip: 0, takeout: 1, sendback: 0 });
   });
 
-  it('v3 envelope is identity apart from normalisation', () => {
+  it('current envelope is identity apart from normalisation', () => {
     const s = defaultSave();
     s.level = 9;
     s.coins = 7;
     s.best = 9; // normalize keeps best >= level
     const { env } = envelopeFor(s, 1);
     const m = migrate(env);
-    expect(m?.from).toBe(3);
+    expect(m?.from).toBe(SAVE_VERSION);
     expect(m?.state).toEqual(s);
+  });
+
+  it('v3 envelope gains reduceMotion off and keeps everything else', () => {
+    const data = defaultSave() as unknown as Record<string, unknown>;
+    delete data.reduceMotion;
+    data.level = 21;
+    data.haptics = false;
+    const m = migrate({ v: 3, savedAt: 1, sum: checksum(JSON.stringify(data)), data });
+    expect(m?.from).toBe(3);
+    expect(m?.state.level).toBe(21);
+    expect(m?.state.haptics).toBe(false);
+    expect(m?.state.reduceMotion).toBe(false);
+    expect(migrateV3toV4({ reduceMotion: true }).reduceMotion).toBe(true);
   });
 
   it('a save from a newer build is read best-effort', () => {

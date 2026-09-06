@@ -182,20 +182,27 @@ await step('settings screen toggles haptics and sound', async () => {
   await sleep(150);
   await page.screenshot({ path: path.join(OUT, 'smoke-settings.png') });
   const h0 = await sj('window.__SJ.S.haptics');
-  await tapCanvas(240, 336); // haptics row
+  await tapCanvas(240, 316); // haptics row
   await sleep(120);
   const h1 = await sj('window.__SJ.S.haptics');
   if (h1 === h0) throw new Error('haptics toggle did not flip');
-  await tapCanvas(240, 336);
+  await tapCanvas(240, 316);
   await sleep(120);
   if ((await sj('window.__SJ.S.haptics')) !== h0) throw new Error('haptics toggle did not flip back');
   const s0 = await sj('window.__SJ.S.sound');
-  await tapCanvas(240, 270); // sound row
+  await tapCanvas(240, 250); // sound row
   await sleep(120);
   if ((await sj('window.__SJ.S.sound')) === s0) throw new Error('sound toggle did not flip');
-  await tapCanvas(240, 270);
+  await tapCanvas(240, 250);
   await sleep(120);
-  await tapCanvas(240, 639); // Done
+  const rm0 = await sj('window.__SJ.S.reduceMotion');
+  await tapCanvas(240, 382); // reduce motion row
+  await sleep(120);
+  if ((await sj('window.__SJ.S.reduceMotion')) === rm0) throw new Error('reduce motion toggle did not flip');
+  await tapCanvas(240, 382);
+  await sleep(120);
+  if ((await sj('window.__SJ.S.reduceMotion')) !== rm0) throw new Error('reduce motion toggle did not flip back');
+  await tapCanvas(240, 683); // Done
   await sleep(120);
   if ((await screenType()) !== null) throw new Error('settings did not close');
 });
@@ -239,6 +246,55 @@ await step('6x6 grid with every mechanic renders (art readability check)', async
   if (st.rows !== 6 || st.cols !== 6) throw new Error('expected a 6x6 board, got ' + st.rows + 'x' + st.cols);
   return '6x6, cell ' + st.cell.toFixed(1) + ' px, diner radius ' + (st.cell * 0.36).toFixed(1) + ' px';
 });
+await step('frame rate with 40+ live particles (headless Edge on this PC)', async () => {
+  await sj('window.__SJ.jump(2)');
+  await sleep(150);
+  await sj('window.__SJ.skipIntro()');
+  await sleep(300);
+  const r = await page.evaluate(async () => {
+    const sj = window.__SJ;
+    sj.fx.burst(80);
+    const frames = [];
+    let minLive = Infinity;
+    await new Promise((res) => {
+      let n = 0,
+        last = performance.now();
+      const f = (ts) => {
+        frames.push(ts - last);
+        last = ts;
+        minLive = Math.min(minLive, sj.fx.count());
+        if (++n % 24 === 0) sj.fx.burst(40);
+        if (n < 180) requestAnimationFrame(f);
+        else res();
+      };
+      requestAnimationFrame(f);
+    });
+    frames.shift();
+    const sorted = frames.slice().sort((a, b) => a - b);
+    const avg = frames.reduce((a, b) => a + b, 0) / frames.length;
+    return {
+      avgFps: 1000 / avg,
+      p95: sorted[Math.floor(sorted.length * 0.95)],
+      minLive,
+      live: sj.fx.count(),
+      tweens: sj.fx.tweens(),
+    };
+  });
+  if (r.minLive < 40) throw new Error('fewer than 40 particles live during the measurement: ' + r.minLive);
+  if (r.avgFps < 55) throw new Error('average fps below 55: ' + r.avgFps.toFixed(1));
+  return r.avgFps.toFixed(0) + ' fps avg, p95 frame ' + r.p95.toFixed(1) + ' ms, min ' + r.minLive + ' particles live';
+});
+await step('reduce motion: level still plays and no confetti or steam is spawned', async () => {
+  await sj('window.__SJ.fx.reduce(true)');
+  await sj('window.__SJ.jump(1)');
+  const ms = await autoplayUntil('win', 90000);
+  await sleep(200);
+  const live = await sj('window.__SJ.fx.count()');
+  await page.screenshot({ path: path.join(OUT, 'smoke-reduced-win.png') });
+  await sj('window.__SJ.fx.reduce(false)');
+  if (live > 8) throw new Error('particles alive under reduce motion right after a win: ' + live);
+  return 'won level 1 in ' + ms + ' ms with ' + live + ' particles live';
+});
 await step('play screenshot (level 2, a few moves in)', async () => {
   await sj('window.__SJ.jump(2)');
   await sleep(150);
@@ -264,12 +320,12 @@ const reloadAndWait = async () => {
   await page.waitForFunction(() => window.__SJ && window.__SJ.state(), { timeout: 10000 });
   await sleep(200);
 };
-await step('save is a v3 envelope with a valid checksum', async () => {
+await step('save is a versioned envelope with a valid checksum', async () => {
   const info = await sj(`(() => {
     const e = JSON.parse(localStorage.getItem('sushijam.save'));
     return { v: e.v, hasSum: typeof e.sum === 'number', level: e.data.level, src: window.__SJ.saveApi.info().source };
   })()`);
-  if (info.v !== 3 || !info.hasSum) throw new Error('bad envelope ' + JSON.stringify(info));
+  if (info.v !== 4 || !info.hasSum) throw new Error('bad envelope ' + JSON.stringify(info));
   return `v${info.v}, loaded from ${info.src}`;
 });
 await step('legacy v2 save migrates with level, coins, decor and stats intact', async () => {
@@ -316,7 +372,7 @@ await step('settings: restore progress from backup with confirmation', async () 
   await sj("window.__SJ.setScreen({ type: 'settings', t: 0 })");
   await sleep(150);
   await page.screenshot({ path: path.join(OUT, 'smoke-settings-save.png') });
-  await tapCanvas(240, 452); // Restore progress
+  await tapCanvas(240, 498); // Restore progress
   await sleep(150);
   if ((await screenType()) !== 'confirm') throw new Error('confirm dialog not shown');
   await page.screenshot({ path: path.join(OUT, 'smoke-confirm.png') });
@@ -324,7 +380,7 @@ await step('settings: restore progress from backup with confirmation', async () 
   await sleep(150);
   if ((await screenType()) !== 'settings') throw new Error('cancel did not return to settings');
   if ((await sj('window.__SJ.S.coins')) !== 1) throw new Error('cancel changed the state');
-  await tapCanvas(240, 452);
+  await tapCanvas(240, 498);
   await sleep(150);
   await tapCanvas(165, 494); // Restore
   await sleep(300);
@@ -335,7 +391,7 @@ await step('settings: restore progress from backup with confirmation', async () 
 await step('settings: reset progress wipes the save and reloads', async () => {
   await sj("window.__SJ.setScreen({ type: 'settings', t: 0 })");
   await sleep(150);
-  await tapCanvas(240, 508); // Reset progress
+  await tapCanvas(240, 554); // Reset progress
   await sleep(150);
   if ((await screenType()) !== 'confirm') throw new Error('confirm dialog not shown');
   await tapCanvas(165, 494); // Reset
