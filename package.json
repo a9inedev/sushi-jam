@@ -1,0 +1,32 @@
+{
+  "name": "sushi-jam",
+  "version": "0.3.0",
+  "private": true,
+  "type": "module",
+  "description": "Sushi Jam, a conveyor-belt sorting puzzle. Single-file web game.",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build && node tools/postbuild.mjs",
+    "preview": "vite preview",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "smoke": "node tools/smoke.mjs",
+    "check": "npm run lint && npm run typecheck && npm run test && npm run build && npm run smoke"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.10.0",
+    "eslint-config-prettier": "^10.1.8",
+    "globals": "^17.12.0",
+    "prettier": "^3.9.6",
+    "puppeteer-core": "^25.10.0",
+    "typescript": "~5.9.0",
+    "typescript-eslint": "^8.69.0",
+    "vite": "^7.0.0",
+    "vite-plugin-singlefile": "^2.3.0",
+    "vitest": "^3.2.0"
+  }
+}
