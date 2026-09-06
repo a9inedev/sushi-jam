@@ -85,7 +85,7 @@ export function drawSettings(sc: Screen): void {
     save();
   };
   sliderRow(270, 'Music', S.volMusic, vol('volMusic'));
-  sliderRow(314, 'Sound effects', S.volSfx, vol('volSfx'));
+  sliderRow(314, 'Effects', S.volSfx, vol('volSfx'));
   sliderRow(358, 'Interface', S.volUi, vol('volUi'));
   toggleRow(416, 'Haptics', hapticsHint(), S.haptics, () => {
     S.haptics = !S.haptics;
