@@ -51,7 +51,7 @@ export interface Confetti {
   h: number;
 }
 
-export type ScreenType = 'ad' | 'shop' | 'offer' | 'daily' | 'dev' | 'map' | 'settings' | 'pause';
+export type ScreenType = 'ad' | 'shop' | 'offer' | 'daily' | 'dev' | 'map' | 'settings' | 'pause' | 'confirm';
 export type MapTab = 'path' | 'decor' | 'weekly';
 
 export interface Screen {
@@ -64,6 +64,12 @@ export interface Screen {
   back?: Screen | null;
   reward?: number;
   tab?: MapTab;
+  /* confirm dialogs */
+  title?: string;
+  text?: string;
+  yes?: string;
+  danger?: boolean;
+  onYes?: () => void;
 }
 
 export const G = {

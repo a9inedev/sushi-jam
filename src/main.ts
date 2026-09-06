@@ -2,11 +2,30 @@ import './style.css';
 import { audioContext, setRumble, sfx } from './audio/audio';
 import { getLevel } from './engine/levels';
 import { canMove, checkDeadlock, devAuto, fail, newLevel, nextMechCard, updateBelt, win } from './engine/rules';
-import { closeScreen, G, type Screen } from './engine/state';
+import { closeScreen, G, toast, type Screen } from './engine/state';
 import type { RuntimeLevel } from './engine/types';
 import { checkDaily, checkWeekly } from './meta/daily';
-import { load, S, save } from './meta/save';
-import { hideSplash, hideStatusBar, keepAwake, onAppActive, onBackButton, setHapticsGate } from './platform/native';
+import {
+  backupInfo,
+  clearSave,
+  load,
+  loadInfo,
+  restoreFromBackup,
+  rotateBackup,
+  S,
+  save,
+  setCloudProvider,
+} from './meta/save';
+import { cloudProviderFor } from './meta/save-providers';
+import {
+  hideSplash,
+  hideStatusBar,
+  keepAwake,
+  onAppActive,
+  onBackButton,
+  platform,
+  setHapticsGate,
+} from './platform/native';
 import { ctx, cv, resize } from './render/canvas';
 import {
   drawBelt,
@@ -233,12 +252,14 @@ function bindNative(): void {
 
 window.addEventListener('resize', resize);
 if (window.visualViewport) window.visualViewport.addEventListener('resize', resize);
-load();
+setCloudProvider(cloudProviderFor(platform));
+const loaded = load();
 checkWeekly();
 resize();
 installPWA();
 bindNative();
 newLevel(S.level);
+if (loaded.recovered) toast('Progress restored from a backup copy', 3.2, 0.8);
 checkDaily();
 bindInput();
 bindStatsBox();
@@ -269,6 +290,14 @@ export interface DevApi {
   mechCard: () => void;
   skipIntro: () => void;
   back: () => void;
+  saveApi: {
+    save: (force?: boolean) => boolean;
+    rotateBackup: () => boolean;
+    backupInfo: typeof backupInfo;
+    restoreFromBackup: () => boolean;
+    clear: () => void;
+    info: () => typeof loadInfo;
+  };
 }
 
 declare global {
@@ -297,4 +326,12 @@ window.__SJ = {
     if (G.L && G.L.status === 'intro') G.L.introT = 1.4;
   },
   back: handleBack,
+  saveApi: {
+    save: (force) => save(force),
+    rotateBackup,
+    backupInfo,
+    restoreFromBackup,
+    clear: clearSave,
+    info: () => loadInfo,
+  },
 };

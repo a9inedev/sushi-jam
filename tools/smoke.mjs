@@ -182,20 +182,20 @@ await step('settings screen toggles haptics and sound', async () => {
   await sleep(150);
   await page.screenshot({ path: path.join(OUT, 'smoke-settings.png') });
   const h0 = await sj('window.__SJ.S.haptics');
-  await tapCanvas(240, 396); // haptics row
+  await tapCanvas(240, 336); // haptics row
   await sleep(120);
   const h1 = await sj('window.__SJ.S.haptics');
   if (h1 === h0) throw new Error('haptics toggle did not flip');
-  await tapCanvas(240, 396);
+  await tapCanvas(240, 336);
   await sleep(120);
   if ((await sj('window.__SJ.S.haptics')) !== h0) throw new Error('haptics toggle did not flip back');
   const s0 = await sj('window.__SJ.S.sound');
-  await tapCanvas(240, 330); // sound row
+  await tapCanvas(240, 270); // sound row
   await sleep(120);
   if ((await sj('window.__SJ.S.sound')) === s0) throw new Error('sound toggle did not flip');
-  await tapCanvas(240, 330);
+  await tapCanvas(240, 270);
   await sleep(120);
-  await tapCanvas(240, 607); // Done
+  await tapCanvas(240, 639); // Done
   await sleep(120);
   if ((await screenType()) !== null) throw new Error('settings did not close');
 });
@@ -234,6 +234,96 @@ await step('save persists across reload', async () => {
   if (again !== coins) throw new Error(`coins changed across reload (${coins} -> ${again})`);
   const t = await screenType();
   if (t === 'daily') throw new Error('daily bonus offered twice on the same day');
+});
+const reloadAndWait = async () => {
+  await page.reload({ waitUntil: 'load' });
+  await page.waitForFunction(() => window.__SJ && window.__SJ.state(), { timeout: 10000 });
+  await sleep(200);
+};
+await step('save is a v3 envelope with a valid checksum', async () => {
+  const info = await sj(`(() => {
+    const e = JSON.parse(localStorage.getItem('sushijam.save'));
+    return { v: e.v, hasSum: typeof e.sum === 'number', level: e.data.level, src: window.__SJ.saveApi.info().source };
+  })()`);
+  if (info.v !== 3 || !info.hasSum) throw new Error('bad envelope ' + JSON.stringify(info));
+  return `v${info.v}, loaded from ${info.src}`;
+});
+await step('legacy v2 save migrates with level, coins, decor and stats intact', async () => {
+  await sj(`(() => {
+    ['sushijam.save', 'sushijam.save.tmp', 'sushijam.save.bak'].forEach((k) => localStorage.removeItem(k));
+    localStorage.setItem('sushijam.v2', JSON.stringify({ level: 7, coins: 777, decor: ['noren'], inv: { vip: 2 },
+      stats: [{ n: 1, result: 'win' }, { n: 2, result: 'fail' }], sound: false }));
+  })()`);
+  await reloadAndWait();
+  const s =
+    await sj(`(() => { const S = window.__SJ.S; return { level: S.level, coins: S.coins, decor: S.decor, vip: S.inv.vip,
+    stats: S.stats.length, sound: S.sound, haptics: S.haptics, n: window.__SJ.state().n,
+    from: window.__SJ.saveApi.info().migratedFrom, hasV3: !!localStorage.getItem('sushijam.save') }; })()`);
+  const ok =
+    s.level === 7 &&
+    s.coins === 777 &&
+    s.decor[0] === 'noren' &&
+    s.vip === 2 &&
+    s.stats === 2 &&
+    s.sound === false &&
+    s.haptics === true &&
+    s.n === 7 &&
+    s.from === 2 &&
+    s.hasV3;
+  if (!ok) throw new Error(JSON.stringify(s));
+  await sj('window.__SJ.closeScreen()');
+});
+await step('corrupt primary save recovers from the backup copy', async () => {
+  await sj('window.__SJ.saveApi.rotateBackup()');
+  await sj(`localStorage.setItem('sushijam.save', '{"v":3,"sum":1,"data":{"level":99')`);
+  await reloadAndWait();
+  const s = await sj(`(() => ({ level: window.__SJ.S.level, coins: window.__SJ.S.coins,
+    src: window.__SJ.saveApi.info().source, rec: window.__SJ.saveApi.info().recovered,
+    mainOk: (() => { try { return JSON.parse(localStorage.getItem('sushijam.save')).data.level; } catch (e) { return 'corrupt'; } })() }))()`);
+  if (s.level !== 7 || s.coins !== 777 || s.src !== 'bak' || !s.rec || s.mainOk !== 7)
+    throw new Error(JSON.stringify(s));
+  await sj('window.__SJ.closeScreen()');
+  return 'recovered from ' + s.src + ', primary rewritten';
+});
+await step('settings: restore progress from backup with confirmation', async () => {
+  await sj(
+    'window.__SJ.S.coins = 5000; window.__SJ.saveApi.rotateBackup(); window.__SJ.S.coins = 1; window.__SJ.saveApi.save(true);'
+  );
+  await sj("window.__SJ.setScreen({ type: 'settings', t: 0 })");
+  await sleep(150);
+  await page.screenshot({ path: path.join(OUT, 'smoke-settings-save.png') });
+  await tapCanvas(240, 452); // Restore progress
+  await sleep(150);
+  if ((await screenType()) !== 'confirm') throw new Error('confirm dialog not shown');
+  await page.screenshot({ path: path.join(OUT, 'smoke-confirm.png') });
+  await tapCanvas(315, 494); // Cancel first
+  await sleep(150);
+  if ((await screenType()) !== 'settings') throw new Error('cancel did not return to settings');
+  if ((await sj('window.__SJ.S.coins')) !== 1) throw new Error('cancel changed the state');
+  await tapCanvas(240, 452);
+  await sleep(150);
+  await tapCanvas(165, 494); // Restore
+  await sleep(300);
+  const coins = await sj('window.__SJ.S.coins');
+  if (coins !== 5000) throw new Error('expected 5000 coins after restore, got ' + coins);
+  if ((await screenType()) !== null) throw new Error('screen still open after restore');
+});
+await step('settings: reset progress wipes the save and reloads', async () => {
+  await sj("window.__SJ.setScreen({ type: 'settings', t: 0 })");
+  await sleep(150);
+  await tapCanvas(240, 508); // Reset progress
+  await sleep(150);
+  if ((await screenType()) !== 'confirm') throw new Error('confirm dialog not shown');
+  await tapCanvas(165, 494); // Reset
+  await sleep(500);
+  await page.waitForFunction(() => window.__SJ && window.__SJ.state() && window.__SJ.S.level === 1, { timeout: 10000 });
+  const s = await sj(`(() => ({ level: window.__SJ.S.level, coins: window.__SJ.S.coins,
+    keys: ['sushijam.save', 'sushijam.save.bak', 'sushijam.save.tmp', 'sushijam.v2', 'sushijam.v1'].filter((k) => localStorage.getItem(k) !== null) }))()`);
+  // The weekly check writes a fresh primary at boot, so only a pristine sushijam.save may remain.
+  const fresh = await sj(`(() => { const raw = localStorage.getItem('sushijam.save'); if (!raw) return true;
+    const d = JSON.parse(raw).data; return d.level === 1 && d.coins === 300 && d.decor.length === 0 && d.stats.length === 0; })()`);
+  const stale = s.keys.filter((k) => k !== 'sushijam.save');
+  if (s.level !== 1 || s.coins !== 300 || stale.length || !fresh) throw new Error(JSON.stringify({ ...s, fresh }));
 });
 await step('no console errors', async () => {
   if (errors.length) throw new Error(errors.join(' | '));

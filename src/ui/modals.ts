@@ -1,13 +1,12 @@
-/* Settings and Pause. Both freeze the level while open. */
+/* Settings, Pause and Confirm. All of them freeze the level while open. */
 
 import { setRumble, sfx } from '../audio/audio';
-import { GOLD } from '../data/constants';
 import { logStat, newLevel } from '../engine/rules';
-import { closeScreen, cur, G, type Screen } from '../engine/state';
+import { closeScreen, cur, G, toast, type Screen } from '../engine/state';
+import { backupInfo, clearSave, cloudProvider, restoreFromBackup, S, save } from '../meta/save';
 import { haptic, isNative, platform } from '../platform/native';
-import { S, save } from '../meta/save';
 import { ctx } from '../render/canvas';
-import { card, rrect, txt } from '../render/primitives';
+import { card, rrect, txt, wrapText } from '../render/primitives';
 import { button } from './buttons';
 
 function toggleRow(y: number, label: string, sub: string | null, on: boolean, onTap: () => void): void {
@@ -36,32 +35,130 @@ function hapticsHint(): string {
   return 'Not available in this browser';
 }
 
+function ago(ts: number): string {
+  if (!ts) return 'earlier';
+  const s = Math.max(0, (Date.now() - ts) / 1000);
+  if (s < 60) return 'just now';
+  if (s < 3600) return Math.floor(s / 60) + ' min ago';
+  if (s < 86400) return Math.floor(s / 3600) + ' h ago';
+  return Math.floor(s / 86400) + ' d ago';
+}
+
 export function drawSettings(sc: Screen): void {
-  card(60, 230, 360, 420, '#3B3F4A', 'Settings');
-  toggleRow(330, 'Sound', 'Effects and belt rumble', S.sound, () => {
+  card(60, 170, 360, 560, '#3B3F4A', 'Settings');
+  toggleRow(270, 'Sound', 'Effects and belt rumble', S.sound, () => {
     S.sound = !S.sound;
     save();
     if (S.sound) sfx.tap();
     else setRumble(0);
   });
-  toggleRow(396, 'Haptics', hapticsHint(), S.haptics, () => {
+  toggleRow(336, 'Haptics', hapticsHint(), S.haptics, () => {
     S.haptics = !S.haptics;
     save();
     sfx.tap();
     if (S.haptics) haptic('medium');
   });
+  const c = cloudProvider();
   txt(
-    'Sushi Jam v' + __APP_VERSION__ + ' · ' + (isNative ? platform : 'web'),
+    c ? c.label + ' cloud save · not connected yet' : 'Cloud save arrives with the mobile apps',
     240,
-    556,
+    392,
     12,
     700,
     '#8A8378',
     'center',
     'middle'
   );
-  button(150, 584, 180, 46, 'Done', null, {
+  const bak = backupInfo();
+  button(
+    100,
+    430,
+    280,
+    44,
+    'Restore progress',
+    bak
+      ? `Backup · level ${bak.level} · ${bak.coins.toLocaleString()} coins · ${ago(bak.savedAt)}`
+      : 'No backup copy yet',
+    {
+      tone: '#148F82',
+      disabled: !bak,
+      onTap: () => {
+        sfx.tap();
+        if (!bak) return;
+        G.screen = {
+          type: 'confirm',
+          t: 0,
+          back: sc,
+          title: 'Restore progress?',
+          text:
+            `Replace level ${S.level} with ${S.coins.toLocaleString()} coins by the backup from ${ago(bak.savedAt)}: ` +
+            `level ${bak.level} with ${bak.coins.toLocaleString()} coins.`,
+          yes: 'Restore',
+          onYes: () => {
+            if (restoreFromBackup()) {
+              G.screen = null;
+              newLevel(S.level);
+              toast('Progress restored from backup', 2.4);
+            } else {
+              G.screen = sc;
+              toast('The backup could not be read', 2);
+            }
+          },
+        };
+      },
+    }
+  );
+  button(100, 486, 280, 44, 'Reset progress', 'Deletes level, coins, decor, boosters and stats', {
+    tone: '#E5484D',
+    onTap: () => {
+      sfx.tap();
+      G.screen = {
+        type: 'confirm',
+        t: 0,
+        back: sc,
+        title: 'Reset all progress?',
+        text: 'Level, coins, decor, boosters and the stats log will be deleted. This cannot be undone.',
+        yes: 'Reset',
+        danger: true,
+        onYes: () => {
+          clearSave();
+          location.reload();
+        },
+      };
+    },
+  });
+  txt(
+    'Sushi Jam v' + __APP_VERSION__ + ' · ' + (isNative ? platform : 'web'),
+    240,
+    592,
+    12,
+    700,
+    '#8A8378',
+    'center',
+    'middle'
+  );
+  button(150, 616, 180, 46, 'Done', null, {
     primary: true,
+    onTap: () => {
+      sfx.tap();
+      G.screen = sc.back || null;
+    },
+  });
+}
+
+export function drawConfirm(sc: Screen): void {
+  card(60, 280, 360, 300, sc.danger ? '#E5484D' : '#3B3F4A', sc.title || 'Are you sure?');
+  wrapText(sc.text || '', 240, 372, 300, 15, '#5A4E45');
+  button(100, 470, 130, 48, sc.yes || 'Yes', null, {
+    primary: !!sc.danger,
+    tone: '#148F82',
+    onTap: () => {
+      sfx.tap();
+      if (sc.onYes) sc.onYes();
+    },
+  });
+  button(250, 470, 130, 48, 'Cancel', null, {
+    tone: '#6B6560',
     onTap: () => {
       sfx.tap();
       G.screen = sc.back || null;
@@ -73,7 +170,6 @@ export function drawPause(sc: Screen): void {
   const L = cur();
   card(60, 250, 360, 380, '#6A4C93', 'Paused');
   txt('Level ' + L.n, 240, 330, 22, 800, '#2A2320', 'center', 'middle');
-  ctx.fillStyle = GOLD;
   button(100, 360, 280, 52, 'Resume', null, {
     primary: true,
     onTap: () => {
