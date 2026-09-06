@@ -2,9 +2,9 @@
 
 A conveyor-belt sorting puzzle built on the "Bus Jam" loop: seat diners, match plate colours, and keep the belt from jamming.
 
-**Play:** https://a9inedev.github.io/sushi-jam/ (or open `index.html` locally)
+**Play:** https://a9inedev.github.io/sushi-jam/
 
-Single file, no build step, no dependencies. Progress and coins save in the browser's local storage.
+Vite + TypeScript, Canvas 2D, Web Audio, no runtime dependencies. The production build is one HTML file. Progress and coins save in the browser's local storage.
 
 ## How it plays
 
@@ -15,14 +15,14 @@ Single file, no build step, no dependencies. Progress and coins save in the brow
 
 ## Rules that unlock as you go
 
-| Level | Rule |
-| --- | --- |
-| 21 | Wasabi plate: spoils when its timer runs out |
-| 31 | Covered plate: colour hides for one loop once on the belt |
-| 41 | VIP guests: gold guests only eat gold plates |
-| 51 | Chopstick lock: a diner stays locked until a colour has been served |
-| 61 | Frozen dessert: tap three times to crack the ice |
-| 71 | Double-decker: one plate fills two appetite points |
+| Level | Rule                                                                |
+| ----- | ------------------------------------------------------------------- |
+| 21    | Wasabi plate: spoils when its timer runs out                        |
+| 31    | Covered plate: colour hides for one loop once on the belt           |
+| 41    | VIP guests: gold guests only eat gold plates                        |
+| 51    | Chopstick lock: a diner stays locked until a colour has been served |
+| 61    | Frozen dessert: tap three times to crack the ice                    |
+| 71    | Double-decker: one plate fills two appetite points                  |
 
 ## Under the hood
 
@@ -35,8 +35,42 @@ Single file, no build step, no dependencies. Progress and coins save in the brow
 
 ## Dev panel
 
-Tap the level label five times. Skip levels, force all mechanics from level 1, toggle demo ads, export the per-level stats log as JSON, or reset progress.
+Tap the level label five times. Skip levels, force all mechanics from level 1, toggle demo ads, export the per-level stats log as JSON, or reset progress. A dev API lives on `window.__SJ` (`jump(n)`, `auto()`, `forceFail()`, `state()`, `screen()`).
 
-## Files
+## Development
 
-- `index.html` – the whole game (Canvas 2D, WebAudio, ~1,900 lines of vanilla JS)
+```
+npm install
+npm run dev        # Vite dev server with hot reload
+npm run build      # single-file build -> dist/index.html
+npm run preview    # serve the build locally
+npm test           # Vitest: generation, solver, kitchen accounting, save migration, legacy parity
+npm run lint       # ESLint
+npm run format     # Prettier
+npm run typecheck  # tsc --noEmit
+npm run smoke      # headless Edge run of dist/index.html through the dev API (Windows, puppeteer-core)
+npm run check      # lint + typecheck + test + build + smoke
+```
+
+### Layout
+
+```
+index.html          Vite entry (not playable on its own; build or run the dev server)
+src/main.ts         boot, update/draw loop, PWA manifest, dev API
+src/engine/         level generation, solver, runtime rules, deadlock, belt path, shared state
+src/render/         canvas primitives, plates, diners, icons, the play scene
+src/ui/             buttons, HUD, in-level overlays, full screens, input
+src/audio/          synthesised sound set and belt rumble
+src/meta/           save + migration, daily bonus, weekly ghosts, economy, between-level flow
+src/data/           constants, mechanics schedule, products, decor, authored boards
+tests/              Vitest suites and the legacy level fixture
+tools/              static server, smoke test, build validator, legacy level dump
+```
+
+### Continuous integration
+
+`.github/workflows/ci.yml` lints, typechecks, tests and builds on every push and pull request, then deploys `dist/` to GitHub Pages on pushes to `main`.
+
+### Save data
+
+Key `sushijam.v2` in local storage. A `sushijam.v1` blob is migrated on first load if no v2 save exists.

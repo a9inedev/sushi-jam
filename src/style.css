@@ -1,0 +1,68 @@
+html,
+body {
+  height: 100%;
+}
+body {
+  margin: 0;
+  background: #171512;
+  color: #fff7e8;
+  font-family: 'Baloo 2', 'Trebuchet MS', system-ui, sans-serif;
+  overflow: hidden;
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+#wrap {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: radial-gradient(ellipse at 50% 30%, #2a2520 0%, #171512 70%);
+}
+canvas {
+  display: block;
+  border-radius: 22px;
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.55);
+  touch-action: none;
+  cursor: pointer;
+}
+@media (max-width: 520px) {
+  canvas {
+    border-radius: 0;
+    box-shadow: none;
+  }
+}
+#statsBox {
+  position: fixed;
+  inset: 0;
+  background: rgba(20, 15, 10, 0.92);
+  display: none;
+  padding: 24px;
+  box-sizing: border-box;
+  z-index: 10;
+}
+#statsBox textarea {
+  width: 100%;
+  height: calc(100% - 60px);
+  background: #fff9ee;
+  color: #2a2320;
+  border: 0;
+  border-radius: 12px;
+  padding: 12px;
+  font:
+    12px/1.4 Consolas,
+    monospace;
+  box-sizing: border-box;
+}
+#statsBox button {
+  margin-top: 12px;
+  padding: 10px 18px;
+  border: 0;
+  border-radius: 10px;
+  background: #e5484d;
+  color: #fff;
+  font:
+    800 16px 'Baloo 2',
+    sans-serif;
+}
