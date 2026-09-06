@@ -44,7 +44,7 @@ jobs:
       - run: npx cap sync android
       - name: Build debug APK
         working-directory: android
-        run: ./gradlew assembleDebug --no-daemon --stacktrace
+        run: chmod +x gradlew && ./gradlew assembleDebug --no-daemon --stacktrace
       - name: Report APK size
         run: ls -la android/app/build/outputs/apk/debug/
       - uses: actions/upload-artifact@v6
