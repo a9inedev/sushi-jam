@@ -45,6 +45,14 @@ export function drawHud(): void {
       }
     },
   });
+  button(220, 20, 36, 36, '⚙', null, {
+    tone: '#4A4540',
+    size: 20,
+    onTap: () => {
+      sfx.tap();
+      G.screen = { type: 'settings', t: 0 };
+    },
+  });
   button(262, 20, 36, 36, S.sound ? '♪' : '✕', null, {
     tone: '#4A4540',
     onTap: () => {

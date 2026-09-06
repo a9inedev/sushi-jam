@@ -3,3 +3,7 @@ node_modules/
 tools/out/
 tests/fixtures/
 package-lock.json
+android/
+ios/
+resources/
+assets/

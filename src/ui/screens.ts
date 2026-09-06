@@ -18,6 +18,7 @@ import { ctx } from '../render/canvas';
 import { drawPlate } from '../render/plate';
 import { card, coinIcon, dim, rrect, txt } from '../render/primitives';
 import { button, closeBtn } from './buttons';
+import { drawPause, drawSettings } from './modals';
 
 export function showStats(): void {
   const box = document.getElementById('statsBox') as HTMLElement;
@@ -434,4 +435,6 @@ export function drawScreen(): void {
   else if (sc.type === 'daily') drawDaily(sc);
   else if (sc.type === 'dev') drawDev();
   else if (sc.type === 'map') drawMap(sc);
+  else if (sc.type === 'settings') drawSettings(sc);
+  else if (sc.type === 'pause') drawPause(sc);
 }

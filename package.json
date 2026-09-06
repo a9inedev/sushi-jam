@@ -1,6 +1,6 @@
 {
   "name": "sushi-jam",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "private": true,
   "type": "module",
   "description": "Sushi Jam, a conveyor-belt sorting puzzle. Single-file web game.",
@@ -17,6 +17,10 @@
     "check": "npm run lint && npm run typecheck && npm run test && npm run build && npm run smoke"
   },
   "devDependencies": {
+    "@capacitor/android": "^8.5.1",
+    "@capacitor/assets": "^3.0.5",
+    "@capacitor/cli": "^8.5.1",
+    "@capacitor/ios": "^8.5.1",
     "@eslint/js": "^10.0.1",
     "eslint": "^10.10.0",
     "eslint-config-prettier": "^10.1.8",
@@ -28,5 +32,13 @@
     "vite": "^7.0.0",
     "vite-plugin-singlefile": "^2.3.0",
     "vitest": "^3.2.0"
+  },
+  "dependencies": {
+    "@capacitor-community/keep-awake": "^8.0.1",
+    "@capacitor/app": "^8.1.1",
+    "@capacitor/core": "^8.5.1",
+    "@capacitor/haptics": "^8.0.2",
+    "@capacitor/splash-screen": "^8.0.2",
+    "@capacitor/status-bar": "^8.0.3"
   }
 }

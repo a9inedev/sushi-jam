@@ -20,6 +20,14 @@ describe('save migration', () => {
     expect(s.inv).toEqual({ vip: 2, takeout: 0, sendback: 0 });
     expect(s.stats.length).toBe(1);
     expect(s.demoAds).toBe(true);
+    expect(s.haptics).toBe(true);
+  });
+
+  it('a pre-native v2 blob without a haptics key keeps haptics on', () => {
+    const s = defaultSave();
+    applySaved(s, { level: 9, coins: 100, sound: false }, null);
+    expect(s.haptics).toBe(true);
+    expect(s.sound).toBe(false);
   });
 
   it('v2 wins over v1 when both exist', () => {

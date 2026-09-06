@@ -6,6 +6,7 @@ import { closeScreen, G, type Screen } from './engine/state';
 import type { RuntimeLevel } from './engine/types';
 import { checkDaily, checkWeekly } from './meta/daily';
 import { load, S, save } from './meta/save';
+import { hideSplash, hideStatusBar, keepAwake, onAppActive, onBackButton, setHapticsGate } from './platform/native';
 import { ctx, cv, resize } from './render/canvas';
 import {
   drawBelt,
@@ -45,7 +46,8 @@ function update(dt: number): void {
     if (G.fx[i].t > G.fx[i].dur) G.fx.splice(i, 1);
   }
   L.shake = Math.max(0, L.shake - dt * 1.6);
-  if (!G.screen || G.screen.type !== 'ad') {
+  // Any open screen (ad, shop, map, settings, pause...) freezes the level so the belt never runs unseen.
+  if (!G.screen) {
     if (L.status === 'intro') {
       L.introT += dt;
       if (L.introT >= 1.4) L.status = L.newMechs.length ? 'mech' : 'play';
@@ -84,7 +86,9 @@ function update(dt: number): void {
     }
     if (L.status === 'fail') L.failT = Math.max(0, L.failT - dt);
   }
-  if (audioContext()) setRumble(L.status === 'play' ? L.tension : 0);
+  const playing = L.status === 'play' && !G.screen;
+  if (audioContext()) setRumble(playing ? L.tension : 0);
+  keepAwake(playing);
   for (let i = G.particles.length - 1; i >= 0; i--) {
     const p = G.particles[i];
     p.t += dt;
@@ -202,18 +206,47 @@ function installPWA(): void {
   }
 }
 
+/* ---------- native integration ---------- */
+
+/** Android back: close the top screen, else pause. The app never exits from here. */
+function handleBack(): void {
+  const sc = G.screen;
+  if (sc) {
+    if (sc.type === 'ad' || sc.type === 'daily' || sc.type === 'offer') return; // these have their own buttons
+    G.screen = sc.back || null;
+    return;
+  }
+  if (G.L && G.L.status === 'play') G.screen = { type: 'pause', t: 0 };
+}
+
+function bindNative(): void {
+  setHapticsGate(() => S.haptics);
+  hideStatusBar();
+  onBackButton(handleBack);
+  onAppActive((active) => {
+    if (!active && G.L && G.L.status === 'play' && !G.screen) G.screen = { type: 'pause', t: 0 };
+    if (active) resize();
+  });
+}
+
 /* ---------- boot ---------- */
 
 window.addEventListener('resize', resize);
+if (window.visualViewport) window.visualViewport.addEventListener('resize', resize);
 load();
 checkWeekly();
 resize();
 installPWA();
+bindNative();
 newLevel(S.level);
 checkDaily();
 bindInput();
 bindStatsBox();
-const startLoop = () => requestAnimationFrame(frame);
+const startLoop = () =>
+  requestAnimationFrame((ts) => {
+    frame(ts);
+    hideSplash();
+  });
 if (document.fonts && document.fonts.load) {
   Promise.race([document.fonts.load('800 20px "Baloo 2"'), new Promise((r) => setTimeout(r, 1500))]).then(
     startLoop,
@@ -235,6 +268,7 @@ export interface DevApi {
   setScreen: (s: Screen | null) => void;
   mechCard: () => void;
   skipIntro: () => void;
+  back: () => void;
 }
 
 declare global {
@@ -262,4 +296,5 @@ window.__SJ = {
   skipIntro: () => {
     if (G.L && G.L.status === 'intro') G.L.introT = 1.4;
   },
+  back: handleBack,
 };

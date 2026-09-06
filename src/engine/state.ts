@@ -51,7 +51,7 @@ export interface Confetti {
   h: number;
 }
 
-export type ScreenType = 'ad' | 'shop' | 'offer' | 'daily' | 'dev' | 'map';
+export type ScreenType = 'ad' | 'shop' | 'offer' | 'daily' | 'dev' | 'map' | 'settings' | 'pause';
 export type MapTab = 'path' | 'decor' | 'weekly';
 
 export interface Screen {

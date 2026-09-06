@@ -80,6 +80,7 @@ export function iconBtn(
   txt(label, x + w / 2, y + h - 9, 11, 800, '#FFF7E8', 'center', 'middle');
 }
 
+/** Close button for full-height cards. By default returns to the screen that opened this one, if any. */
 export function closeBtn(onTap?: () => void): void {
   button(W - 62, 92, 42, 42, '✕', null, {
     tone: '#4A4540',
@@ -87,7 +88,9 @@ export function closeBtn(onTap?: () => void): void {
       onTap ||
       (() => {
         sfx.tap();
-        closeScreen();
+        const back = G.screen && G.screen.back;
+        if (back) G.screen = back;
+        else closeScreen();
       }),
   });
 }

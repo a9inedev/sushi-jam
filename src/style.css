@@ -12,12 +12,17 @@ body {
   -webkit-user-select: none;
   user-select: none;
   -webkit-tap-highlight-color: transparent;
+  overscroll-behavior: none;
 }
+/* The canvas is centred inside the safe area, so the notch and the home indicator never cover the game. */
 #wrap {
   position: fixed;
   inset: 0;
   display: grid;
   place-items: center;
+  box-sizing: border-box;
+  padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px)
+    env(safe-area-inset-left, 0px);
   background: radial-gradient(ellipse at 50% 30%, #2a2520 0%, #171512 70%);
 }
 canvas {
@@ -39,6 +44,7 @@ canvas {
   background: rgba(20, 15, 10, 0.92);
   display: none;
   padding: 24px;
+  padding-top: calc(24px + env(safe-area-inset-top, 0px));
   box-sizing: border-box;
   z-index: 10;
 }

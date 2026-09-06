@@ -2,6 +2,7 @@
    These functions mutate the current level in G.L and trigger presentation side effects (tweens, fx, sfx). */
 
 import { sfx } from '../audio/audio';
+import { haptic } from '../platform/native';
 import { COLORS, GRID, SEAT_Y, W } from '../data/constants';
 import { COST } from '../data/products';
 import { S, save } from '../meta/save';
@@ -239,6 +240,7 @@ export function tryMove(d: Diner): void {
     return;
   }
   sfx.tap();
+  haptic('light');
   setExpr(d, 'happy', 0.8);
   seat.diner = d;
   d.seat = L.seats.indexOf(seat);
@@ -329,6 +331,7 @@ export function grab(p: Plate, d: Diner): void {
   p.y = from.y;
   p.arc = { x0: from.x, y0: from.y, x1: d.x, y1: d.y - 8, u: 0 };
   sfx.pop();
+  haptic('medium');
   tween(p.arc, { u: 1 }, 0.32, easeIn, () => {
     const i = L.belt.indexOf(p);
     if (i >= 0) L.belt.splice(i, 1);
@@ -441,6 +444,7 @@ export function fail(reason: FailReason): void {
   L.armed = null;
   S.streak = 0;
   sfx.fail();
+  haptic('heavy');
   L.stat.fails = (L.stat.fails || 0) + 1;
   logStat('fail');
   save();
@@ -463,6 +467,7 @@ export function win(): void {
   logStat('win');
   save();
   sfx.win();
+  haptic('success');
   G.confetti = [];
   for (let i = 0; i < 70; i++)
     G.confetti.push({

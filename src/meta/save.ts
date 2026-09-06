@@ -26,6 +26,8 @@ export interface SaveState {
   levelsSinceAd: number;
   devAllMech: boolean;
   demoAds: boolean;
+  /** Vibration on seat, grab, jam and clear. Added with the native wrap; older saves default to on. */
+  haptics: boolean;
 }
 
 export function defaultSave(): SaveState {
@@ -48,6 +50,7 @@ export function defaultSave(): SaveState {
     levelsSinceAd: 0,
     devAllMech: false,
     demoAds: true,
+    haptics: true,
   };
 }
 

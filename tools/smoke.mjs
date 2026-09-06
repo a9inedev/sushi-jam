@@ -177,6 +177,50 @@ await step('demo purchase grants coins', async () => {
   if (after !== before + 500) throw new Error(`expected +500 coins, got ${before} -> ${after}`);
   await sj('window.__SJ.closeScreen()');
 });
+await step('settings screen toggles haptics and sound', async () => {
+  await sj("window.__SJ.setScreen({ type: 'settings', t: 0 })");
+  await sleep(150);
+  await page.screenshot({ path: path.join(OUT, 'smoke-settings.png') });
+  const h0 = await sj('window.__SJ.S.haptics');
+  await tapCanvas(240, 396); // haptics row
+  await sleep(120);
+  const h1 = await sj('window.__SJ.S.haptics');
+  if (h1 === h0) throw new Error('haptics toggle did not flip');
+  await tapCanvas(240, 396);
+  await sleep(120);
+  if ((await sj('window.__SJ.S.haptics')) !== h0) throw new Error('haptics toggle did not flip back');
+  const s0 = await sj('window.__SJ.S.sound');
+  await tapCanvas(240, 330); // sound row
+  await sleep(120);
+  if ((await sj('window.__SJ.S.sound')) === s0) throw new Error('sound toggle did not flip');
+  await tapCanvas(240, 330);
+  await sleep(120);
+  await tapCanvas(240, 607); // Done
+  await sleep(120);
+  if ((await screenType()) !== null) throw new Error('settings did not close');
+});
+await step('pause freezes the level and resumes; back button pauses', async () => {
+  await sj('window.__SJ.skipIntro()');
+  await sleep(300);
+  await sj('window.__SJ.back()');
+  await sleep(100);
+  if ((await screenType()) !== 'pause') throw new Error('back did not open pause');
+  const e0 = await sj('window.__SJ.state().elapsed');
+  await sleep(600);
+  const e1 = await sj('window.__SJ.state().elapsed');
+  if (e1 !== e0) throw new Error(`level advanced while paused (${e0} -> ${e1})`);
+  await page.screenshot({ path: path.join(OUT, 'smoke-pause.png') });
+  await tapCanvas(240, 386); // Resume
+  await sleep(300);
+  if ((await screenType()) !== null) throw new Error('resume did not close pause');
+  const e2 = await sj('window.__SJ.state().elapsed');
+  if (!(e2 > e1)) throw new Error('level did not resume');
+  await sj('window.__SJ.back()'); // pause again, then back closes it
+  await sleep(100);
+  await sj('window.__SJ.back()');
+  await sleep(100);
+  if ((await screenType()) !== null) throw new Error('back did not close pause');
+});
 await step('play screenshot', async () => {
   await sj('window.__SJ.skipIntro()');
   await sleep(400);
