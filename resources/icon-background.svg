@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <!-- Android adaptive icon background: dark counter wood. -->
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3A322C"/>
+      <stop offset="1" stop-color="#1E1915"/>
+    </linearGradient>
+  </defs>
+  <rect width="1024" height="1024" fill="url(#bg)"/>
+  <g opacity="0.12" stroke="#000" stroke-width="6">
+    <line x1="0" y1="180" x2="1024" y2="180"/>
+    <line x1="0" y1="360" x2="1024" y2="360"/>
+    <line x1="0" y1="540" x2="1024" y2="540"/>
+    <line x1="0" y1="720" x2="1024" y2="720"/>
+    <line x1="0" y1="900" x2="1024" y2="900"/>
+  </g>
+</svg>

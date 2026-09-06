@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2732 2732" width="2732" height="2732">
+  <!-- Launch screen. Centre-cropped on every device, so the logo sits in the middle 40%. No text: fonts are not
+       available at rasterisation time and the game draws its own title. -->
+  <defs>
+    <radialGradient id="glow" cx="0.5" cy="0.45" r="0.5">
+      <stop offset="0" stop-color="#2A2520"/>
+      <stop offset="1" stop-color="#171512"/>
+    </radialGradient>
+    <linearGradient id="rice" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFBF0"/>
+      <stop offset="1" stop-color="#EBE1C8"/>
+    </linearGradient>
+    <linearGradient id="fish" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#FF6B6F"/>
+      <stop offset="1" stop-color="#D93A40"/>
+    </linearGradient>
+  </defs>
+  <rect width="2732" height="2732" fill="url(#glow)"/>
+  <g transform="translate(1366 1366)">
+    <ellipse cx="0" cy="60" rx="420" ry="140" fill="#000" opacity="0.35"/>
+    <circle r="400" fill="#FFFDF7"/>
+    <circle r="348" fill="none" stroke="#E5484D" stroke-width="62"/>
+    <circle r="276" fill="none" stroke="#F1EAD6" stroke-width="10"/>
+    <ellipse cx="0" cy="82" rx="224" ry="118" fill="url(#rice)"/>
+    <ellipse cx="0" cy="92" rx="200" ry="62" fill="#DED3B6" opacity="0.5"/>
+    <path d="M-232 -12 C -224 -118, 224 -118, 232 -12 C 240 52, 198 84, 0 84 C -198 84, -240 52, -232 -12 Z" fill="url(#fish)"/>
+    <path d="M-192 -44 C -118 -76, 118 -76, 192 -44" fill="none" stroke="#FFFFFF" stroke-opacity="0.45" stroke-width="16" stroke-linecap="round"/>
+    <rect x="-32" y="-86" width="64" height="190" rx="14" fill="#1F6B3A" opacity="0.9"/>
+  </g>
+</svg>

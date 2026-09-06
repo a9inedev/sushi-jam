@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <!-- Android adaptive icon foreground. Keep artwork inside the central 66% (the safe zone). -->
+  <defs>
+    <linearGradient id="rice" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFBF0"/>
+      <stop offset="1" stop-color="#EBE1C8"/>
+    </linearGradient>
+    <linearGradient id="fish" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#FF6B6F"/>
+      <stop offset="1" stop-color="#D93A40"/>
+    </linearGradient>
+  </defs>
+  <ellipse cx="512" cy="546" rx="250" ry="84" fill="#000" opacity="0.3"/>
+  <circle cx="512" cy="512" r="270" fill="#FFFDF7"/>
+  <circle cx="512" cy="512" r="234" fill="none" stroke="#E5484D" stroke-width="42"/>
+  <circle cx="512" cy="512" r="186" fill="none" stroke="#F1EAD6" stroke-width="8"/>
+  <ellipse cx="512" cy="566" rx="150" ry="80" fill="url(#rice)"/>
+  <ellipse cx="512" cy="574" rx="134" ry="42" fill="#DED3B6" opacity="0.5"/>
+  <path d="M356 504 C 362 434, 662 434, 668 504 C 674 546, 646 568, 512 568 C 378 568, 350 546, 356 504 Z" fill="url(#fish)"/>
+  <path d="M384 482 C 434 462, 590 462, 640 482" fill="none" stroke="#FFFFFF" stroke-opacity="0.45" stroke-width="10" stroke-linecap="round"/>
+  <rect x="491" y="454" width="42" height="126" rx="10" fill="#1F6B3A" opacity="0.9"/>
+</svg>

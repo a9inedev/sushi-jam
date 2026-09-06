@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Sushi Jam</string>
+    <string name="title_activity_main">Sushi Jam</string>
+    <string name="package_name">com.a9inedev.sushijam</string>
+    <string name="custom_url_scheme">com.a9inedev.sushijam</string>
+</resources>

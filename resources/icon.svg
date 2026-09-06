@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <!-- Sushi Jam app icon: a nigiri on a red-rimmed plate, dark wood background. Source of truth for all icon sizes. -->
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3A322C"/>
+      <stop offset="1" stop-color="#1E1915"/>
+    </linearGradient>
+    <linearGradient id="rice" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFBF0"/>
+      <stop offset="1" stop-color="#EBE1C8"/>
+    </linearGradient>
+    <linearGradient id="fish" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#FF6B6F"/>
+      <stop offset="1" stop-color="#D93A40"/>
+    </linearGradient>
+  </defs>
+  <rect width="1024" height="1024" fill="url(#bg)"/>
+  <g opacity="0.12" stroke="#000" stroke-width="6">
+    <line x1="0" y1="180" x2="1024" y2="180"/>
+    <line x1="0" y1="360" x2="1024" y2="360"/>
+    <line x1="0" y1="540" x2="1024" y2="540"/>
+    <line x1="0" y1="720" x2="1024" y2="720"/>
+    <line x1="0" y1="900" x2="1024" y2="900"/>
+  </g>
+  <ellipse cx="512" cy="560" rx="360" ry="120" fill="#000" opacity="0.35"/>
+  <circle cx="512" cy="512" r="380" fill="#FFFDF7"/>
+  <circle cx="512" cy="512" r="330" fill="none" stroke="#E5484D" stroke-width="58"/>
+  <circle cx="512" cy="512" r="262" fill="none" stroke="#F1EAD6" stroke-width="10"/>
+  <ellipse cx="512" cy="590" rx="212" ry="112" fill="url(#rice)"/>
+  <ellipse cx="512" cy="600" rx="190" ry="60" fill="#DED3B6" opacity="0.5"/>
+  <path d="M292 500 C 300 400, 724 400, 732 500 C 740 560, 700 592, 512 592 C 324 592, 284 560, 292 500 Z" fill="url(#fish)"/>
+  <path d="M330 470 C 400 440, 620 440, 700 470" fill="none" stroke="#FFFFFF" stroke-opacity="0.45" stroke-width="14" stroke-linecap="round"/>
+  <path d="M360 520 C 430 505, 600 505, 660 520" fill="none" stroke="#FFFFFF" stroke-opacity="0.25" stroke-width="10" stroke-linecap="round"/>
+  <rect x="482" y="430" width="60" height="180" rx="14" fill="#1F6B3A" opacity="0.9"/>
+</svg>
