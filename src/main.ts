@@ -1,9 +1,12 @@
 import './style.css';
+import { applyMotion, initMotion } from './anim/motion';
+import { particles } from './anim/particles';
+import { tweens } from './anim/tween';
 import { backgroundSvg } from './art/background';
 import { characterSvg, SPRITE_STATES } from './art/characters';
 import { foodSvg } from './art/plates';
 import { clearSprites, dpr, preload, type PreloadEntry } from './art/svg';
-import { audioContext, setRumble, sfx } from './audio/audio';
+import { audioContext, setRumble } from './audio/audio';
 import { DINER_R, H, W } from './data/constants';
 import { getLevel } from './engine/levels';
 import { canMove, checkDeadlock, devAuto, fail, newLevel, nextMechCard, updateBelt, win } from './engine/rules';
@@ -37,7 +40,6 @@ import {
   drawBg,
   drawDecor,
   drawFloating,
-  drawFx,
   drawGrid,
   drawKitchen,
   drawParticles,
@@ -66,10 +68,7 @@ function update(dt: number): void {
     if (d.state === 'paying') d.paidT += gdt;
     if (d.state === 'leaving') d.leaveT += gdt;
   }
-  for (let i = G.fx.length - 1; i >= 0; i--) {
-    G.fx[i].t += gdt;
-    if (G.fx[i].t > G.fx[i].dur) G.fx.splice(i, 1);
-  }
+  for (const s of L.seats) s.press = Math.max(0, s.press - gdt * 5);
   L.shake = Math.max(0, L.shake - dt * 1.6);
   // Any open screen (ad, shop, map, settings, pause...) freezes the level so the belt never runs unseen.
   if (!G.screen) {
@@ -77,17 +76,7 @@ function update(dt: number): void {
       L.introT += dt;
       if (L.introT >= 1.4) L.status = L.newMechs.length ? 'mech' : 'play';
     }
-    for (let i = G.tweens.length - 1; i >= 0; i--) {
-      const tw = G.tweens[i];
-      tw.t += gdt;
-      const u = Math.min(1, tw.t / tw.dur),
-        e = tw.ease(u);
-      for (const k in tw.to) tw.obj[k] = tw.from[k] + (tw.to[k] - tw.from[k]) * e;
-      if (u >= 1) {
-        G.tweens.splice(i, 1);
-        if (tw.onDone) tw.onDone();
-      }
-    }
+    tweens.update(gdt);
     if (L.status === 'play') {
       L.elapsed += dt;
       L.seatShake = Math.max(0, L.seatShake - dt);
@@ -114,17 +103,7 @@ function update(dt: number): void {
   const playing = L.status === 'play' && !G.screen;
   if (audioContext()) setRumble(playing ? L.tension : 0);
   keepAwake(playing);
-  for (let i = G.particles.length - 1; i >= 0; i--) {
-    const p = G.particles[i];
-    p.t += dt;
-    if (p.t >= p.dur) {
-      S.coins += p.value;
-      G.coinPop = 1;
-      sfx.coin();
-      G.particles.splice(i, 1);
-      if (!G.particles.length) save();
-    }
-  }
+  particles.update(G.screen ? 0 : dt);
   for (let i = G.toasts.length - 1; i >= 0; i--) {
     const t = G.toasts[i];
     t.t += dt;
@@ -147,7 +126,6 @@ function draw(): void {
   drawSeats();
   drawGrid();
   drawFloating();
-  drawFx();
   drawBoosters();
   drawToasts();
   drawParticles();
@@ -164,6 +142,7 @@ function frame(ts: number): void {
   const dt = Math.min(0.05, G.lastT ? (ts - G.lastT) / 1000 : 0);
   G.lastT = ts;
   G.lastDt = dt;
+  if (dt > 0) G.fps = G.fps * 0.92 + (1 / dt) * 0.08;
   update(dt);
   draw();
   requestAnimationFrame(frame);
@@ -291,6 +270,7 @@ window.addEventListener('resize', onResize);
 if (window.visualViewport) window.visualViewport.addEventListener('resize', onResize);
 setCloudProvider(cloudProviderFor(platform));
 const loaded = load();
+initMotion();
 checkWeekly();
 resize();
 installPWA();
@@ -337,6 +317,13 @@ export interface DevApi {
     clear: () => void;
     info: () => typeof loadInfo;
   };
+  fx: {
+    burst: (n?: number) => number;
+    count: () => number;
+    tweens: () => number;
+    fps: () => number;
+    reduce: (on: boolean) => void;
+  };
 }
 
 declare global {
@@ -372,5 +359,21 @@ window.__SJ = {
     restoreFromBackup,
     clear: clearSave,
     info: () => loadInfo,
+  },
+  fx: {
+    // A mixed burst that stays alive long enough to measure: confetti (6 s), shards, crumbs, steam.
+    burst: (n = 60) =>
+      particles.emit('confetti', 0, 0, Math.round(n * 0.5)) +
+      particles.emit('shard', 240, 500, Math.round(n * 0.2)) +
+      particles.emit('crumb', 240, 460, Math.round(n * 0.2), { color: '#E5484D' }) +
+      particles.emit('steam', 240, 300, Math.round(n * 0.1)),
+    count: () => particles.count(),
+    tweens: () => tweens.size,
+    fps: () => G.fps,
+    reduce: (on) => {
+      S.reduceMotion = on;
+      applyMotion();
+      save();
+    },
   },
 };

@@ -1,3 +1,4 @@
+import { reducedMotion } from '../anim/motion';
 import { characterSvg, type DinerSpriteState } from '../art/characters';
 import { sprite } from '../art/svg';
 import { COLORS, GOLD } from '../data/constants';
@@ -46,20 +47,23 @@ export function drawDiner(d: Diner, r: number, mode: DinerMode): void {
     d.expr.until > gt ? d.expr.type : mode === 'seat' && L.elapsed - d.waitSince > 1 / L.speed ? 'grumpy' : 'idle';
   if (gt > d.blinkAt + 0.13) d.blinkAt = gt + 2 + Math.random() * 3.5;
   const blink = gt > d.blinkAt && expr !== 'happy';
+  const reduced = reducedMotion();
   let bob = 0;
-  if (mode === 'grid' && !d.bumping) bob = Math.sin(gt * 2.2 + d.id) * 1.4;
-  if (d.state === 'leaving') bob = -Math.abs(Math.sin(d.leaveT * 14)) * 7;
+  if (!reduced) {
+    if (mode === 'grid' && !d.bumping) bob = Math.sin(gt * 2.2 + d.id) * 1.4;
+    if (d.state === 'leaving') bob = -Math.abs(Math.sin(d.leaveT * 14)) * 7;
+  }
   ctx.save();
   ctx.globalAlpha = d.alpha;
   ctx.translate(d.x, d.y + bob);
-  if (d.shake > 0) {
+  if (d.shake > 0 && !reduced) {
     const w = Math.sin(gt * 55) * 6 * d.shake;
     ctx.translate(w * (d.shakeX || 0), w * (d.shakeY || 0));
     ctx.rotate(w * 0.02);
   }
   ctx.scale(sc, sc);
   if (mode === 'grid' && d.movable) {
-    ctx.strokeStyle = `rgba(255,255,255,${0.5 + 0.4 * Math.sin(L.elapsed * 5)})`;
+    ctx.strokeStyle = `rgba(255,255,255,${reduced ? 0.85 : 0.5 + 0.4 * Math.sin(L.elapsed * 5)})`;
     ctx.lineWidth = 3.5;
     ctx.beginPath();
     ctx.arc(0, 0, r + 5, 0, 7);
@@ -75,7 +79,14 @@ export function drawDiner(d: Diner, r: number, mode: DinerMode): void {
   const dimmed = mode === 'grid' && !d.movable;
   const state = spriteState(d, expr, blink);
   ctx.save();
-  if (state === 'walk') ctx.rotate(Math.sin(gt * 18) * 0.06);
+  // Lean and squash are set by the tween manager; scale around the body's base so squash reads as weight.
+  if (d.lean) ctx.rotate(d.lean);
+  if (state === 'walk' && !reduced) ctx.rotate(Math.sin(gt * 18) * 0.06);
+  if (d.sx !== 1 || d.sy !== 1) {
+    ctx.translate(0, r);
+    ctx.scale(d.sx, d.sy);
+    ctx.translate(0, -r);
+  }
   if (!drawCharacter(d.color, state, d.vip, r, dimmed)) drawDinerProcedural(d.color, r, expr, blink, dimmed);
   ctx.restore();
   // Colour badge with the shape glyph: the accessibility cue, always drawn.

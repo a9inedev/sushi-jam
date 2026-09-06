@@ -61,7 +61,7 @@ export function drawStatusOverlay(): void {
   if (L.status !== 'fail' && L.status !== 'win') return;
   if (L.status === 'win') {
     dim();
-    drawConfetti(G.lastDt);
+    drawConfetti();
   } else dim();
   const cx = 70,
     cy = 250,

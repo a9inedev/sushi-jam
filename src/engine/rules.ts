@@ -1,16 +1,20 @@
 /* Runtime rules: seating, the belt, grabbing, paying, deadlock, boosters and rescues.
-   These functions mutate the current level in G.L and trigger presentation side effects (tweens, fx, sfx). */
+   These functions mutate the current level in G.L and trigger presentation side effects (tweens, particles, sfx).
+   Motion budget: every core action (tap answer, walk to seat, grab, pay) completes within 0.4 s. */
 
+import { reducedMotion } from '../anim/motion';
+import { particles } from '../anim/particles';
+import { tweens } from '../anim/tween';
 import { sfx } from '../audio/audio';
-import { haptic } from '../platform/native';
-import { COLORS, GRID, SEAT_Y, W } from '../data/constants';
+import { COLORS, GRID, KITCHEN, SEAT_Y, W } from '../data/constants';
 import { COST } from '../data/products';
 import { S, save } from '../meta/save';
+import { haptic } from '../platform/native';
 import { BELT } from './belt';
 import { DIR_DC, DIR_DR, getLevel, matchDP, pathLen, plateUnits } from './levels';
-import { G, cur, setExpr, showAd, toast, tween } from './state';
+import { G, cur, setExpr, showAd, toast } from './state';
 import type { BoosterKind, Diner, DinerDef, FailReason, Plate, PlateDef, PlateLike } from './types';
-import { easeIn, easeInOut, easeOut } from './util';
+import { easeBack, easeIn, easeInOut, easeOut } from './util';
 
 export function makeDiner(d: DinerDef, x: number, y: number): Diner {
   return {
@@ -37,6 +41,9 @@ export function makeDiner(d: DinerDef, x: number, y: number): Diner {
     paidT: -1,
     leaveT: 0,
     iceMax: d.ice,
+    lean: 0,
+    sx: 1,
+    sy: 1,
   };
 }
 
@@ -69,6 +76,7 @@ export function newLevel(n: number): void {
     introT: 0,
     elapsed: 0,
     sinceEmit: 0,
+    steamT: 0,
     deadlock: 0,
     failT: 0,
     failReason: 'jam',
@@ -97,11 +105,9 @@ export function newLevel(n: number): void {
       beltPeak: 0,
     },
   };
-  G.tweens = [];
-  G.particles = [];
+  tweens.clear();
+  particles.clear();
   G.toasts = [];
-  G.fx = [];
-  G.confetti = [];
   layoutSeats();
   if (n === 1) {
     toast('Tap a diner with a glowing ring to seat them', 3.4, 1.5);
@@ -119,12 +125,18 @@ export function layoutSeats(): void {
     old = L.seats;
   L.seats = Array.from({ length: cnt }, (_, i) => {
     const x = cnt === 1 ? 240 : left + ((right - left) * i) / (cnt - 1);
-    return { x, y: SEAT_Y, t: BELT.tOfBottomX(x), diner: old[i] ? old[i].diner : null };
+    return {
+      x,
+      y: SEAT_Y,
+      t: BELT.tOfBottomX(x),
+      diner: old[i] ? old[i].diner : null,
+      press: old[i] ? old[i].press : 0,
+    };
   });
   L.seats.forEach((s, i) => {
     if (s.diner) {
       s.diner.seat = i;
-      if (s.diner.state === 'seated') tween(s.diner, { x: s.x }, 0.35);
+      if (s.diner.state === 'seated') tweens.to(s.diner, { x: s.x }, 0.3, { tag: 'shift' });
     }
   });
 }
@@ -159,6 +171,15 @@ export function canTake(d: Diner, p: Plate): boolean {
   return d.state === 'seated' && p.revealed !== false && matchDP(d, p, remaining(d));
 }
 
+/** Squash a diner and let it spring back. No-op under reduce motion. */
+function squash(d: Diner, sx: number, sy: number, dur = 0.18): void {
+  if (reducedMotion()) return;
+  d.sx = sx;
+  d.sy = sy;
+  tweens.cancel(d, 'squash');
+  tweens.to(d, { sx: 1, sy: 1 }, dur, { ease: easeBack, tag: 'squash' });
+}
+
 export function bumpInto(d: Diner): void {
   const L = cur();
   if (d.bumping) return;
@@ -176,22 +197,34 @@ export function bumpInto(d: Diner): void {
     travel = gap + L.cell * 0.1;
   d.bumping = true;
   sfx.swish();
-  tween(d, { x: d.hx + dc * travel, y: d.hy + dr * travel }, 0.06 + (gap / L.cell) * 0.05, easeIn, () => {
-    sfx.thud();
-    if (blocker) {
-      blocker.shake = 1;
-      blocker.shakeX = dc;
-      blocker.shakeY = dr;
-      blocker.bump = 0.9;
-      setExpr(blocker, 'grumpy', 1.2);
-      G.fx.push({ kind: 'bonk', x: (d.x + blocker.x) / 2, y: (d.y + blocker.y) / 2, t: 0, dur: 0.5 });
-    }
-    setExpr(d, 'grumpy', 0.8);
-    tween(d, { x: d.hx, y: d.hy }, 0.26, easeOut, () => {
-      d.bumping = false;
-      d.x = d.hx;
-      d.y = d.hy;
-    });
+  const stretch: Record<string, number> = reducedMotion()
+    ? {}
+    : { sx: 1 + Math.abs(dc) * 0.1, sy: 1 + Math.abs(dr) * 0.1 };
+  tweens.to(d, { x: d.hx + dc * travel, y: d.hy + dr * travel, ...stretch }, 0.06 + (gap / L.cell) * 0.05, {
+    ease: easeIn,
+    tag: 'bump',
+    onDone: () => {
+      sfx.thud();
+      if (blocker) {
+        blocker.shake = 1;
+        blocker.shakeX = dc;
+        blocker.shakeY = dr;
+        blocker.bump = 0.9;
+        setExpr(blocker, 'grumpy', 1.2);
+        squash(blocker, 1 - Math.abs(dc) * 0.14 + Math.abs(dr) * 0.1, 1 - Math.abs(dr) * 0.14 + Math.abs(dc) * 0.1);
+        particles.emit('bonk', (d.x + blocker.x) / 2, (d.y + blocker.y) / 2, 1);
+      }
+      setExpr(d, 'grumpy', 0.8);
+      tweens.to(d, { x: d.hx, y: d.hy, sx: 1, sy: 1 }, 0.24, {
+        ease: easeOut,
+        tag: 'bump',
+        onDone: () => {
+          d.bumping = false;
+          d.x = d.hx;
+          d.y = d.hy;
+        },
+      });
+    },
   });
 }
 
@@ -204,19 +237,11 @@ export function tryMove(d: Diner): void {
     d.shakeX = 1;
     d.shakeY = 0;
     sfx.crack();
-    for (let i = 0; i < 6; i++)
-      G.fx.push({
-        kind: 'shard',
-        x: d.x,
-        y: d.y,
-        vx: (Math.random() - 0.5) * 220,
-        vy: -80 - Math.random() * 160,
-        t: 0,
-        dur: 0.6,
-      });
+    particles.emit('shard', d.x, d.y, 6);
     if (d.ice === 0) {
       sfx.chime();
       setExpr(d, 'happy', 1);
+      squash(d, 1.12, 0.88);
     }
     return;
   }
@@ -249,18 +274,43 @@ export function tryMove(d: Diner): void {
     dy = DIR_DR[d.dir];
   const ex = dx ? (dx > 0 ? L.gx + L.cols * L.cell + L.cell * 0.5 : L.gx - L.cell * 0.5) : d.x;
   const ey = dy ? (dy > 0 ? L.gy + L.rows * L.cell + L.cell * 0.5 : L.gy - L.cell * 0.5) : d.y;
-  tween(d, { x: ex, y: ey }, 0.18 + 0.03 * pathLen(d.r, d.c, d.dir, L.rows, L.cols), easeIn, () => {
-    tween(d, { x: seat.x, y: seat.y }, 0.42, easeInOut, () => {
-      const s = L.seats[d.seat];
-      if (s) {
-        d.x = s.x;
-        d.y = s.y;
-      }
-      d.state = 'seated';
-      d.waitSince = L.elapsed;
-      sfx.bell();
-    });
-  });
+  const exitDur = Math.min(0.13, 0.08 + 0.01 * pathLen(d.r, d.c, d.dir, L.rows, L.cols));
+  const lean = dx * 0.16;
+  const land = () => {
+    const s = L.seats[d.seat];
+    if (s) {
+      d.x = s.x;
+      d.y = s.y;
+      s.press = 1;
+    }
+    d.state = 'seated';
+    d.lean = 0;
+    d.waitSince = L.elapsed;
+    sfx.bell();
+    squash(d, 1.16, 0.8);
+  };
+  tweens.cancel(d);
+  if (reducedMotion()) {
+    tweens.sequence(
+      d,
+      [
+        { to: { x: ex, y: ey }, dur: exitDur, ease: easeIn },
+        { to: { x: seat.x, y: seat.y }, dur: 0.2, ease: easeInOut },
+      ],
+      { tag: 'walk', onDone: land }
+    );
+    return;
+  }
+  // Anticipation (lean back, squat), launch (stretch), settle: 0.07 + <=0.13 + 0.2 = 0.4 s.
+  tweens.sequence(
+    d,
+    [
+      { to: { lean: -lean * 1.2, sx: 1.08, sy: 0.9 }, dur: 0.07, ease: easeOut },
+      { to: { x: ex, y: ey, lean, sx: 0.96, sy: 1.06 }, dur: exitDur, ease: easeIn },
+      { to: { x: seat.x, y: seat.y, lean: 0, sx: 1, sy: 1 }, dur: 0.2, ease: easeInOut },
+    ],
+    { tag: 'walk', onDone: land }
+  );
 }
 
 export function crossed(a: number, b: number, s: number): boolean {
@@ -280,7 +330,7 @@ export function updateBelt(dt: number): void {
     if (p.covered && !p.revealed && prev > p.t) {
       p.revealed = true;
       sfx.reveal();
-      G.fx.push({ kind: 'puff', x: 240, y: 170, t: 0, dur: 0.4 });
+      particles.emit('puff', 240, 170, 1);
     }
     if (p.wasabi) {
       const before = p.timer;
@@ -312,11 +362,20 @@ export function updateBelt(dt: number): void {
       x: 0,
       y: 0,
       s: 1,
+      sx: 1,
+      sy: 1,
       revealed: !tpl.covered,
       timer: tpl.wasabi ? 1.6 / L.speed : 0,
       id: L.plateId++,
     });
     L.sinceEmit = 0;
+    particles.emit('steam', 240, 160, 2, { size: 3, life: 0.9 });
+  }
+  // Gentle steam over the kitchen window while there is food coming.
+  L.steamT += dt;
+  if (L.kitchen.length && L.steamT > 0.5) {
+    L.steamT = 0;
+    particles.emit('steam', KITCHEN.x + 24 + Math.random() * 80, KITCHEN.y + 34, 1, { size: 2.5, life: 1.2 });
   }
   L.stat.beltPeak = Math.max(L.stat.beltPeak, L.belt.length);
 }
@@ -332,28 +391,33 @@ export function grab(p: Plate, d: Diner): void {
   p.arc = { x0: from.x, y0: from.y, x1: d.x, y1: d.y - 8, u: 0 };
   sfx.pop();
   haptic('medium');
-  tween(p.arc, { u: 1 }, 0.32, easeIn, () => {
+  const remove = () => {
     const i = L.belt.indexOf(p);
     if (i >= 0) L.belt.splice(i, 1);
-    d.pending -= units;
-    d.need -= units;
-    d.bump = 1;
-    d.bubblePop = 1;
-    d.waitSince = L.elapsed;
-    sfx.chew();
-    setExpr(d, 'chew', 0.38);
-    for (let k = 0; k < 4; k++)
-      G.fx.push({
-        kind: 'crumb',
-        x: d.x + (Math.random() - 0.5) * 14,
-        y: d.y + 4,
-        vx: (Math.random() - 0.5) * 80,
-        vy: -40 - Math.random() * 60,
-        t: 0,
-        dur: 0.45,
-        c: COLORS[p.color].hex,
-      });
-    if (d.need <= 0 && d.state === 'seated') pay(d);
+  };
+  tweens.to(p.arc, { u: 1 }, 0.28, {
+    ease: easeIn,
+    tag: 'arc',
+    onDone: () => {
+      d.pending -= units;
+      d.need -= units;
+      d.bump = 1;
+      d.bubblePop = 1;
+      d.waitSince = L.elapsed;
+      sfx.chew();
+      setExpr(d, 'chew', 0.38);
+      particles.emit('crumb', d.x, d.y + 4, 4, { color: COLORS[p.color].hex });
+      if (reducedMotion()) remove();
+      else {
+        // Landing squash: the plate flattens for a tenth of a second before it is eaten.
+        p.state = 'landed';
+        p.sx = 1.35;
+        p.sy = 0.65;
+        tweens.to(p, { sx: 1, sy: 1 }, 0.1, { ease: easeOut, tag: 'land', onDone: remove });
+        squash(d, 1.1, 0.92, 0.14);
+      }
+      if (d.need <= 0 && d.state === 'seated') pay(d);
+    },
   });
 }
 
@@ -365,9 +429,9 @@ export function pay(d: Diner): void {
   if (seat && seat.diner === d) seat.diner = null;
   setExpr(d, 'happy', 2);
   sfx.stamp();
-  setTimeout(() => {
+  tweens.delay(0.22, () => {
     if (G.L && G.L.diners.includes(d)) sfx.cash();
-  }, 220);
+  });
   addCoins(2, d.x, d.y - 30);
   if (L.elapsed - L.lastLeave < 2.5) {
     L.combo++;
@@ -375,7 +439,7 @@ export function pay(d: Diner): void {
     addCoins(5, d.x, d.y - 50);
   } else L.combo = 0;
   L.lastLeave = L.elapsed;
-  tween({}, { z: 1 }, 0.5, easeInOut, () => {
+  tweens.delay(0.35, () => {
     d.state = 'leaving';
     d.leaveT = 0;
     L.doneColors.add(d.color);
@@ -385,27 +449,27 @@ export function pay(d: Diner): void {
         o.shakeX = 1;
         o.shakeY = 0;
         setExpr(o, 'happy', 1.2);
-        G.fx.push({ kind: 'unlock', x: o.x, y: o.y - L.cell * 0.2, t: 0, dur: 0.7 });
+        particles.emit('spark', o.x, o.y - L.cell * 0.2, 1);
       }
     if (L.diners.some((o) => o.state === 'grid' && o.lockColor === d.color)) sfx.chime();
-    tween(d, { x: d.x < 240 ? -50 : W + 50 }, 0.75, easeIn, () => {
-      d.state = 'done';
+    tweens.to(d, { x: d.x < 240 ? -50 : W + 50 }, 0.4, {
+      ease: easeIn,
+      tag: 'leave',
+      onDone: () => {
+        d.state = 'done';
+      },
     });
   });
 }
 
+/** Coins fly to the counter; each one credits its share on arrival, and the save happens once they all land. */
 export function addCoins(n: number, x: number, y: number): void {
-  const k = Math.min(n, 8),
-    per = Math.floor(n / k);
-  let rem = n - per * k;
-  for (let i = 0; i < k; i++)
-    G.particles.push({
-      x: x + (Math.random() - 0.5) * 30,
-      y: y + (Math.random() - 0.5) * 20,
-      t: 0,
-      dur: 0.55 + i * 0.06,
-      value: per + (rem-- > 0 ? 1 : 0),
-    });
+  particles.coins(n, x, y, (value) => {
+    S.coins += value;
+    G.coinPop = 1;
+    sfx.coin();
+    if (particles.countOf('coin') === 0) save();
+  });
 }
 
 export function checkDeadlock(dt: number): void {
@@ -413,7 +477,7 @@ export function checkDeadlock(dt: number): void {
   const free = L.seats.some((s) => !s.diner);
   const busy =
     L.diners.some((d) => d.state === 'walking' || d.state === 'paying' || d.state === 'leaving') ||
-    L.belt.some((p) => p.state === 'grab');
+    L.belt.some((p) => p.state !== 'belt');
   if (free || busy) {
     L.deadlock = 0;
     return;
@@ -440,7 +504,7 @@ export function fail(reason: FailReason): void {
   L.status = 'failing';
   L.failReason = reason;
   L.failSlow = 0.55;
-  L.shake = 1;
+  L.shake = reducedMotion() ? 0 : 1;
   L.armed = null;
   S.streak = 0;
   sfx.fail();
@@ -468,19 +532,7 @@ export function win(): void {
   save();
   sfx.win();
   haptic('success');
-  G.confetti = [];
-  for (let i = 0; i < 70; i++)
-    G.confetti.push({
-      x: Math.random() * W,
-      y: -20 - Math.random() * 300,
-      vx: (Math.random() - 0.5) * 60,
-      vy: 160 + Math.random() * 160,
-      rot: Math.random() * 6,
-      vr: (Math.random() - 0.5) * 8,
-      c: COLORS[i % COLORS.length].hex,
-      w: 8 + Math.random() * 6,
-      h: 5 + Math.random() * 4,
-    });
+  particles.emit('confetti', 0, 0, 70);
 }
 
 export function logStat(result: string): void {

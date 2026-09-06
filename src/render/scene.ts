@@ -1,11 +1,12 @@
 /* The play scene: background, decor, belt, kitchen, seats, grid and effects. */
 
+import { reducedMotion } from '../anim/motion';
+import { particles } from '../anim/particles';
 import { backgroundSvg, bonsaiSvg, lanternSvg, norenSvg, tankSvg } from '../art/background';
 import { sprite } from '../art/svg';
-import { COIN_POS, COLORS, DINER_R, GOLD, H, KITCHEN, W } from '../data/constants';
+import { COLORS, DINER_R, H, KITCHEN, W } from '../data/constants';
 import { BELT } from '../engine/belt';
 import { G, cur } from '../engine/state';
-import { easeIn, easeInOut, easeOut } from '../engine/util';
 import { S } from '../meta/save';
 import { ctx } from './canvas';
 import { drawDiner } from './diner';
@@ -259,17 +260,20 @@ export function drawKitchen(): void {
 
 export function drawSeats(): void {
   const L = cur();
-  const sh = L.seatShake > 0 ? Math.sin(L.elapsed * 60) * 4 * L.seatShake : 0;
+  const reduced = reducedMotion();
+  const sh = L.seatShake > 0 && !reduced ? Math.sin(L.elapsed * 60) * 4 * L.seatShake : 0;
   for (const s of L.seats) {
+    // The stool compresses when someone lands on it, then springs back.
+    const press = reduced ? 0 : s.press;
     ctx.save();
     ctx.translate(sh, 0);
     ctx.fillStyle = 'rgba(0,0,0,.18)';
     ctx.beginPath();
-    ctx.ellipse(s.x, s.y + 22, 22, 7, 0, 0, 7);
+    ctx.ellipse(s.x, s.y + 22, 22 + press * 3, 7, 0, 0, 7);
     ctx.fill();
     ctx.fillStyle = '#7A4B22';
     ctx.beginPath();
-    ctx.ellipse(s.x, s.y + 14, 20, 9, 0, 0, 7);
+    ctx.ellipse(s.x, s.y + 14 + press * 2, 20 + press * 3, 9 - press * 3, 0, 0, 7);
     ctx.fill();
     if (!s.diner) {
       ctx.strokeStyle = 'rgba(255,255,255,.55)';
@@ -282,15 +286,30 @@ export function drawSeats(): void {
     }
     ctx.restore();
   }
-  for (const s of L.seats) if (s.diner && s.diner.state === 'seated') drawDiner(s.diner, DINER_R, 'seat');
-  for (const p of L.belt)
-    if (p.state === 'grab' && p.arc) {
+  for (const s of L.seats)
+    if (s.diner && s.diner.state === 'seated') {
+      const press = reduced ? 0 : s.press;
+      ctx.save();
+      ctx.translate(0, press * 3);
+      drawDiner(s.diner, DINER_R, 'seat');
+      ctx.restore();
+    }
+  for (const p of L.belt) {
+    if (!p.arc) continue;
+    if (p.state === 'grab') {
       const a = p.arc,
         u = a.u,
         x = a.x0 + (a.x1 - a.x0) * u,
         y = a.y0 + (a.y1 - a.y0) * u - Math.sin(u * Math.PI) * 26;
       drawPlate(x, y, p, 15 * (1 - u * 0.6));
+    } else if (p.state === 'landed') {
+      ctx.save();
+      ctx.translate(p.arc.x1, p.arc.y1 + 4);
+      ctx.scale(p.sx, p.sy);
+      drawPlate(0, -4, p, 6);
+      ctx.restore();
     }
+  }
 }
 
 export function drawGrid(): void {
@@ -325,82 +344,17 @@ export function drawFloating(): void {
     if (d.state === 'walking' || d.state === 'paying' || d.state === 'leaving') drawDiner(d, DINER_R, 'free');
 }
 
-export function drawFx(): void {
-  for (const f of G.fx) {
-    const u = f.t / f.dur;
-    if (f.kind === 'bonk') {
-      const grow = easeOut(Math.min(1, u * 1.6)),
-        fade = 1 - easeIn(u);
-      ctx.save();
-      ctx.translate(f.x, f.y);
-      ctx.globalAlpha = fade;
-      ctx.lineCap = 'round';
-      for (const [col, lw] of [
-        ['#2A2320', 5],
-        [GOLD, 2.5],
-      ] as [string, number][]) {
-        ctx.strokeStyle = col;
-        ctx.lineWidth = lw;
-        for (let i = 0; i < 8; i++) {
-          const a = (i * Math.PI) / 4 + 0.3,
-            r0 = 6 + grow * 6,
-            r1 = 10 + grow * (i % 2 ? 14 : 20);
-          ctx.beginPath();
-          ctx.moveTo(Math.cos(a) * r0, Math.sin(a) * r0);
-          ctx.lineTo(Math.cos(a) * r1, Math.sin(a) * r1);
-          ctx.stroke();
-        }
-      }
-      ctx.fillStyle = '#FFF7E8';
-      ctx.beginPath();
-      ctx.arc(0, 0, 11, 0, 7);
-      ctx.fill();
-      ctx.strokeStyle = '#2A2320';
-      ctx.lineWidth = 2.5;
-      ctx.stroke();
-      txt('!', 0, 1, 16, 800, '#E5484D', 'center', 'middle');
-      ctx.restore();
-    } else if (f.kind === 'shard' || f.kind === 'crumb') {
-      const x = f.x + f.vx * f.t,
-        y = f.y + f.vy * f.t + 300 * f.t * f.t;
-      ctx.save();
-      ctx.globalAlpha = 1 - u;
-      ctx.fillStyle = f.kind === 'shard' ? '#BFE6FF' : f.c || '#fff';
-      ctx.beginPath();
-      if (f.kind === 'shard') {
-        ctx.moveTo(x, y - 5);
-        ctx.lineTo(x + 4, y + 3);
-        ctx.lineTo(x - 4, y + 3);
-        ctx.closePath();
-      } else ctx.arc(x, y, 2.5, 0, 7);
-      ctx.fill();
-      ctx.restore();
-    } else if (f.kind === 'puff') {
-      ctx.save();
-      ctx.globalAlpha = 1 - u;
-      ctx.fillStyle = '#EDF0F5';
-      for (let i = 0; i < 5; i++) {
-        const a = i * 1.26,
-          r = 6 + u * 22;
-        ctx.beginPath();
-        ctx.arc(f.x + Math.cos(a) * r, f.y + Math.sin(a) * r * 0.5, 6 - u * 4, 0, 7);
-        ctx.fill();
-      }
-      ctx.restore();
-    } else if (f.kind === 'unlock') {
-      ctx.save();
-      ctx.globalAlpha = 1 - u;
-      ctx.translate(f.x, f.y - u * 30);
-      ctx.fillStyle = GOLD;
-      for (let i = 0; i < 6; i++) {
-        const a = (i * Math.PI) / 3 + u * 2;
-        ctx.beginPath();
-        ctx.arc(Math.cos(a) * (8 + u * 18), Math.sin(a) * (8 + u * 18), 3, 0, 7);
-        ctx.fill();
-      }
-      ctx.restore();
-    }
-  }
+/** Every live particle except confetti, which the win overlay draws above the dim. */
+export function drawParticles(): void {
+  ctx.save();
+  particles.draw(ctx, coinIcon, 'confetti');
+  ctx.restore();
+}
+
+export function drawConfetti(): void {
+  ctx.save();
+  particles.draw(ctx, coinIcon, null, 'confetti');
+  ctx.restore();
 }
 
 export function drawToasts(): void {
@@ -417,33 +371,6 @@ export function drawToasts(): void {
     txt(t.text, 240, y + 1, 15, 800, '#fff', 'center', 'middle');
     ctx.restore();
     y += 36;
-  }
-}
-
-export function drawParticles(): void {
-  for (const p of G.particles) {
-    const u = easeInOut(Math.min(1, p.t / p.dur));
-    const x = p.x + (COIN_POS.x - p.x) * u,
-      y = p.y + (COIN_POS.y - p.y) * u - Math.sin(u * Math.PI) * 40;
-    coinIcon(x, y, 8);
-  }
-}
-
-export function drawConfetti(dt: number): void {
-  if (!G.confetti.length) return;
-  for (const c of G.confetti) {
-    c.x += c.vx * dt;
-    c.y += c.vy * dt;
-    c.rot += c.vr * dt;
-  }
-  G.confetti = G.confetti.filter((c) => c.y < H + 20);
-  for (const c of G.confetti) {
-    ctx.save();
-    ctx.translate(c.x, c.y);
-    ctx.rotate(c.rot);
-    ctx.fillStyle = c.c;
-    ctx.fillRect(-c.w / 2, -c.h / 2, c.w, c.h);
-    ctx.restore();
   }
 }
 

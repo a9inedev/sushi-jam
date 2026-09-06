@@ -1,6 +1,6 @@
-/* Mutable runtime store shared by rules, rendering and UI, plus the small helpers that only touch it. */
+/* Mutable runtime store shared by rules, rendering and UI, plus the small helpers that only touch it.
+   Tweens live in anim/tween and particles in anim/particles. */
 
-import { easeInOut, type Ease } from './util';
 import type { Diner, ExprType, RuntimeLevel } from './types';
 
 export interface Button {
@@ -11,44 +11,10 @@ export interface Button {
   onTap: () => void;
 }
 
-export interface Tween {
-  obj: Record<string, number>;
-  from: Record<string, number>;
-  to: Record<string, number>;
-  t: number;
-  dur: number;
-  ease: Ease;
-  onDone?: () => void;
-}
-
-export interface CoinParticle {
-  x: number;
-  y: number;
-  t: number;
-  dur: number;
-  value: number;
-}
-
 export interface Toast {
   text: string;
   t: number;
   dur: number;
-}
-
-export type Fx =
-  | { kind: 'bonk' | 'puff' | 'unlock'; x: number; y: number; t: number; dur: number }
-  | { kind: 'shard' | 'crumb'; x: number; y: number; vx: number; vy: number; t: number; dur: number; c?: string };
-
-export interface Confetti {
-  x: number;
-  y: number;
-  vx: number;
-  vy: number;
-  rot: number;
-  vr: number;
-  c: string;
-  w: number;
-  h: number;
 }
 
 export type ScreenType = 'ad' | 'shop' | 'offer' | 'daily' | 'dev' | 'map' | 'settings' | 'pause' | 'confirm';
@@ -75,11 +41,7 @@ export interface Screen {
 export const G = {
   L: null as RuntimeLevel | null,
   buttons: [] as Button[],
-  tweens: [] as Tween[],
-  particles: [] as CoinParticle[],
   toasts: [] as Toast[],
-  fx: [] as Fx[],
-  confetti: [] as Confetti[],
   screen: null as Screen | null,
   pending: [] as Array<() => void>,
   lastT: 0,
@@ -87,18 +49,13 @@ export const G = {
   gt: 0,
   coinPop: 0,
   devTaps: [] as number[],
+  /** Smoothed frames per second, for the dev panel and the smoke test. */
+  fps: 60,
 };
 
 /** The current level. Only call from code paths that run after newLevel(). */
 export function cur(): RuntimeLevel {
   return G.L as RuntimeLevel;
-}
-
-export function tween(obj: object, to: Record<string, number>, dur: number, ease?: Ease, onDone?: () => void): void {
-  const o = obj as Record<string, number>;
-  const from: Record<string, number> = {};
-  for (const k in to) from[k] = o[k];
-  G.tweens.push({ obj: o, from, to, t: 0, dur, ease: ease || easeInOut, onDone });
 }
 
 export function toast(text: string, dur?: number, delay?: number): void {

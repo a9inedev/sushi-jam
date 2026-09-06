@@ -1,3 +1,4 @@
+import { PLATE_BOX, plateBaseSvg } from '../art/plate-base';
 import { foodSvg } from '../art/plates';
 import { sprite } from '../art/svg';
 import { COLORS, GOLD } from '../data/constants';
@@ -20,10 +21,29 @@ export function drawFood(color: number, r: number): boolean {
   return true;
 }
 
+/** The ceramic plate with rim, shadow and VIP or double variants, from a cached sprite. */
+function drawPlateBase(p: PlateLike, r: number): boolean {
+  const box = Math.round(r * PLATE_BOX);
+  const img = sprite(
+    `p${p.color}${p.vip ? 'v' : ''}${p.double ? 'd' : ''}`,
+    () => plateBaseSvg(p.color, !!p.vip, !!p.double),
+    box,
+    box
+  );
+  if (!img) return false;
+  ctx.drawImage(img, -box / 2, -box / 2, box, box);
+  return true;
+}
+
 export function drawPlate(x: number, y: number, p: PlateLike, r: number, opts: PlateDrawOpts = {}): void {
   const col = COLORS[p.color];
   ctx.save();
   ctx.translate(x, y);
+  if (drawPlateBase(p, r)) {
+    drawPlateTop(p, r, opts);
+    ctx.restore();
+    return;
+  }
   if (p.double) {
     ctx.fillStyle = '#E8E0CC';
     ctx.beginPath();
@@ -61,6 +81,13 @@ export function drawPlate(x: number, y: number, p: PlateLike, r: number, opts: P
     ctx.arc(0, 0, r * 0.5, 0, 7);
     ctx.stroke();
   }
+  drawPlateTop(p, r, opts);
+  ctx.restore();
+}
+
+/** Everything on top of the ceramic: cloche, food, glyph badge, wasabi timer. Origin at the plate centre. */
+function drawPlateTop(p: PlateLike, r: number, opts: PlateDrawOpts): void {
+  const col = COLORS[p.color];
   if (p.covered && p.revealed === false && !opts.showHidden) {
     ctx.fillStyle = '#C9CDD6';
     ctx.beginPath();
@@ -119,5 +146,4 @@ export function drawPlate(x: number, y: number, p: PlateLike, r: number, opts: P
       ctx.stroke();
     }
   }
-  ctx.restore();
 }

@@ -1,5 +1,6 @@
 /* Settings, Pause and Confirm. All of them freeze the level while open. */
 
+import { applyMotion, systemReducedMotion } from '../anim/motion';
 import { setRumble, sfx } from '../audio/audio';
 import { logStat, newLevel } from '../engine/rules';
 import { closeScreen, cur, G, toast, type Screen } from '../engine/state';
@@ -45,24 +46,36 @@ function ago(ts: number): string {
 }
 
 export function drawSettings(sc: Screen): void {
-  card(60, 170, 360, 560, '#3B3F4A', 'Settings');
-  toggleRow(270, 'Sound', 'Effects and belt rumble', S.sound, () => {
+  card(60, 150, 360, 620, '#3B3F4A', 'Settings');
+  toggleRow(250, 'Sound', 'Effects and belt rumble', S.sound, () => {
     S.sound = !S.sound;
     save();
     if (S.sound) sfx.tap();
     else setRumble(0);
   });
-  toggleRow(336, 'Haptics', hapticsHint(), S.haptics, () => {
+  toggleRow(316, 'Haptics', hapticsHint(), S.haptics, () => {
     S.haptics = !S.haptics;
     save();
     sfx.tap();
     if (S.haptics) haptic('medium');
   });
+  toggleRow(
+    382,
+    'Reduce motion',
+    systemReducedMotion() ? 'On because of your system setting' : 'Fewer bounces, shakes and particles',
+    S.reduceMotion || systemReducedMotion(),
+    () => {
+      S.reduceMotion = !S.reduceMotion;
+      save();
+      applyMotion();
+      sfx.tap();
+    }
+  );
   const c = cloudProvider();
   txt(
     c ? c.label + ' cloud save · not connected yet' : 'Cloud save arrives with the mobile apps',
     240,
-    392,
+    438,
     12,
     700,
     '#8A8378',
@@ -72,7 +85,7 @@ export function drawSettings(sc: Screen): void {
   const bak = backupInfo();
   button(
     100,
-    430,
+    476,
     280,
     44,
     'Restore progress',
@@ -108,7 +121,7 @@ export function drawSettings(sc: Screen): void {
       },
     }
   );
-  button(100, 486, 280, 44, 'Reset progress', 'Deletes level, coins, decor, boosters and stats', {
+  button(100, 532, 280, 44, 'Reset progress', 'Deletes level, coins, decor, boosters and stats', {
     tone: '#E5484D',
     onTap: () => {
       sfx.tap();
@@ -130,14 +143,14 @@ export function drawSettings(sc: Screen): void {
   txt(
     'Sushi Jam v' + __APP_VERSION__ + ' · ' + (isNative ? platform : 'web'),
     240,
-    592,
+    636,
     12,
     700,
     '#8A8378',
     'center',
     'middle'
   );
-  button(150, 616, 180, 46, 'Done', null, {
+  button(150, 660, 180, 46, 'Done', null, {
     primary: true,
     onTap: () => {
       sfx.tap();

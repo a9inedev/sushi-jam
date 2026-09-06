@@ -117,6 +117,10 @@ export interface Diner extends DinerDef {
   paidT: number;
   leaveT: number;
   iceMax: number;
+  /** Animation-only: rotation in radians and squash scale, driven by the tween manager. */
+  lean: number;
+  sx: number;
+  sy: number;
 }
 
 export interface PlateArc {
@@ -129,10 +133,13 @@ export interface PlateArc {
 
 export interface Plate extends PlateDef {
   t: number;
-  state: 'belt' | 'grab';
+  /** belt: circling; grab: flying to a diner; landed: squashing on the diner for a tenth of a second. */
+  state: 'belt' | 'grab' | 'landed';
   x: number;
   y: number;
   s: number;
+  sx: number;
+  sy: number;
   revealed: boolean;
   timer: number;
   id: number;
@@ -144,6 +151,8 @@ export interface Seat {
   y: number;
   t: number;
   diner: Diner | null;
+  /** 1 right after someone sits, decaying to 0: the stool compresses. */
+  press: number;
 }
 
 export interface LevelStat {
@@ -193,6 +202,7 @@ export interface RuntimeLevel {
   introT: number;
   elapsed: number;
   sinceEmit: number;
+  steamT: number;
   deadlock: number;
   failT: number;
   failReason: FailReason;
