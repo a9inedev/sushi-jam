@@ -79,7 +79,7 @@ export function drawDiner(d: Diner, r: number, mode: DinerMode): void {
     ctx.arc(0, 0, r + 1.5, 0, 7);
     ctx.stroke();
   }
-  const dimmed = mode === 'grid' && !d.movable;
+  const dimmed = (mode === 'grid' && !d.movable) || d.waiting;
   const state = spriteState(d, expr, blink);
   ctx.save();
   // Lean and squash are set by the tween manager; scale around the body's base so squash reads as weight.
@@ -120,6 +120,7 @@ export function drawDiner(d: Diner, r: number, mode: DinerMode): void {
     ctx.arc(r * 0.66, r * 0.66, r * 0.36, 0, 7);
     ctx.fill();
     txt(d.need, r * 0.66, r * 0.7, r * 0.62, 800, '#fff', 'center', 'middle');
+    if (d.seq && d.seq.length) drawTicket(d, r);
     if (d.lockColor >= 0 && isLocked(d)) {
       ctx.fillStyle = 'rgba(42,35,32,.92)';
       rrect(-r * 0.5, -r * 1.35, r, r * 0.62, r * 0.12);
@@ -169,8 +170,27 @@ export function drawDiner(d: Diner, r: number, mode: DinerMode): void {
     ctx.lineTo(0, -20);
     ctx.closePath();
     ctx.fill();
-    drawPlate(-13, 0, { color: d.color, vip: d.vip }, 9);
-    txt('×' + Math.max(0, d.need), 14, 1, 16, 800, '#2A2320', 'center', 'middle');
+    if (d.waiting)
+      txt('…', 0, 0, 18, 800, '#8A8378', 'center', 'middle'); // i18n-ignore
+    else if (d.seq && d.seq.length) {
+      // Ticket guest: the colours still to come, in order, the next one ringed.
+      const left = d.seq.slice(d.seq.length - Math.max(0, d.need));
+      const step = Math.min(13, 52 / Math.max(1, left.length));
+      const x0 = (-(left.length - 1) * step) / 2;
+      left.forEach((c, i) => {
+        drawPlate(x0 + i * step, 0, { color: c }, 5.5);
+        if (i === 0) {
+          ctx.strokeStyle = '#2A2320';
+          ctx.lineWidth = 1.5;
+          ctx.beginPath();
+          ctx.arc(x0, 0, 7.5, 0, 7);
+          ctx.stroke();
+        }
+      });
+    } else {
+      drawPlate(-13, 0, { color: d.color, vip: d.vip }, 9);
+      txt('×' + Math.max(0, d.need), 14, 1, 16, 800, '#2A2320', 'center', 'middle');
+    }
     ctx.restore();
     if (expr === 'grumpy') {
       ctx.save();
@@ -199,4 +219,28 @@ export function drawDiner(d: Diner, r: number, mode: DinerMode): void {
     txt(t('hud.paid'), 0, 1, 17, 800, '#E5484D', 'center', 'middle');
     ctx.restore();
   }
+}
+
+/** Ticket above a picky guest's head: the ticket number and the colour sequence. Origin at the diner. */
+export function drawTicket(d: { seq?: number[]; picky?: number }, r: number): void {
+  const seq = d.seq || [];
+  const dot = r * 0.15,
+    step = r * 0.34;
+  const w = r * 0.55 + seq.length * step + r * 0.2,
+    h = r * 0.5;
+  const x = -w / 2,
+    y = -r * 1.38;
+  ctx.fillStyle = '#FFFDF7';
+  ctx.strokeStyle = '#2A2320';
+  ctx.lineWidth = 1;
+  rrect(x, y, w, h, r * 0.1);
+  ctx.fill();
+  ctx.stroke();
+  txt(String((d.picky ?? 0) + 1), x + r * 0.3, y + h / 2 + 0.5, r * 0.36, 800, '#2A2320', 'center', 'middle');
+  seq.forEach((c, i) => {
+    ctx.fillStyle = COLORS[c].hex;
+    ctx.beginPath();
+    ctx.arc(x + r * 0.62 + i * step + dot, y + h / 2, dot, 0, 7);
+    ctx.fill();
+  });
 }

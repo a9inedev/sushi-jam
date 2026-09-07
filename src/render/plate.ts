@@ -6,7 +6,7 @@ import type { PlateLike } from '../engine/types';
 import { S } from '../meta/save';
 import { ctx } from './canvas';
 import { fillPattern } from './patterns';
-import { glyph, txt } from './primitives';
+import { glyph, rrect, txt } from './primitives';
 
 export interface PlateDrawOpts {
   timer?: number;
@@ -95,6 +95,26 @@ export function drawPlate(x: number, y: number, p: PlateLike, r: number, opts: P
 /** Everything on top of the ceramic: cloche, food, glyph badge, wasabi timer. Origin at the plate centre. */
 function drawPlateTop(p: PlateLike, r: number, opts: PlateDrawOpts): void {
   const col = COLORS[p.color];
+  if (p.special) {
+    // Chef's special: a rainbow rim and a gold star, no colour badge because any ordinary diner may take it.
+    ctx.lineWidth = r * 0.28;
+    for (let i = 0; i < 4; i++) {
+      ctx.strokeStyle = COLORS[i].hex;
+      ctx.beginPath();
+      ctx.arc(0, 0, r - r * 0.16, (i * Math.PI) / 2 - Math.PI / 2, ((i + 1) * Math.PI) / 2 - Math.PI / 2);
+      ctx.stroke();
+    }
+    ctx.fillStyle = GOLD;
+    ctx.beginPath();
+    for (let i = 0; i < 10; i++) {
+      const a = -Math.PI / 2 + (i * Math.PI) / 5,
+        rr = i % 2 ? r * 0.24 : r * 0.52;
+      ctx.lineTo(Math.cos(a) * rr, Math.sin(a) * rr);
+    }
+    ctx.closePath();
+    ctx.fill();
+    return;
+  }
   if (p.covered && p.revealed === false && !opts.showHidden) {
     ctx.fillStyle = '#C9CDD6';
     ctx.beginPath();
@@ -137,6 +157,16 @@ function drawPlateTop(p: PlateLike, r: number, opts: PlateDrawOpts): void {
       ctx.arc(r * 0.62, -r * 0.58, r * 0.16, Math.PI, 0);
       ctx.stroke();
     }
+  }
+  if (p.owner != null && p.owner >= 0) {
+    // Named plate: the ticket number on a tag.
+    ctx.fillStyle = '#FFFDF7';
+    ctx.strokeStyle = '#2A2320';
+    ctx.lineWidth = 1;
+    rrect(r * 0.3, -r * 0.95, r * 0.7, r * 0.55, r * 0.08);
+    ctx.fill();
+    ctx.stroke();
+    txt(String(p.owner + 1), r * 0.65, -r * 0.66, r * 0.42, 800, '#2A2320', 'center', 'middle');
   }
   if (p.wasabi) {
     ctx.fillStyle = '#5DBB3F';

@@ -68,10 +68,10 @@ export function drawStatusOverlay(): void {
     cw = 340,
     ch = 400;
   if (L.status === 'fail') {
-    const wasabi = L.failReason === 'wasabi';
-    card(cx, cy, cw, ch, '#E5484D', wasabi ? t('fail.wasabiTitle') : t('fail.jamTitle'));
-    txt(wasabi ? t('fail.wasabiText1') : t('fail.jamText1'), 240, cy + 90, 15, 700, '#5A4E45', 'center', 'middle');
-    txt(wasabi ? t('fail.wasabiText2') : t('fail.jamText2'), 240, cy + 110, 15, 700, '#5A4E45', 'center', 'middle');
+    const why = L.failReason;
+    card(cx, cy, cw, ch, '#E5484D', t('fail.' + why + 'Title'));
+    txt(t('fail.' + why + 'Text1'), 240, cy + 90, 15, 700, '#5A4E45', 'center', 'middle');
+    txt(t('fail.' + why + 'Text2'), 240, cy + 110, 15, 700, '#5A4E45', 'center', 'middle');
     const left = L.diners.filter((d) => d.state !== 'done').length;
     txt(
       left <= 5 ? t('fail.left', { n: left }) : t('fail.waiting', { n: left }),

@@ -4,7 +4,7 @@ import { reducedMotion } from '../anim/motion';
 import { particles } from '../anim/particles';
 import { backgroundSvg, bonsaiSvg, lanternSvg, norenSvg, tankSvg } from '../art/background';
 import { sprite } from '../art/svg';
-import { COLORS, DINER_R, H, KITCHEN, W } from '../data/constants';
+import { COLORS, DINER_R, H, KITCHEN, SEAT_Y, W } from '../data/constants';
 import { BELT } from '../engine/belt';
 import { G, cur } from '../engine/state';
 import { t } from '../i18n';
@@ -12,7 +12,7 @@ import { S } from '../meta/save';
 import { ctx } from './canvas';
 import { drawDiner } from './diner';
 import { drawPlate } from './plate';
-import { coinIcon, rrect, textW, txt } from './primitives';
+import { coinIcon, glyph, rrect, textW, txt } from './primitives';
 
 export function drawBg(): void {
   const img = sprite('bg', backgroundSvg, W, H);
@@ -193,7 +193,7 @@ export function drawBelt(): void {
   ctx.strokeStyle = '#4A4F5C';
   ctx.stroke();
   ctx.setLineDash([14, 18]);
-  ctx.lineDashOffset = -L.elapsed * L.speed * b.total;
+  ctx.lineDashOffset = -L.beltPhase * b.total;
   ctx.lineWidth = 22;
   ctx.strokeStyle = '#5B6170';
   ctx.stroke();
@@ -209,7 +209,24 @@ export function drawBelt(): void {
     'right',
     'middle'
   );
-  if (S.decor.includes('neon')) {
+  if (L.rushT > 0 || L.reversed) {
+    const rush = L.rushT > 0;
+    const pulse = reducedMotion() ? 1 : 0.8 + 0.2 * Math.sin(gt * 8);
+    ctx.save();
+    ctx.globalAlpha = pulse;
+    txt(
+      rush ? t('hud.rush', { s: Math.ceil(L.rushT) }) : t('hud.reverse'),
+      240,
+      205,
+      16,
+      800,
+      rush ? '#E5484D' : '#3E7BFA',
+      'center',
+      'middle'
+    );
+    if (rush && L.reversed) txt(t('hud.reverse'), 240, 226, 13, 800, '#3E7BFA', 'center', 'middle');
+    ctx.restore();
+  } else if (S.decor.includes('neon')) {
     ctx.save();
     ctx.shadowColor = '#FF3FA4';
     ctx.shadowBlur = 18 + Math.sin(gt * 6) * 4;
@@ -263,6 +280,23 @@ export function drawSeats(): void {
   const L = cur();
   const reduced = reducedMotion();
   const sh = L.seatShake > 0 && !reduced ? Math.sin(L.elapsed * 60) * 4 * L.seatShake : 0;
+  // Chained pair: a chain drawn between the two stools, the back stool one step behind.
+  const front = L.seats[0],
+    back = L.seats[1];
+  if (front && back && back.chain === 2) {
+    ctx.save();
+    ctx.translate(sh, 0);
+    ctx.strokeStyle = '#8A8378';
+    ctx.lineWidth = 3;
+    const y = SEAT_Y + 16;
+    for (let i = 0; i < 4; i++) {
+      const x = front.x + 18 + ((back.x - front.x - 36) * (i + 0.5)) / 4;
+      ctx.beginPath();
+      ctx.ellipse(x, y, 7, 4.5, i % 2 ? Math.PI / 2 : 0, 0, 7);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
   for (const s of L.seats) {
     // The stool compresses when someone lands on it, then springs back.
     const press = reduced ? 0 : s.press;
@@ -276,6 +310,23 @@ export function drawSeats(): void {
     ctx.beginPath();
     ctx.ellipse(s.x, s.y + 14 + press * 2, 20 + press * 3, 9 - press * 3, 0, 0, 7);
     ctx.fill();
+    if (s.reserved >= 0) {
+      // Reserved: a table card with the colour's glyph on a little stand beside the stool.
+      const col = COLORS[s.reserved];
+      ctx.fillStyle = '#5A4E45';
+      ctx.fillRect(s.x + 24, s.y - 6, 2, 22);
+      ctx.fillStyle = '#FFFDF7';
+      ctx.strokeStyle = col.hex;
+      ctx.lineWidth = 2;
+      rrect(s.x + 14, s.y - 22, 22, 18, 4);
+      ctx.fill();
+      ctx.stroke();
+      glyph(s.x + 25, s.y - 13, col.glyph, 10, col.hex);
+    }
+    if (s.chain === 2) {
+      ctx.fillStyle = 'rgba(42,35,32,.55)';
+      txt(t('hud.waitSeat'), s.x, s.y + 30, 9, 800, '#FFF7E8', 'center', 'middle');
+    }
     if (!s.diner) {
       ctx.strokeStyle = 'rgba(255,255,255,.55)';
       ctx.setLineDash([5, 5]);

@@ -12,9 +12,20 @@ import { t } from '../i18n';
 import { S, save } from '../meta/save';
 import { haptic } from '../platform/native';
 import { BELT } from './belt';
-import { DIR_DC, DIR_DR, getLevel, matchDP, pathLen, plateUnits } from './levels';
+import {
+  DIR_DC,
+  DIR_DR,
+  getLevel,
+  matchDP,
+  pathLen,
+  plateUnits,
+  rulesOf,
+  RUSH_INTERVAL,
+  RUSH_SECONDS,
+  RUSH_SPEED,
+} from './levels';
 import { G, cur, setExpr, showAd, toast } from './state';
-import type { BoosterKind, Diner, DinerDef, FailReason, LevelDef, Plate, PlateDef, PlateLike } from './types';
+import type { BoosterKind, Diner, DinerDef, FailReason, LevelDef, Plate, PlateDef, PlateLike, Seat } from './types';
 import { easeBack, easeIn, easeInOut, easeOut } from './util';
 
 export function makeDiner(d: DinerDef, x: number, y: number): Diner {
@@ -42,6 +53,7 @@ export function makeDiner(d: DinerDef, x: number, y: number): Diner {
     paidT: -1,
     leaveT: 0,
     iceMax: d.ice,
+    waiting: false,
     lean: 0,
     sx: 1,
     sy: 1,
@@ -49,13 +61,14 @@ export function makeDiner(d: DinerDef, x: number, y: number): Diner {
 }
 
 export function newLevel(n: number): void {
-  newLevelDef(getLevel(n, S.devAllMech));
+  newLevelDef(getLevel(n, S.devAllMech ? 'all' : false));
 }
 
 /** Start a level from a definition. The editor's play test uses this with an unsaved board. */
 export function newLevelDef(lv: LevelDef): void {
   const n = lv.n,
-    P = lv.P;
+    P = lv.P,
+    rules = rulesOf(P);
   const cell = Math.min(GRID.w / lv.cols, GRID.h / lv.rows);
   const gx = 240 - (lv.cols * cell) / 2,
     gy = GRID.y + (GRID.h - lv.rows * cell) / 2;
@@ -100,6 +113,11 @@ export function newLevelDef(lv: LevelDef): void {
     newMechs: lv.mechs.filter((m) => !S.seenMech.includes(m)),
     mechIdx: 0,
     plateId: 0,
+    emitted: 0,
+    rushT: 0,
+    reversed: false,
+    reverseT: rules.reverse ? rules.reverse[0] : 0,
+    beltPhase: 0,
     stat: {
       n,
       sched: P.tier,
@@ -127,10 +145,12 @@ export function newLevelDef(lv: LevelDef): void {
 
 export function layoutSeats(): void {
   const L = cur();
+  const rules = rulesOf(L.P);
   const cnt = L.seatCount,
     left = 130,
     right = 350,
     old = L.seats;
+  const chained = rules.chain > 0 && cnt >= 3;
   L.seats = Array.from({ length: cnt }, (_, i) => {
     const x = cnt === 1 ? 240 : left + ((right - left) * i) / (cnt - 1);
     return {
@@ -139,7 +159,9 @@ export function layoutSeats(): void {
       t: BELT.tOfBottomX(x),
       diner: old[i] ? old[i].diner : null,
       press: old[i] ? old[i].press : 0,
-    };
+      reserved: rules.reserved[i] ?? -1,
+      chain: chained ? (i === 0 ? 1 : i === 1 ? 2 : 0) : 0,
+    } as Seat;
   });
   L.seats.forEach((s, i) => {
     if (s.diner) {
@@ -147,6 +169,41 @@ export function layoutSeats(): void {
       if (s.diner.state === 'seated') tweens.to(s.diner, { x: s.x }, 0.3, { tag: 'shift' });
     }
   });
+}
+
+/** Lower-case colour name for toasts. */
+export function colourName(c: number): string {
+  return t('colour.' + COLORS[c].name.toLowerCase()).toLowerCase();
+}
+
+/** The seat a grid diner would take: the first free plain seat they may use, else the back of a chained pair. */
+export function seatFor(d: Diner): Seat | null {
+  const L = cur();
+  const plain = L.seats.find((s) => !s.diner && s.chain !== 2 && (s.reserved < 0 || s.reserved === d.color));
+  if (plain) return plain;
+  const back = L.seats.find((s) => !s.diner && s.chain === 2);
+  if (back && L.seats[0].diner) return back;
+  return null;
+}
+
+/** The back seat of a chained pair slides forward once the front is empty. */
+export function promoteChain(): void {
+  const L = cur();
+  const front = L.seats[0],
+    back = L.seats[1];
+  if (!front || !back || back.chain !== 2 || front.diner || !back.diner) return;
+  const d = back.diner;
+  if (d.state !== 'seated') return;
+  back.diner = null;
+  front.diner = d;
+  d.seat = 0;
+  d.waiting = false;
+  d.waitSince = L.elapsed;
+  front.press = 1;
+  sfx.bell();
+  setExpr(d, 'happy', 0.8);
+  tweens.cancel(d, 'shift');
+  tweens.to(d, { x: front.x }, 0.25, { ease: easeInOut, tag: 'shift' });
 }
 
 export function pathBlocked(d: Diner): boolean {
@@ -176,7 +233,7 @@ export function remaining(d: Diner): number {
 }
 
 export function canTake(d: Diner, p: Plate): boolean {
-  return d.state === 'seated' && p.revealed !== false && matchDP(d, p, remaining(d));
+  return d.state === 'seated' && !d.waiting && !p.surplus && p.revealed !== false && matchDP(d, p, remaining(d));
 }
 
 /** Squash a diner and let it spring back. No-op under reduce motion. */
@@ -258,18 +315,22 @@ export function tryMove(d: Diner): void {
     d.shakeX = 1;
     d.shakeY = 0;
     sfx.locked();
-    toast(t('toast.locked', { colour: t('colour.' + COLORS[d.lockColor].name.toLowerCase()).toLowerCase() }), 1.6);
+    toast(t('toast.locked', { colour: colourName(d.lockColor) }), 1.6);
     return;
   }
   if (pathBlocked(d)) {
     bumpInto(d);
     return;
   }
-  const seat = L.seats.find((s) => !s.diner);
+  const seat = seatFor(d);
   if (!seat) {
     sfx.blocked();
     L.seatShake = 0.4;
-    toast(t('toast.noSeat'), 1.6);
+    const reservedFree = L.seats.find((s) => !s.diner && s.reserved >= 0);
+    toast(
+      reservedFree ? t('toast.reservedSeat', { colour: colourName(reservedFree.reserved) }) : t('toast.noSeat'),
+      1.6
+    );
     return;
   }
   sfx.tap();
@@ -294,8 +355,10 @@ export function tryMove(d: Diner): void {
     d.state = 'seated';
     d.lean = 0;
     d.waitSince = L.elapsed;
+    d.waiting = !!s && s.chain === 2;
     sfx.bell();
     squash(d, 1.16, 0.8);
+    promoteChain();
   };
   tweens.cancel(d);
   if (reducedMotion()) {
@@ -330,15 +393,48 @@ export function entryClear(): boolean {
 }
 
 export function updateBelt(dt: number): void {
-  const L = cur();
-  for (const p of L.belt) {
+  const L = cur(),
+    rules = rulesOf(L.P);
+  if (L.rushT > 0) L.rushT = Math.max(0, L.rushT - dt);
+  if (rules.reverse) {
+    const before = L.reverseT;
+    L.reverseT -= dt;
+    if (!L.reversed && before > 1 && L.reverseT <= 1) sfx.tick();
+    if (L.reverseT <= 0) {
+      L.reversed = !L.reversed;
+      L.reverseT = L.reversed ? rules.reverse[1] : rules.reverse[0];
+      sfx.reveal();
+      toast(t(L.reversed ? 'toast.reverseOn' : 'toast.reverseOff'), 1.6);
+    }
+  }
+  const dir = L.reversed ? -1 : 1,
+    speed = L.speed * (L.rushT > 0 ? RUSH_SPEED : 1);
+  L.beltPhase += dir * speed * dt;
+  for (const p of L.belt.slice()) {
     if (p.state !== 'belt') continue;
     const prev = p.t;
-    p.t = (p.t + L.speed * dt) % 1;
-    if (p.covered && !p.revealed && prev > p.t) {
-      p.revealed = true;
-      sfx.reveal();
+    const nt = p.t + dir * speed * dt;
+    if (nt < 0) {
+      // Reversed back through the kitchen door: the plate goes inside, to the front of the queue.
+      L.belt.splice(L.belt.indexOf(p), 1);
+      L.kitchen.unshift(toKitchen(p));
       particles.emit('puff', 240, 170, 1);
+      continue;
+    }
+    p.t = nt % 1;
+    if (dir > 0 && prev > p.t) {
+      if (p.surplus) {
+        // Nobody can take it any more: the chef collects it at the door.
+        L.belt.splice(L.belt.indexOf(p), 1);
+        particles.emit('puff', 240, 170, 1);
+        sfx.swish();
+        continue;
+      }
+      if (p.covered && !p.revealed) {
+        p.revealed = true;
+        sfx.reveal();
+        particles.emit('puff', 240, 170, 1);
+      }
     }
     if (p.wasabi) {
       const before = p.timer;
@@ -354,14 +450,15 @@ export function updateBelt(dt: number): void {
     for (const s of L.seats) {
       const d = s.diner;
       if (!d || !canTake(d, p)) continue;
-      if (crossed(prev, p.t, s.t)) {
+      if (dir > 0 ? crossed(prev, p.t, s.t) : crossed(p.t, prev, s.t)) {
         grab(p, d);
         break;
       }
     }
   }
   L.sinceEmit += dt;
-  if (L.kitchen.length && L.belt.length < L.beltCap && L.sinceEmit >= 0.7 && entryClear()) {
+  const interval = L.rushT > 0 ? RUSH_INTERVAL : 0.7;
+  if (!L.reversed && L.kitchen.length && L.belt.length < L.beltCap && L.sinceEmit >= interval && entryClear()) {
     const tpl = L.kitchen.shift() as PlateDef;
     L.belt.push({
       ...tpl,
@@ -377,7 +474,14 @@ export function updateBelt(dt: number): void {
       id: L.plateId++,
     });
     L.sinceEmit = 0;
+    L.emitted++;
     particles.emit('steam', 240, 160, 2, { size: 3, life: 0.9 });
+    if (rules.rush > 0 && L.emitted === rules.rush) {
+      L.rushT = RUSH_SECONDS;
+      sfx.bell();
+      haptic('medium');
+      toast(t('toast.rushOn'), 2);
+    }
   }
   // Gentle steam over the kitchen window while there is food coming.
   L.steamT += dt;
@@ -386,6 +490,72 @@ export function updateBelt(dt: number): void {
     particles.emit('steam', KITCHEN.x + 24 + Math.random() * 80, KITCHEN.y + 34, 1, { size: 2.5, life: 1.2 });
   }
   L.stat.beltPeak = Math.max(L.stat.beltPeak, L.belt.length);
+}
+
+/** After a special is eaten one guest may hold a plate too many and another be a plate short: the chef swaps
+    the leftover for the missing colour (queued plates first, then a belt plate recoloured on the spot) and only
+    bins a leftover when nobody is short. Specials themselves are collected once no ordinary guest is left. */
+export function markSurplus(): void {
+  const L = cur();
+  const keyOf = (p: PlateLike) => (p.owner != null && p.owner >= 0 ? 'o' + p.owner : p.color + (p.vip ? 'v' : ''));
+  const need = new Map<string, number>();
+  let openNeed = 0;
+  for (const d of L.diners) {
+    if (d.state === 'done' || d.state === 'leaving' || d.state === 'paying') continue;
+    const picky = !!(d.seq && d.seq.length);
+    const k = picky ? 'o' + d.picky : d.color + (d.vip ? 'v' : '');
+    const left = Math.max(0, d.need - d.pending);
+    need.set(k, (need.get(k) || 0) + left);
+    if (!d.vip && !picky) openNeed += left;
+  }
+  const have = new Map<string, number>();
+  const onBelt = (p: Plate) => p.state === 'belt' && !p.special && !p.surplus;
+  for (const p of L.belt) if (onBelt(p)) have.set(keyOf(p), (have.get(keyOf(p)) || 0) + plateUnits(p));
+  for (const p of L.kitchen) if (!p.special) have.set(keyOf(p), (have.get(keyOf(p)) || 0) + plateUnits(p));
+  const deficit: number[] = [];
+  for (const [k, n] of need)
+    if (!k.startsWith('o') && !k.endsWith('v')) for (let i = have.get(k) || 0; i < n; i++) deficit.push(+k);
+  for (const [k, h] of have) {
+    let extra = h - (need.get(k) || 0);
+    while (extra > 0) {
+      let qi = -1;
+      for (let i = L.kitchen.length - 1; i >= 0; i--)
+        if (!L.kitchen[i].special && keyOf(L.kitchen[i]) === k) {
+          qi = i;
+          break;
+        }
+      const bp = qi < 0 ? L.belt.find((p) => onBelt(p) && keyOf(p) === k) : null;
+      if (qi < 0 && !bp) break;
+      const p = qi >= 0 ? L.kitchen[qi] : (bp as Plate);
+      const single = plateUnits(p) > extra;
+      const to = deficit.shift();
+      if (to !== undefined) {
+        p.color = to;
+        p.vip = false;
+        if (single) p.double = false;
+        if (bp) {
+          const q = BELT.pointAt(bp.t);
+          particles.emit('puff', q.x, q.y, 1);
+        }
+        extra -= single ? 1 : plateUnits(p);
+        continue;
+      }
+      if (single) {
+        p.double = false;
+        extra -= 1;
+      } else if (qi >= 0) {
+        L.kitchen.splice(qi, 1);
+        extra -= plateUnits(p);
+      } else {
+        (bp as Plate).surplus = true;
+        extra -= plateUnits(p);
+      }
+    }
+  }
+  if (openNeed === 0) {
+    for (const p of L.belt) if (p.state === 'belt' && p.special) p.surplus = true;
+    for (let i = L.kitchen.length - 1; i >= 0; i--) if (L.kitchen[i].special) L.kitchen.splice(i, 1);
+  }
 }
 
 export function grab(p: Plate, d: Diner): void {
@@ -409,6 +579,7 @@ export function grab(p: Plate, d: Diner): void {
     onDone: () => {
       d.pending -= units;
       d.need -= units;
+      if (p.special) markSurplus();
       d.bump = 1;
       d.bubblePop = 1;
       d.waitSince = L.elapsed;
@@ -435,6 +606,7 @@ export function pay(d: Diner): void {
   d.paidT = 0;
   const seat = L.seats[d.seat];
   if (seat && seat.diner === d) seat.diner = null;
+  promoteChain();
   setExpr(d, 'happy', 2);
   sfx.stamp();
   tweens.delay(0.22, () => {
@@ -489,8 +661,12 @@ export function addCoins(n: number, x: number, y: number): void {
 
 export function checkDeadlock(dt: number): void {
   const L = cur();
-  const free = L.seats.some((s) => !s.diner);
+  const grid = L.diners.filter((d) => d.state === 'grid');
+  // A free seat only counts while a diner still on the grid could use it (reserved seats need their colour).
+  const free =
+    grid.length > 0 && L.seats.some((s) => !s.diner && (s.reserved < 0 || grid.some((d) => d.color === s.reserved)));
   const busy =
+    L.reversed ||
     L.diners.some((d) => d.state === 'walking' || d.state === 'paying' || d.state === 'leaving') ||
     L.belt.some((p) => p.state !== 'belt');
   if (free || busy) {
@@ -510,7 +686,23 @@ export function checkDeadlock(dt: number): void {
     return;
   }
   L.deadlock += dt;
-  if (L.deadlock > 0.8) fail('jam');
+  if (L.deadlock > 0.8) fail(jamReason());
+}
+
+/** Which rule the jam message should talk about. */
+export function jamReason(): FailReason {
+  const L = cur();
+  if (L.rushT > 0) return 'rush';
+  if (L.seats.some((s) => !s.diner && s.reserved >= 0)) return 'reserved';
+  if (L.seats.some((s) => s.diner && s.diner.waiting)) return 'chain';
+  if (
+    L.seats.some((s) => {
+      const d = s.diner;
+      return d && d.seq && d.seq.length && !L.belt.some((p) => p.state === 'belt' && p.owner === d.picky);
+    })
+  )
+    return 'picky';
+  return 'jam';
 }
 
 export function fail(reason: FailReason): void {
@@ -572,7 +764,11 @@ export function logStat(result: string): void {
   st.beltPeak = 0;
 }
 
-const sameOrder = (d: Diner, p: PlateLike) => p.color === d.color && !!p.vip === !!d.vip;
+/** Is p one of d's own plates (never a special, and named plates only for their ticket guest)? */
+const sameOrder = (d: Diner, p: PlateLike) =>
+  d.seq && d.seq.length
+    ? p.owner === d.picky
+    : !p.special && (p.owner == null || p.owner < 0) && p.color === d.color && !!p.vip === !!d.vip;
 
 /** Serve a seated diner instantly: remove their plates from the belt and kitchen, then pay. */
 export function takeout(d: Diner): void {
@@ -597,13 +793,20 @@ export function takeout(d: Diner): void {
 }
 
 function toKitchen(p: Plate): PlateDef {
-  return { color: p.color, vip: p.vip, double: p.double, wasabi: p.wasabi, covered: p.covered };
+  const k: PlateDef = { color: p.color, vip: p.vip, double: p.double, wasabi: p.wasabi, covered: p.covered };
+  if (p.special) k.special = true;
+  if (p.owner != null && p.owner >= 0) k.owner = p.owner;
+  return k;
 }
 
 export function clearBeltToKitchen(): void {
   const L = cur();
   for (const p of L.belt.slice()) {
     if (p.state !== 'belt') continue;
+    if (p.surplus) {
+      L.belt.splice(L.belt.indexOf(p), 1);
+      continue;
+    }
     const wanted = L.seats.some(
       (s) => s.diner && s.diner.state === 'seated' && matchDP(s.diner, p, remaining(s.diner))
     );
@@ -739,7 +942,7 @@ export function handleArmed(x: number, y: number): void {
     spendBooster('sendback');
     sfx.boost();
     L.belt.splice(L.belt.indexOf(best), 1);
-    L.kitchen.push(toKitchen(best));
+    if (!best.surplus) L.kitchen.push(toKitchen(best));
     toast(t('toast.sentBack'), 1.5);
   }
 }
@@ -774,8 +977,9 @@ export function devAuto(): boolean {
   const L = G.L;
   if (!L || L.status !== 'play' || G.screen) return false;
   if (L.armed) L.armed = null;
-  if (!L.seats.some((s) => !s.diner)) return false;
-  const movable = L.diners.filter((d) => d.state === 'grid' && !d.bumping && !isLocked(d) && !pathBlocked(d));
+  const movable = L.diners.filter(
+    (d) => d.state === 'grid' && !d.bumping && !isLocked(d) && !pathBlocked(d) && seatFor(d) !== null
+  );
   if (!movable.length) return false;
   const wanted: PlateLike[] = [
     ...L.belt.filter((p) => p.state === 'belt' && p.revealed !== false),
