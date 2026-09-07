@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { generated, tick } from './helpers/generated';
 import { AUTHORED } from '../src/data/authored';
 import { rng } from '../src/engine/rng';
 import {
@@ -37,9 +38,10 @@ describe('reverse generation', () => {
         }
   });
 
-  it('every generated level board (1..200) is peelable in its intended order', () => {
+  it('every generated level board (1..200) is peelable in its intended order', async () => {
     for (const n of LEVELS) {
-      const lv = makeGenerated(n);
+      if (n % 10 === 0) await tick();
+      const lv = generated(n);
       const occ: (unknown | null)[][] = Array.from({ length: lv.rows }, () => Array(lv.cols).fill(null));
       for (const d of lv.diners) occ[d.r][d.c] = d;
       for (const d of lv.diners) {
@@ -51,9 +53,10 @@ describe('reverse generation', () => {
 });
 
 describe('kitchen accounting', () => {
-  it('plate units always equal total appetite (levels 1..200; a special counts one)', () => {
+  it('plate units always equal total appetite (levels 1..200; a special counts one)', async () => {
     for (const n of LEVELS) {
-      const lv = makeGenerated(n);
+      if (n % 10 === 0) await tick();
+      const lv = generated(n);
       const units = lv.kitchen.reduce((a, p) => a + plateUnits(p), 0);
       const appetite = lv.diners.reduce((a, d) => a + d.need, 0);
       expect(units, `level ${n}`).toBe(appetite);
@@ -69,9 +72,10 @@ describe('kitchen accounting', () => {
     }
   });
 
-  it('plate units equal appetite and the intended order wins with all twelve rules forced on (levels 1..80)', () => {
+  it('plate units equal appetite and the intended order wins with all twelve rules forced on (levels 1..80)', async () => {
     for (let n = 1; n <= 80; n++) {
-      const lv = makeGenerated(n, 'all');
+      if (n % 10 === 0) await tick();
+      const lv = generated(n, 'all');
       const units = lv.kitchen.reduce((a, p) => a + plateUnits(p), 0);
       const appetite = lv.diners.reduce((a, d) => a + d.need, 0);
       expect(units, `level ${n} (all rules)`).toBe(appetite);
@@ -93,9 +97,10 @@ describe('kitchen accounting', () => {
 });
 
 describe('solver', () => {
-  it('returns win on the intended order for every level 1..200', () => {
+  it('returns win on the intended order for every level 1..200', async () => {
     for (const n of LEVELS) {
-      const lv = makeGenerated(n);
+      if (n % 10 === 0) await tick();
+      const lv = generated(n);
       expect(simulate(lv, rng(1), 0, { intended: true }), `level ${n}`).toBe('win');
     }
   });

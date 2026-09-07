@@ -10,6 +10,7 @@ import { evalLevel, simulate } from '../src/engine/levels';
 import { NEW_MECHS } from '../src/engine/levels';
 import { rng } from '../src/engine/rng';
 import type { MechKind } from '../src/engine/types';
+import { tick } from './helpers/generated';
 
 const AUTHORED_MAX = 140;
 
@@ -39,8 +40,9 @@ describe('authored level files', () => {
     }
   });
 
-  it('every level lands inside its band, and the stored fail rate matches a fresh 200-run measurement', () => {
+  it('every level lands inside its band, and the stored fail rate matches a fresh 200-run measurement', async () => {
     for (const j of LEVELS) {
+      if (j.n % 10 === 0) await tick();
       const lv = levelFromJson(j);
       const diff = evalLevel(lv, 200);
       expect(diff, `level ${j.n} stored ${j.diff} measured ${diff}`).toBeCloseTo(j.diff as number, 2);

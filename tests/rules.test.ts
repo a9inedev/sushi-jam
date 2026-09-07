@@ -16,7 +16,6 @@ import {
   assignPicky,
   hasRules,
   kitchenSim,
-  makeGenerated,
   matchDP,
   mechsOf,
   normaliseRules,
@@ -27,6 +26,7 @@ import {
 } from '../src/engine/levels';
 import { rng } from '../src/engine/rng';
 import type { DinerDef, LevelLike, LevelRules, PlateDef } from '../src/engine/types';
+import { generated, tick } from './helpers/generated';
 
 const plate = (color: number, extra: Partial<PlateDef> = {}): PlateDef => ({
   color,
@@ -349,12 +349,18 @@ describe('rules plumbing', () => {
     expect(validateLevel(lv, 20).problems).toEqual([]);
   });
 
-  it('the generator uses every rule somewhere in levels 132 to 200, and all twelve when forced', () => {
+  it('the generator uses every rule somewhere in levels 132 to 200, and all twelve when forced', async () => {
     const seen = new Set<string>();
-    for (let n = 132; n <= 200; n++) for (const m of makeGenerated(n).mechs) seen.add(m);
+    for (let n = 132; n <= 200; n++) {
+      if (n % 10 === 0) await tick();
+      for (const m of generated(n).mechs) seen.add(m);
+    }
     for (const m of ALL_MECHS) expect(seen.has(m), m).toBe(true);
     const forced = new Set<string>();
-    for (let n = 30; n <= 60; n++) for (const m of makeGenerated(n, 'all').mechs) forced.add(m);
+    for (let n = 30; n <= 60; n++) {
+      if (n % 10 === 0) await tick();
+      for (const m of generated(n, 'all').mechs) forced.add(m);
+    }
     for (const m of ALL_MECHS) expect(forced.has(m), m + ' (all)').toBe(true);
   });
 });
