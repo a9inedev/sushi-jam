@@ -327,7 +327,8 @@ export function tierFromDiff(d: number): Tier {
 
 type Candidate = LevelLike & { diff?: number; authored?: boolean; tuned?: boolean; count?: number };
 
-export function makeLevel(n: number, allMech = false): LevelDef {
+/** The procedurally generated level for n (plus the three legacy string boards). Deterministic by seed. */
+export function makeGenerated(n: number, allMech = false): LevelDef {
   const P = paramsFor(n),
     target = { Easy: 0.06, Medium: 0.2, Hard: 0.4, 'Super Hard': 0.6 }[P.tier],
     cands: Candidate[] = [];
@@ -407,6 +408,25 @@ export function makeLevel(n: number, allMech = false): LevelDef {
   if (lv.diners.some((d) => d.ice > 0)) lv.mechs.push('frozen');
   if (lv.kitchen.some((p) => p.double)) lv.mechs.push('double');
   return lv;
+}
+
+/* ---------- authored source registry ---------- */
+
+type AuthoredSource = (n: number) => LevelDef | null;
+let authoredSource: AuthoredSource = () => null;
+
+/** data/levels.ts registers the JSON levels here so the engine stays free of bundler-specific imports. */
+export function registerAuthored(fn: AuthoredSource): void {
+  authoredSource = fn;
+}
+
+export function isAuthored(n: number): boolean {
+  return authoredSource(n) !== null || !!AUTHORED[n];
+}
+
+/** The level to play: the authored JSON level when one exists for n, otherwise the generated one. */
+export function makeLevel(n: number, allMech = false): LevelDef {
+  return authoredSource(n) || makeGenerated(n, allMech);
 }
 
 const levelCache = new Map<string, LevelDef>();

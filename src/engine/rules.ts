@@ -14,7 +14,7 @@ import { haptic } from '../platform/native';
 import { BELT } from './belt';
 import { DIR_DC, DIR_DR, getLevel, matchDP, pathLen, plateUnits } from './levels';
 import { G, cur, setExpr, showAd, toast } from './state';
-import type { BoosterKind, Diner, DinerDef, FailReason, Plate, PlateDef, PlateLike } from './types';
+import type { BoosterKind, Diner, DinerDef, FailReason, LevelDef, Plate, PlateDef, PlateLike } from './types';
 import { easeBack, easeIn, easeInOut, easeOut } from './util';
 
 export function makeDiner(d: DinerDef, x: number, y: number): Diner {
@@ -49,7 +49,12 @@ export function makeDiner(d: DinerDef, x: number, y: number): Diner {
 }
 
 export function newLevel(n: number): void {
-  const lv = getLevel(n, S.devAllMech),
+  newLevelDef(getLevel(n, S.devAllMech));
+}
+
+/** Start a level from a definition. The editor's play test uses this with an unsaved board. */
+export function newLevelDef(lv: LevelDef): void {
+  const n = lv.n,
     P = lv.P;
   const cell = Math.min(GRID.w / lv.cols, GRID.h / lv.rows);
   const gx = 240 - (lv.cols * cell) / 2,
