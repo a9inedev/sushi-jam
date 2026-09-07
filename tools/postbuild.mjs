@@ -13,7 +13,9 @@ if (local.length) {
   console.error('postbuild: build is not single-file, found script src ' + local.join(', '));
   process.exit(1);
 }
-const extra = fs.readdirSync(path.dirname(out)).filter((f) => f !== 'index.html');
+// The curve is published next to the page so installed apps can fetch tuning changes (docs/curve.md).
+fs.copyFileSync(path.resolve('src/data/curve.json'), path.join(path.dirname(out), 'curve.json'));
+const extra = fs.readdirSync(path.dirname(out)).filter((f) => f !== 'index.html' && f !== 'curve.json');
 if (extra.length) console.warn('postbuild: extra files in dist (not needed by the page): ' + extra.join(', '));
 const bytes = Buffer.byteLength(html);
 console.log(`postbuild: dist/index.html is ${(bytes / 1024).toFixed(1)} KB, single file`);

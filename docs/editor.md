@@ -11,8 +11,12 @@
   "n": 21,
   "beat": "intro:wasabi",
   "band": [0, 0.15],
-  "rows": 4, "cols": 4, "colors": 4,
-  "seats": 4, "beltCap": 8, "visibleNext": 3,
+  "rows": 4,
+  "cols": 4,
+  "colors": 4,
+  "seats": 4,
+  "beltCap": 8,
+  "visibleNext": 3,
   "cells": ["0v2 . 1>3 2<2", "..."],
   "kitchen": "0 1 2W 1 ...",
   "seed": 123456,
@@ -29,16 +33,16 @@
 
 `beatFor(n)` in `src/engine/author.ts` is the design table: grid size, palette, fill, appetite range, kitchen window, belt capacity, mechanic densities and the band, per level. The rhythm:
 
-| Levels          | Beat    | Band       | Notes                                                                 |
-| --------------- | ------- | ---------- | --------------------------------------------------------------------- |
-| 1 to 9, 12      | teach   | 0 to 12 %  | 3x3 up to 5x4, three then four colours, no rules                      |
-| 10              | wall    | 30 to 60 % | first wall, softer than the later ones                               |
-| 11, 81, 91      | relief  | 0 to 15 %  | smaller board, one colour fewer                                       |
-| 13 to 19        | ramp    | rising     | 5x4 to 5x5, window closes from 3 to 2 plates                          |
-| every x0 (20+)  | wall    | 45 to 75 % | 6x6, one extra colour, window 1, belt 7                               |
-| 21, 31, 41, 51, 61, 71 | intro | 0 to 15 % | gentle board with exactly the new rule guaranteed present         |
-| x2 to x6        | medium  | 10 to 35 % | unlocked rules at low density                                         |
-| x7 to x9        | hard    | 25 to 55 % | fuller boards, window 2                                               |
+| Levels                 | Beat   | Band       | Notes                                                     |
+| ---------------------- | ------ | ---------- | --------------------------------------------------------- |
+| 1 to 9, 12             | teach  | 0 to 12 %  | 3x3 up to 5x4, three then four colours, no rules          |
+| 10                     | wall   | 30 to 60 % | first wall, softer than the later ones                    |
+| 11, 81, 91             | relief | 0 to 15 %  | smaller board, one colour fewer                           |
+| 13 to 19               | ramp   | rising     | 5x4 to 5x5, window closes from 3 to 2 plates              |
+| every x0 (20+)         | wall   | 45 to 75 % | 6x6, one extra colour, window 1, belt 7                   |
+| 21, 31, 41, 51, 61, 71 | intro  | 0 to 15 %  | gentle board with exactly the new rule guaranteed present |
+| x2 to x6               | medium | 10 to 35 % | unlocked rules at low density                             |
+| x7 to x9               | hard   | 25 to 55 % | fuller boards, window 2                                   |
 
 ## Authoring tool
 

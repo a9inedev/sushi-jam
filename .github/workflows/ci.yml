@@ -28,6 +28,15 @@ jobs:
       - run: npm run lint
       - run: npm run typecheck
       - run: npm test
+      - run: npm run curve
+      - uses: actions/upload-artifact@v4
+        with:
+          name: curve-report
+          path: |
+            tools/out/curve-report.json
+            tools/out/curve.md
+            tools/out/curve.svg
+            tools/out/curve.png
       - run: npm run build
       - uses: actions/upload-pages-artifact@v5
         with:
