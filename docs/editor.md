@@ -27,11 +27,11 @@
 - **cells**: one string per row, tokens separated by spaces, `.` for an empty cell. Token: colour index, direction (`^ > v <`), appetite, then flags: `V` VIP, `L<colour>` chopstick lock on that colour, `I<ice>` frozen with that many taps. Example `4<4L1`: eggplant, facing left, appetite 4, locked until a tuna diner has been served.
 - **kitchen**: plate tokens in service order: colour index plus flags `V` vip, `D` double-decker, `W` wasabi timer, `C` covered. Leave it empty to have the engine derive it from the solution order with `seed`.
 - **band**: the fail-rate band the level must land in; **diff**: the measured rate (200 runs of the noisy solver). CI recomputes it.
-- Anything not given (`seats`, `beltCap`, `visibleNext`, `speed`) falls back to the schedule for that level number.
+- Anything not given (`seats`, `beltCap`, `visibleNext`, `speed`) comes from the row for that level in `src/data/curve.json` (docs/curve.md). The authoring tool only writes these when they differ from the curve, so retuning the curve retunes authored levels too.
 
 ## Beat sheet
 
-`beatFor(n)` in `src/engine/author.ts` is the design table: grid size, palette, fill, appetite range, kitchen window, belt capacity, mechanic densities and the band, per level. The rhythm:
+`beatFor(n)` in `src/engine/author.ts` takes grid size, palette, fill, appetite range, kitchen window, belt capacity, seats and the band from `src/data/curve.json` and adds the beat kind, mechanic densities and the intro rule. The rhythm as shipped:
 
 | Levels                 | Beat   | Band       | Notes                                                     |
 | ---------------------- | ------ | ---------- | --------------------------------------------------------- |
