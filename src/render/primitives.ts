@@ -1,4 +1,5 @@
 import { GOLD, H, W, type GlyphType } from '../data/constants';
+import { isRTL } from '../i18n';
 import { ctx } from './canvas';
 
 export const FONT = '"Baloo 2","Trebuchet MS",sans-serif';
@@ -29,6 +30,7 @@ export function txt(
   base?: CanvasTextBaseline
 ): void {
   ctx.font = `${weight || 700} ${size}px ${FONT}`;
+  ctx.direction = isRTL() ? 'rtl' : 'ltr';
   ctx.fillStyle = color || '#000';
   ctx.textAlign = align || 'left';
   ctx.textBaseline = base || 'alphabetic';

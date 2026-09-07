@@ -6,12 +6,13 @@
      v3  sushijam.save { v: 3, savedAt, sum, data: SaveState }  (checksummed envelope, atomic writes, backup copy)
      v4  same envelope, data gains reduceMotion
      v5  data gains volMusic, volSfx, volUi
+     v6  data gains tutorial, colorblind, leftHanded, lang
 */
 
 import { hashStr } from '../engine/rng';
 import type { MechKind, StatRecord } from '../engine/types';
 
-export const SAVE_VERSION = 5;
+export const SAVE_VERSION = 6;
 
 export interface Inventory {
   vip: number;
@@ -46,6 +47,12 @@ export interface SaveState {
   volMusic: number;
   volSfx: number;
   volUi: number;
+  /** v6: highest level whose guided tutorial is complete (0..3), accessibility and locale preferences. */
+  tutorial: number;
+  colorblind: boolean;
+  leftHanded: boolean;
+  /** Locale code, or empty for automatic. */
+  lang: string;
 }
 
 export function defaultSave(): SaveState {
@@ -73,6 +80,10 @@ export function defaultSave(): SaveState {
     volMusic: 0.6,
     volSfx: 1,
     volUi: 0.8,
+    tutorial: 0,
+    colorblind: false,
+    leftHanded: false,
+    lang: '',
   };
 }
 
@@ -154,12 +165,24 @@ export function migrateV4toV5(v4: Blob): Blob {
   return { ...v4, volMusic: vol('volMusic', 0.6), volSfx: vol('volSfx', 1), volUi: vol('volUi', 0.8) };
 }
 
+/** v6 adds tutorial progress, colour patterns, left-handed layout and language. */
+export function migrateV5toV6(v5: Blob): Blob {
+  return {
+    ...v5,
+    tutorial: typeof v5.tutorial === 'number' ? v5.tutorial : 0,
+    colorblind: v5.colorblind === true,
+    leftHanded: v5.leftHanded === true,
+    lang: typeof v5.lang === 'string' ? v5.lang : '',
+  };
+}
+
 /** Keyed by the version the migration starts from. */
 export const MIGRATIONS: Record<number, Migration> = {
   1: migrateV1toV2,
   2: migrateV2toV3,
   3: migrateV3toV4,
   4: migrateV4toV5,
+  5: migrateV5toV6,
 };
 
 /** Which schema a parsed blob belongs to, or null if it is not a save at all. */
@@ -219,6 +242,10 @@ export function normalize(x: unknown): SaveState {
     volMusic: unit('volMusic', d.volMusic),
     volSfx: unit('volSfx', d.volSfx),
     volUi: unit('volUi', d.volUi),
+    tutorial: int('tutorial', 0, d.tutorial),
+    colorblind: bool('colorblind', d.colorblind),
+    leftHanded: bool('leftHanded', d.leftHanded),
+    lang: str('lang', d.lang),
   };
 }
 

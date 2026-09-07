@@ -125,6 +125,53 @@ await step('backgrounding suspends audio and returning resumes it without errors
   const resyncs = back.events.filter((e) => e === 'music:resync').length;
   return 'hidden: ' + hidden.state + ', back: ' + back.state + ', loop resyncs: ' + resyncs;
 });
+await step('naive player follows the tutorial through levels 1 to 3', async () => {
+  await sj('window.__SJ.closeScreen()'); // the background step left the game paused, as it should
+  const start = await sj('window.__SJ.S.tutorial');
+  if (start !== 0) throw new Error('fresh save should start the tutorial at 0, got ' + start);
+  for (let lvl = 1; lvl <= 3; lvl++) {
+    const t0 = Date.now();
+    let guidedTaps = 0,
+      infoTaps = 0;
+    while (Date.now() - t0 < 120000) {
+      const st = await status();
+      if (st === 'win') break;
+      if (st === 'fail') throw new Error('level ' + lvl + ' failed while following the tutorial');
+      if (st === 'intro') await sj('window.__SJ.skipIntro()');
+      else if (st === 'mech') await sj('window.__SJ.mechCard()');
+      else if (st === 'play') {
+        const tg = await sj('window.__SJ.tutorial.target()');
+        if (tg && tg.guided) {
+          await tapCanvas(tg.x, tg.y);
+          guidedTaps++;
+        } else if (tg && tg.key !== 'tutorial.seatAll') {
+          await tapCanvas(240, 300);
+          infoTaps++;
+        } else if (tg) {
+          await tapCanvas(tg.x, tg.y); // free play: follow the hint hand
+        } else await sj('window.__SJ.auto()');
+      }
+      await sleep(120);
+    }
+    if ((await status()) !== 'win') throw new Error('level ' + lvl + ' not won within 2 minutes');
+    if (lvl === 1) await page.screenshot({ path: path.join(OUT, 'smoke-tutorial-win1.png') });
+    const done = await sj('window.__SJ.S.tutorial');
+    if (done < lvl) throw new Error('tutorial for level ' + lvl + ' not marked complete (' + done + ')');
+    if (lvl < 3) {
+      await tapCanvas(240, 502); // Next level
+      await sleep(400);
+      // Screenshot the guided first step of level 2 for the docs.
+      if (lvl === 1) {
+        await sj('window.__SJ.skipIntro()');
+        await sleep(500);
+        await page.screenshot({ path: path.join(OUT, 'smoke-tutorial-l2.png') });
+      }
+    }
+    void guidedTaps;
+    void infoTaps;
+  }
+  return 'levels 1 to 3 won, tutorial complete';
+});
 await step('level 1 autoplays to a win', async () => {
   await sj('window.__SJ.jump(1)');
   const ms = await autoplayUntil('win', 90000);
@@ -150,7 +197,7 @@ await step('force fail and retry', async () => {
   if (st !== 'fail' && st !== 'failing') throw new Error('expected fail, got ' + st);
   await sleep(700);
   await page.screenshot({ path: path.join(OUT, 'smoke-fail.png') });
-  await tapCanvas(240, 614); // Retry level
+  await tapCanvas(240, 626); // Retry level
   await sleep(200);
   const st2 = await status();
   if (st2 !== 'intro' && st2 !== 'play') throw new Error('expected intro/play after retry, got ' + st2);
@@ -213,28 +260,28 @@ await step('settings screen toggles haptics and sound', async () => {
   await sleep(150);
   await page.screenshot({ path: path.join(OUT, 'smoke-settings.png') });
   const h0 = await sj('window.__SJ.S.haptics');
-  await tapCanvas(240, 416); // haptics row
+  await tapCanvas(240, 440); // haptics row
   await sleep(120);
   const h1 = await sj('window.__SJ.S.haptics');
   if (h1 === h0) throw new Error('haptics toggle did not flip');
-  await tapCanvas(240, 416);
+  await tapCanvas(240, 440);
   await sleep(120);
   if ((await sj('window.__SJ.S.haptics')) !== h0) throw new Error('haptics toggle did not flip back');
   const s0 = await sj('window.__SJ.S.sound');
-  await tapCanvas(240, 218); // sound row
+  await tapCanvas(240, 254); // sound row
   await sleep(120);
   if ((await sj('window.__SJ.S.sound')) === s0) throw new Error('sound toggle did not flip');
-  await tapCanvas(240, 218);
+  await tapCanvas(240, 254);
   await sleep(120);
   const rm0 = await sj('window.__SJ.S.reduceMotion');
-  await tapCanvas(240, 482); // reduce motion row
+  await tapCanvas(240, 502); // reduce motion row
   await sleep(120);
   if ((await sj('window.__SJ.S.reduceMotion')) === rm0) throw new Error('reduce motion toggle did not flip');
-  await tapCanvas(240, 482);
+  await tapCanvas(240, 502);
   await sleep(120);
   if ((await sj('window.__SJ.S.reduceMotion')) !== rm0) throw new Error('reduce motion toggle did not flip back');
   // Sliders: a press sets the value, a drag follows the pointer.
-  await tapCanvas(186 + 170 * 0.25, 270); // music slider at 25 percent
+  await tapCanvas(186 + 170 * 0.25, 302); // music slider at 25 percent
   await sleep(120);
   const vm = await sj('window.__SJ.S.volMusic');
   if (Math.abs(vm - 0.25) > 0.06) throw new Error('music slider press gave ' + vm);
@@ -244,16 +291,53 @@ await step('settings screen toggles haptics and sound', async () => {
   });
   const gx = (x) => box.x + (x / 480) * box.w,
     gy = (y) => box.y + (y / 900) * box.h;
-  await page.mouse.move(gx(200), gy(314));
+  await page.mouse.move(gx(200), gy(344));
   await page.mouse.down();
-  await page.mouse.move(gx(280), gy(314), { steps: 6 });
-  await page.mouse.move(gx(356), gy(314), { steps: 6 });
+  await page.mouse.move(gx(280), gy(344), { steps: 6 });
+  await page.mouse.move(gx(356), gy(344), { steps: 6 });
   await page.mouse.up();
   await sleep(120);
   const vs = await sj('window.__SJ.S.volSfx');
   if (vs < 0.95) throw new Error('sfx slider drag to the end gave ' + vs);
   await sj('window.__SJ.S.volMusic = 0.6; window.__SJ.S.volSfx = 1; window.__SJ.saveApi.save(true);');
-  await tapCanvas(240, 745); // Done
+  // Colour patterns and left-handed layout toggles.
+  await tapCanvas(240, 564);
+  await sleep(120);
+  if ((await sj('window.__SJ.S.colorblind')) !== true) throw new Error('colourblind toggle did not turn on');
+  await page.screenshot({ path: path.join(OUT, 'smoke-settings-game.png') });
+  await tapCanvas(240, 626);
+  await sleep(120);
+  if ((await sj('window.__SJ.S.leftHanded')) !== true) throw new Error('left-handed toggle did not turn on');
+  await tapCanvas(240, 771); // Done
+  await sleep(200);
+  await page.screenshot({ path: path.join(OUT, 'smoke-colorblind-lefthand.png') });
+  await tapCanvas(480 - 238, 38); // gear is mirrored to the left in left-handed layout
+  await sleep(150);
+  if ((await screenType()) !== 'settings') throw new Error('mirrored gear button did not open settings');
+  await tapCanvas(240, 626);
+  await tapCanvas(240, 564);
+  await sleep(120);
+  // Language row cycles from Automatic to English and on; set Arabic through the dev API for the RTL check.
+  const lang0 = await sj('window.__SJ.S.lang');
+  await tapCanvas(240, 686);
+  await sleep(120);
+  const lang1 = await sj('window.__SJ.S.lang');
+  if (lang1 === lang0) throw new Error('language row did not cycle');
+  await sj("window.__SJ.i18n.set('ar')");
+  await sleep(200);
+  const ar = await sj(
+    "(() => ({ dir: document.documentElement.dir, title: window.__SJ.i18n.t('settings.title'), loc: window.__SJ.i18n.get() }))()"
+  );
+  if (ar.dir !== 'rtl' || ar.loc !== 'ar' || !/[\u0600-\u06FF]/.test(ar.title))
+    throw new Error('RTL check failed: ' + JSON.stringify(ar));
+  await page.screenshot({ path: path.join(OUT, 'smoke-settings-ar.png') });
+  await sj("window.__SJ.i18n.set('ja')");
+  await sleep(150);
+  await page.screenshot({ path: path.join(OUT, 'smoke-settings-ja.png') });
+  await sj("window.__SJ.i18n.set('')");
+  await sleep(150);
+  if ((await sj('document.documentElement.dir')) !== 'ltr') throw new Error('dir not restored');
+  await tapCanvas(240, 771); // Done
   await sleep(120);
   if ((await screenType()) !== null) throw new Error('settings did not close');
 });
@@ -376,7 +460,7 @@ await step('save is a versioned envelope with a valid checksum', async () => {
     const e = JSON.parse(localStorage.getItem('sushijam.save'));
     return { v: e.v, hasSum: typeof e.sum === 'number', level: e.data.level, src: window.__SJ.saveApi.info().source };
   })()`);
-  if (info.v !== 5 || !info.hasSum) throw new Error('bad envelope ' + JSON.stringify(info));
+  if (info.v !== 6 || !info.hasSum) throw new Error('bad envelope ' + JSON.stringify(info));
   return `v${info.v}, loaded from ${info.src}`;
 });
 await step('legacy v2 save migrates with level, coins, decor and stats intact', async () => {
@@ -423,7 +507,9 @@ await step('settings: restore progress from backup with confirmation', async () 
   await sj("window.__SJ.setScreen({ type: 'settings', t: 0 })");
   await sleep(150);
   await page.screenshot({ path: path.join(OUT, 'smoke-settings-save.png') });
-  await tapCanvas(240, 582); // Restore progress
+  await tapCanvas(320, 207); // Account tab
+  await sleep(120);
+  await tapCanvas(240, 298); // Restore progress
   await sleep(150);
   if ((await screenType()) !== 'confirm') throw new Error('confirm dialog not shown');
   await page.screenshot({ path: path.join(OUT, 'smoke-confirm.png') });
@@ -431,7 +517,7 @@ await step('settings: restore progress from backup with confirmation', async () 
   await sleep(150);
   if ((await screenType()) !== 'settings') throw new Error('cancel did not return to settings');
   if ((await sj('window.__SJ.S.coins')) !== 1) throw new Error('cancel changed the state');
-  await tapCanvas(240, 582);
+  await tapCanvas(240, 298);
   await sleep(150);
   await tapCanvas(165, 494); // Restore
   await sleep(300);
@@ -442,7 +528,9 @@ await step('settings: restore progress from backup with confirmation', async () 
 await step('settings: reset progress wipes the save and reloads', async () => {
   await sj("window.__SJ.setScreen({ type: 'settings', t: 0 })");
   await sleep(150);
-  await tapCanvas(240, 638); // Reset progress
+  await tapCanvas(320, 207); // Account tab
+  await sleep(120);
+  await tapCanvas(240, 354); // Reset progress
   await sleep(150);
   if ((await screenType()) !== 'confirm') throw new Error('confirm dialog not shown');
   await tapCanvas(165, 494); // Reset

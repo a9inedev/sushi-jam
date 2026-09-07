@@ -5,6 +5,7 @@ import { G } from '../engine/state';
 import { save } from '../meta/save';
 import { cv } from '../render/canvas';
 import { inRect } from '../render/primitives';
+import { tutorialTap } from './tutorial';
 
 /** A tap in logical canvas coordinates. Buttons drawn this frame take priority over the board. */
 export function onTap(x: number, y: number): void {
@@ -29,6 +30,7 @@ export function onTap(x: number, y: number): void {
   }
   if (L.status !== 'play') return;
   L.stat.taps++;
+  if (tutorialTap(x, y)) return;
   if (L.armed) {
     handleArmed(x, y);
     return;

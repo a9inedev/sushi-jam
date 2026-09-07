@@ -7,6 +7,7 @@ import { sprite } from '../art/svg';
 import { COLORS, DINER_R, H, KITCHEN, W } from '../data/constants';
 import { BELT } from '../engine/belt';
 import { G, cur } from '../engine/state';
+import { t } from '../i18n';
 import { S } from '../meta/save';
 import { ctx } from './canvas';
 import { drawDiner } from './diner';
@@ -199,7 +200,7 @@ export function drawBelt(): void {
   ctx.setLineDash([]);
   ctx.restore();
   txt(
-    'BELT ' + L.belt.length + ' / ' + L.beltCap,
+    t('hud.belt', { a: L.belt.length, b: L.beltCap }),
     405,
     S.decor.includes('noren') ? 248 : 212,
     13,
@@ -212,11 +213,11 @@ export function drawBelt(): void {
     ctx.save();
     ctx.shadowColor = '#FF3FA4';
     ctx.shadowBlur = 18 + Math.sin(gt * 6) * 4;
-    txt('SUSHI JAM', 240, 268, 30, 800, '#FF6BBE', 'center', 'middle');
+    txt(t('app.brand'), 240, 268, 30, 800, '#FF6BBE', 'center', 'middle');
     ctx.shadowBlur = 0;
-    txt('SUSHI JAM', 240, 268, 30, 800, 'rgba(255,255,255,.75)', 'center', 'middle');
+    txt(t('app.brand'), 240, 268, 30, 800, 'rgba(255,255,255,.75)', 'center', 'middle');
     ctx.restore();
-  } else txt('SUSHI JAM', 240, 205, 15, 800, 'rgba(60,50,40,.28)', 'center', 'middle');
+  } else txt(t('app.brand'), 240, 205, 15, 800, 'rgba(60,50,40,.28)', 'center', 'middle');
 }
 
 export function drawPlatesOnBelt(): void {
@@ -244,7 +245,7 @@ export function drawKitchen(): void {
   ctx.fill();
   ctx.fillStyle = '#3A302A';
   ctx.fillRect(k.x, k.y + 12, k.w, 10);
-  txt('KITCHEN · NEXT UP', k.x + 12, k.y + 11, 12, 800, '#fff', 'left', 'middle');
+  txt(t('hud.kitchen'), k.x + 12, k.y + 11, 12, 800, '#fff', 'left', 'middle');
   const vis = L.kitchen.slice(0, L.visibleNext);
   vis.forEach((p, i) => drawPlate(k.x + 30 + i * 34, k.y + 46, p, 12, { showHidden: true }));
   for (let i = vis.length; i < 3 && i < L.kitchen.length; i++) {
@@ -254,7 +255,7 @@ export function drawKitchen(): void {
     ctx.fill();
     txt('?', k.x + 30 + i * 34, k.y + 47, 15, 800, '#B8ACA0', 'center', 'middle');
   }
-  txt(L.kitchen.length + ' plates left', k.x + k.w - 14, k.y + 46, 14, 800, '#FFF7E8', 'right', 'middle');
+  txt(t('hud.platesLeft', { n: L.kitchen.length }), k.x + k.w - 14, k.y + 46, 14, 800, '#FFF7E8', 'right', 'middle');
   ctx.restore();
 }
 

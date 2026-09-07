@@ -52,7 +52,10 @@ import {
 import { SPRITE_BOX } from './render/diner';
 import { drawBoosters, drawHud } from './ui/hud';
 import { bindInput } from './ui/input';
+import { applyLanguage } from './ui/modals';
 import { drawStatusOverlay } from './ui/overlays';
+import { drawTutorial, resetTutorial, tutorialStep, tutorialTarget, updateTutorial } from './ui/tutorial';
+import { locale, setLocale, t } from './i18n';
 import { bindStatsBox, drawScreen } from './ui/screens';
 
 function update(dt: number): void {
@@ -79,6 +82,7 @@ function update(dt: number): void {
       if (L.introT >= 1.4) L.status = L.newMechs.length ? 'mech' : 'play';
     }
     tweens.update(gdt);
+    updateTutorial(dt);
     if (L.status === 'play') {
       L.elapsed += dt;
       L.seatShake = Math.max(0, L.seatShake - dt);
@@ -138,6 +142,7 @@ function draw(): void {
     return;
   }
   drawStatusOverlay();
+  drawTutorial();
 }
 
 function frame(ts: number): void {
@@ -179,8 +184,8 @@ function installPWA(): void {
     c2.fill();
     const url = ic.toDataURL('image/png');
     const man = {
-      name: 'Sushi Jam',
-      short_name: 'Sushi Jam',
+      name: t('app.name'),
+      short_name: t('app.name'),
       display: 'standalone',
       orientation: 'portrait',
       background_color: '#171512',
@@ -200,7 +205,7 @@ function installPWA(): void {
       ['theme-color', '#2B2622'],
       ['apple-mobile-web-app-capable', 'yes'],
       ['apple-mobile-web-app-status-bar-style', 'black-translucent'],
-      ['apple-mobile-web-app-title', 'Sushi Jam'],
+      ['apple-mobile-web-app-title', t('app.name')],
     ]) {
       const m = document.createElement('meta');
       m.name = n;
@@ -273,6 +278,7 @@ window.addEventListener('resize', onResize);
 if (window.visualViewport) window.visualViewport.addEventListener('resize', onResize);
 setCloudProvider(cloudProviderFor(platform));
 const loaded = load();
+applyLanguage();
 initMotion();
 bindAudio();
 applyVolumes();
@@ -281,7 +287,7 @@ resize();
 installPWA();
 bindNative();
 newLevel(S.level);
-if (loaded.recovered) toast('Progress restored from a backup copy', 3.2, 0.8);
+if (loaded.recovered) toast(t('toast.recovered'), 3.2, 0.8);
 checkDaily();
 bindInput();
 bindStatsBox();
@@ -328,6 +334,16 @@ export interface DevApi {
     tweens: () => number;
     fps: () => number;
     reduce: (on: boolean) => void;
+  };
+  tutorial: {
+    step: () => string | null;
+    target: () => { x: number; y: number; guided: boolean; key: string } | null;
+    reset: () => void;
+  };
+  i18n: {
+    set: (code: string) => void;
+    get: () => string;
+    t: (key: string, vars?: Record<string, string | number>) => string;
   };
   audio: {
     state: () => string;
@@ -388,6 +404,21 @@ window.__SJ = {
       applyMotion();
       save();
     },
+  },
+  tutorial: {
+    step: tutorialStep,
+    target: tutorialTarget,
+    reset: resetTutorial,
+  },
+  i18n: {
+    set: (code) => {
+      S.lang = code;
+      save();
+      if (code) setLocale(code);
+      else applyLanguage();
+    },
+    get: locale,
+    t,
   },
   audio: {
     state: () => engine.state(),

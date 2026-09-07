@@ -2,6 +2,7 @@ import { sfx } from '../audio/audio';
 import { DECOR } from '../data/decor';
 import { PRODUCTS } from '../data/products';
 import { G, toast } from '../engine/state';
+import { t } from '../i18n';
 import { S, save } from './save';
 
 /** Demo purchase: grants the product instantly. Nothing is charged. */
@@ -12,7 +13,7 @@ export function buyProduct(id: string): void {
   G.coinPop = 1;
   save();
   sfx.cash();
-  toast(p.name + ' added. Demo purchase, nothing was charged.', 2.6);
+  toast(t('toast.purchased', { name: t('product.' + p.id + '.name') }), 2.6);
 }
 
 export function buyDecor(id: string): boolean {
@@ -22,6 +23,6 @@ export function buyDecor(id: string): boolean {
   S.decor.push(id);
   save();
   sfx.cash();
-  toast(d.name + ' installed!', 2);
+  toast(t('toast.installed', { name: t('decor.' + d.id + '.name') }), 2);
   return true;
 }

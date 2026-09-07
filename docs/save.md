@@ -6,7 +6,7 @@ Progress lives in the browser's local storage (or the WebView's, in the native a
 
 | Key                 | Content                                                  |
 | ------------------- | -------------------------------------------------------- |
-| `sushijam.save`     | Primary copy, v5 envelope                                |
+| `sushijam.save`     | Primary copy, v6 envelope                                |
 | `sushijam.save.tmp` | In-flight write; only present if a write was interrupted |
 | `sushijam.save.bak` | Last good copy; rotates on level change or every 30 s    |
 | `sushijam.v2`       | Legacy flat blob (read once, migrated, left in place)    |

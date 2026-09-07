@@ -6,8 +6,9 @@ import { reducedMotion } from '../anim/motion';
 import { particles } from '../anim/particles';
 import { tweens } from '../anim/tween';
 import { sfx } from '../audio/audio';
-import { COLORS, GRID, KITCHEN, SEAT_Y, W } from '../data/constants';
+import { COIN_POS, COLORS, GRID, KITCHEN, SEAT_Y, W } from '../data/constants';
 import { COST } from '../data/products';
+import { t } from '../i18n';
 import { S, save } from '../meta/save';
 import { haptic } from '../platform/native';
 import { BELT } from './belt';
@@ -110,11 +111,13 @@ export function newLevel(n: number): void {
   G.toasts = [];
   layoutSeats();
   if (n === 1) {
-    toast('Tap a diner with a glowing ring to seat them', 3.4, 1.5);
-    toast('Seated diners grab passing plates of their colour', 3.4, 5.2);
-    toast('Watch the kitchen: seat the colours coming next', 3.6, 9);
+    if (S.tutorial >= 1) {
+      toast(t('toast.tapRing'), 3.4, 1.5);
+      toast(t('toast.grabColour'), 3.4, 5.2);
+      toast(t('toast.watchKitchen'), 3.6, 9);
+    }
   }
-  if (n === 4) toast('Every seat taken + belt full of unwanted plates = jam', 3.6, 1.5);
+  if (n === 4) toast(t('toast.jamRule'), 3.6, 1.5);
 }
 
 export function layoutSeats(): void {
@@ -250,7 +253,7 @@ export function tryMove(d: Diner): void {
     d.shakeX = 1;
     d.shakeY = 0;
     sfx.locked();
-    toast('Locked. Serve a ' + COLORS[d.lockColor].name.toLowerCase() + ' diner first.', 1.6);
+    toast(t('toast.locked', { colour: t('colour.' + COLORS[d.lockColor].name.toLowerCase()).toLowerCase() }), 1.6);
     return;
   }
   if (pathBlocked(d)) {
@@ -261,7 +264,7 @@ export function tryMove(d: Diner): void {
   if (!seat) {
     sfx.blocked();
     L.seatShake = 0.4;
-    toast('No free seat. Wait for someone to finish.', 1.6);
+    toast(t('toast.noSeat'), 1.6);
     return;
   }
   sfx.tap();
@@ -435,7 +438,7 @@ export function pay(d: Diner): void {
   addCoins(2, d.x, d.y - 30);
   if (L.elapsed - L.lastLeave < 2.5) {
     L.combo++;
-    toast('Combo x' + (L.combo + 1) + '   +5 coins', 1.4);
+    toast(t('toast.combo', { n: L.combo + 1 }), 1.4);
     addCoins(5, d.x, d.y - 50);
   } else L.combo = 0;
   L.lastLeave = L.elapsed;
@@ -464,12 +467,19 @@ export function pay(d: Diner): void {
 
 /** Coins fly to the counter; each one credits its share on arrival, and the save happens once they all land. */
 export function addCoins(n: number, x: number, y: number): void {
-  particles.coins(n, x, y, (value) => {
-    S.coins += value;
-    G.coinPop = 1;
-    sfx.coin();
-    if (particles.countOf('coin') === 0) save();
-  });
+  const target = S.leftHanded ? W - COIN_POS.x : COIN_POS.x;
+  particles.coins(
+    n,
+    x,
+    y,
+    (value) => {
+      S.coins += value;
+      G.coinPop = 1;
+      sfx.coin();
+      if (particles.countOf('coin') === 0) save();
+    },
+    target
+  );
 }
 
 export function checkDeadlock(dt: number): void {
@@ -630,7 +640,7 @@ export function adRescue(): void {
   showAd('reward', () => {
     rescueCore(false);
     sfx.boost();
-    toast('Free seat! Back to work.', 2);
+    toast(t('toast.freeSeat'), 2);
   });
 }
 
@@ -640,7 +650,7 @@ export function paidRescue(): void {
   G.coinPop = 1;
   save();
   sfx.boost();
-  toast("Chef's Rescue! +200 coins (demo purchase)", 2.4);
+  toast(t('toast.rescue'), 2.4);
 }
 
 export function useBooster(kind: BoosterKind): void {
@@ -654,11 +664,11 @@ export function useBooster(kind: BoosterKind): void {
     cost = COST[kind];
   if (kind === 'vip') {
     if (L.vipUsed) {
-      toast('VIP seat already open this level.', 1.5);
+      toast(t('toast.vipAlready'), 1.5);
       return;
     }
     if (!haveInv && S.coins < cost) {
-      toast('Not enough coins for a VIP seat.', 1.5);
+      toast(t('toast.noCoinsVip'), 1.5);
       sfx.blocked();
       return;
     }
@@ -670,11 +680,11 @@ export function useBooster(kind: BoosterKind): void {
     layoutSeats();
     sfx.boost();
     L.stat.boosters++;
-    toast('VIP seat opened!', 1.5);
+    toast(t('toast.vipOpened'), 1.5);
     return;
   }
   if (!haveInv && S.coins < cost) {
-    toast('Not enough coins.', 1.5);
+    toast(t('toast.noCoins'), 1.5);
     sfx.blocked();
     return;
   }
@@ -698,12 +708,12 @@ export function handleArmed(x: number, y: number): void {
       (s) => s.diner && s.diner.state === 'seated' && Math.hypot(s.diner.x - x, s.diner.y - y) < 34
     );
     if (!s) {
-      toast('Cancelled.', 1);
+      toast(t('toast.cancelled'), 1);
       return;
     }
     spendBooster('takeout');
     sfx.boost();
-    toast('Takeout! Seat freed.', 1.5);
+    toast(t('toast.takeout'), 1.5);
     takeout(s.diner as Diner);
   } else if (kind === 'sendback') {
     let best: Plate | null = null,
@@ -718,14 +728,14 @@ export function handleArmed(x: number, y: number): void {
       }
     }
     if (!best) {
-      toast('Cancelled.', 1);
+      toast(t('toast.cancelled'), 1);
       return;
     }
     spendBooster('sendback');
     sfx.boost();
     L.belt.splice(L.belt.indexOf(best), 1);
     L.kitchen.push(toKitchen(best));
-    toast('Plate sent back to the kitchen.', 1.5);
+    toast(t('toast.sentBack'), 1.5);
   }
 }
 

@@ -6,6 +6,9 @@ import { isLocked } from '../engine/rules';
 import { G, cur } from '../engine/state';
 import type { Diner, ExprType } from '../engine/types';
 import { easeBack } from '../engine/util';
+import { t } from '../i18n';
+import { S } from '../meta/save';
+import { fillPattern } from './patterns';
 import { ctx } from './canvas';
 import { drawDinerProcedural } from './diner-fallback';
 import { drawPlate } from './plate';
@@ -88,6 +91,7 @@ export function drawDiner(d: Diner, r: number, mode: DinerMode): void {
     ctx.translate(0, -r);
   }
   if (!drawCharacter(d.color, state, d.vip, r, dimmed)) drawDinerProcedural(d.color, r, expr, blink, dimmed);
+  if (S.colorblind) fillPattern(ctx, d.color, () => ctx.arc(0, 0, r * 0.92, 0, 7));
   ctx.restore();
   // Colour badge with the shape glyph: the accessibility cue, always drawn.
   ctx.fillStyle = '#FFFDF7';
@@ -192,7 +196,7 @@ export function drawDiner(d: Diner, r: number, mode: DinerMode): void {
     rrect(-30, -12, 60, 24, 4);
     ctx.fill();
     ctx.stroke();
-    txt('PAID', 0, 1, 17, 800, '#E5484D', 'center', 'middle');
+    txt(t('hud.paid'), 0, 1, 17, 800, '#E5484D', 'center', 'middle');
     ctx.restore();
   }
 }

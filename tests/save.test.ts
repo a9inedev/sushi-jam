@@ -19,6 +19,7 @@ import {
   migrateV2toV3,
   migrateV3toV4,
   migrateV4toV5,
+  migrateV5toV6,
   normalize,
   parseEnvelope,
 } from '../src/meta/save-schema';
@@ -168,6 +169,28 @@ describe('migrate (chain)', () => {
     expect(m?.state.volUi).toBe(0.8);
     expect(migrateV4toV5({ volMusic: 0.2 }).volMusic).toBe(0.2);
     expect(normalize({ volMusic: 7, volSfx: -1, volUi: 'loud' })).toMatchObject({ volMusic: 1, volSfx: 0, volUi: 0.8 });
+  });
+
+  it('v5 envelope gains tutorial, colourblind, left-handed and language defaults', () => {
+    const data = defaultSave() as unknown as Record<string, unknown>;
+    delete data.tutorial;
+    delete data.colorblind;
+    delete data.leftHanded;
+    delete data.lang;
+    data.level = 40;
+    const m = migrate({ v: 5, savedAt: 1, sum: checksum(JSON.stringify(data)), data });
+    expect(m?.from).toBe(5);
+    expect(m?.state.level).toBe(40);
+    expect(m?.state.tutorial).toBe(0);
+    expect(m?.state.colorblind).toBe(false);
+    expect(m?.state.leftHanded).toBe(false);
+    expect(m?.state.lang).toBe('');
+    expect(migrateV5toV6({ tutorial: 2, lang: 'de', colorblind: true })).toMatchObject({
+      tutorial: 2,
+      lang: 'de',
+      colorblind: true,
+      leftHanded: false,
+    });
   });
 
   it('a save from a newer build is read best-effort', () => {

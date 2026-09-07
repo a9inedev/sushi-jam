@@ -3,7 +3,9 @@ import { foodSvg } from '../art/plates';
 import { sprite } from '../art/svg';
 import { COLORS, GOLD } from '../data/constants';
 import type { PlateLike } from '../engine/types';
+import { S } from '../meta/save';
 import { ctx } from './canvas';
+import { fillPattern } from './patterns';
 import { glyph, txt } from './primitives';
 
 export interface PlateDrawOpts {
@@ -40,6 +42,11 @@ export function drawPlate(x: number, y: number, p: PlateLike, r: number, opts: P
   ctx.save();
   ctx.translate(x, y);
   if (drawPlateBase(p, r)) {
+    if (S.colorblind)
+      fillPattern(ctx, p.color, () => {
+        ctx.arc(0, 0, r * 0.98, 0, 7);
+        ctx.arc(0, 0, r * 0.7, 0, 7, true);
+      });
     drawPlateTop(p, r, opts);
     ctx.restore();
     return;

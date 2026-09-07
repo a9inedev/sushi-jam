@@ -11,6 +11,7 @@ import { rng } from '../engine/rng';
 import { addCoins, newLevel } from '../engine/rules';
 import { cur, G, runPending, type MapTab, type Screen } from '../engine/state';
 import { todayKey, weekKey } from '../engine/util';
+import { t } from '../i18n';
 import { buyDecor, buyProduct } from '../meta/economy';
 import { clearSave, S, save } from '../meta/save';
 import { weeklyBoard } from '../meta/weekly';
@@ -19,6 +20,7 @@ import { drawPlate } from '../render/plate';
 import { card, coinIcon, dim, rrect, txt } from '../render/primitives';
 import { button, closeBtn } from './buttons';
 import { drawConfirm, drawPause, drawSettings } from './modals';
+import { resetTutorial } from './tutorial';
 
 export function showStats(): void {
   const box = document.getElementById('statsBox') as HTMLElement;
@@ -48,26 +50,18 @@ function drawAd(sc: Screen): void {
   ctx.fillStyle = hue;
   rrect(40, 200, 400, 420, 24);
   ctx.fill();
-  txt('DEMO AD', 240, 240, 14, 800, 'rgba(255,255,255,.7)', 'center', 'middle');
-  txt(sc.kind === 'inter' ? 'Ad break' : 'Watch to earn', 240, 285, 34, 800, '#fff', 'center', 'middle');
+  txt(t('ad.demo'), 240, 240, 14, 800, 'rgba(255,255,255,.7)', 'center', 'middle');
+  txt(sc.kind === 'inter' ? t('ad.break') : t('ad.watch'), 240, 285, 34, 800, '#fff', 'center', 'middle');
   const bob = Math.abs(Math.sin(sc.t * 4)) * 26;
   drawPlate(240, 400 - bob, { color: Math.floor(R() * 7), vip: seed > 0.5 }, 48);
-  txt('Sushi Jam Deluxe', 240, 490, 26, 800, '#fff', 'center', 'middle');
-  txt(
-    'This stands in for a real ad network placement.',
-    240,
-    526,
-    14,
-    700,
-    'rgba(255,255,255,.85)',
-    'center',
-    'middle'
-  );
-  txt('Nothing is loaded or tracked.', 240, 548, 14, 700, 'rgba(255,255,255,.85)', 'center', 'middle');
+  txt(t('ad.product'), 240, 490, 26, 800, '#fff', 'center', 'middle');
+  txt(t('ad.placeholder1'), 240, 526, 14, 700, 'rgba(255,255,255,.85)', 'center', 'middle');
+  txt(t('ad.placeholder2'), 240, 548, 14, 700, 'rgba(255,255,255,.85)', 'center', 'middle');
   const left = Math.max(0, (sc.dur || 0) - sc.t);
   if (left > 0) {
+    const n = Math.ceil(left);
     txt(
-      sc.kind === 'inter' ? 'Skip in ' + Math.ceil(left) : 'Reward in ' + Math.ceil(left),
+      sc.kind === 'inter' ? t('ad.skipIn', { n }) : t('ad.rewardIn', { n }),
       240,
       660,
       18,
@@ -77,7 +71,7 @@ function drawAd(sc: Screen): void {
       'middle'
     );
   } else
-    button(120, 640, 240, 48, sc.kind === 'inter' ? 'Continue' : 'Claim reward', null, {
+    button(120, 640, 240, 48, sc.kind === 'inter' ? t('ad.continue') : t('ad.claim'), null, {
       primary: true,
       onTap: () => {
         const f = sc.onDone;
@@ -86,7 +80,7 @@ function drawAd(sc: Screen): void {
       },
     });
   if (sc.kind === 'inter')
-    button(140, 710, 200, 36, 'Remove ads', null, {
+    button(140, 710, 200, 36, t('ad.remove'), null, {
       tone: '#3B3F4A',
       size: 14,
       onTap: () => {
@@ -97,7 +91,7 @@ function drawAd(sc: Screen): void {
 }
 
 function drawShop(sc: Screen): void {
-  card(30, 80, 420, 740, '#E5484D', 'Shop');
+  card(30, 80, 420, 740, '#E5484D', t('shop.title'));
   closeBtn(() => {
     sfx.ui();
     if (sc.back) G.screen = sc.back;
@@ -106,20 +100,11 @@ function drawShop(sc: Screen): void {
   ctx.fillStyle = '#FFF0D6';
   rrect(50, 154, 380, 40, 10);
   ctx.fill();
-  txt(
-    'Demo store. Buttons grant items instantly. Nothing is charged.',
-    240,
-    174,
-    13,
-    800,
-    '#8A5A00',
-    'center',
-    'middle'
-  );
+  txt(t('shop.demo'), 240, 174, 13, 800, '#8A5A00', 'center', 'middle');
   coinIcon(70, 222, 11);
-  txt(S.coins.toLocaleString() + ' coins', 88, 223, 18, 800, '#2A2320', 'left', 'middle');
+  txt(t('shop.coins', { n: S.coins.toLocaleString() }), 88, 223, 18, 800, '#2A2320', 'left', 'middle');
   txt(
-    'Boosters: VIP ' + S.inv.vip + ' · Takeout ' + S.inv.takeout + ' · Send Back ' + S.inv.sendback,
+    t('shop.boosters', { v: S.inv.vip, t: S.inv.takeout, s: S.inv.sendback }),
     430,
     223,
     13,
@@ -137,35 +122,26 @@ function drawShop(sc: Screen): void {
     ctx.lineWidth = 1;
     rrect(50, y, 380, 84, 12);
     ctx.stroke();
-    txt(p.name, 66, y + 26, 20, 800, '#2A2320', 'left', 'middle');
-    txt(p.desc, 66, y + 54, 13, 700, '#5A4E45', 'left', 'middle');
+    txt(t('product.' + p.id + '.name'), 66, y + 26, 20, 800, '#2A2320', 'left', 'middle');
+    txt(t('product.' + p.id + '.desc'), 66, y + 54, 13, 700, '#5A4E45', 'left', 'middle');
     const owned = p.id === 'noads' && S.noAds;
-    button(318, y + 20, 96, 44, owned ? 'Owned' : p.price, owned ? null : 'buy · demo', {
+    button(318, y + 20, 96, 44, owned ? t('shop.owned') : p.price, owned ? null : t('shop.buy'), {
       primary: !owned,
       disabled: owned,
       onTap: () => buyProduct(p.id),
     });
   });
-  txt(
-    'Real builds wire these to StoreKit / Play Billing and an ad SDK.',
-    240,
-    690,
-    12,
-    700,
-    '#8A8378',
-    'center',
-    'middle'
-  );
+  txt(t('shop.footer'), 240, 690, 12, 700, '#8A8378', 'center', 'middle');
 }
 
 function drawOffer(): void {
-  card(60, 220, 360, 400, '#8E5BE0', 'Starter Pack');
-  txt('One-time offer', 240, 306, 14, 800, '#8E5BE0', 'center', 'middle');
+  card(60, 220, 360, 400, '#8E5BE0', t('offer.title'));
+  txt(t('offer.once'), 240, 306, 14, 800, '#8E5BE0', 'center', 'middle');
   coinIcon(150, 350, 22);
-  txt('600 coins', 182, 351, 24, 800, '#2A2320', 'left', 'middle');
-  txt('+ 1 VIP Seat · 1 Takeout · 1 Send Back', 240, 396, 15, 700, '#5A4E45', 'center', 'middle');
-  txt('Demo purchase. Nothing is charged.', 240, 424, 12, 700, '#8A8378', 'center', 'middle');
-  button(90, 466, 300, 54, 'Buy for $1.99', 'demo', {
+  txt(t('offer.coins'), 182, 351, 24, 800, '#2A2320', 'left', 'middle');
+  txt(t('offer.items'), 240, 396, 15, 700, '#5A4E45', 'center', 'middle');
+  txt(t('offer.demo'), 240, 424, 12, 700, '#8A8378', 'center', 'middle');
+  button(90, 466, 300, 54, t('offer.buy'), t('offer.demoTag'), {
     primary: true,
     onTap: () => {
       buyProduct('starter');
@@ -175,7 +151,7 @@ function drawOffer(): void {
       runPending();
     },
   });
-  button(90, 532, 300, 44, 'No thanks', null, {
+  button(90, 532, 300, 44, t('offer.no'), null, {
     tone: '#3B3F4A',
     onTap: () => {
       sfx.ui();
@@ -189,12 +165,12 @@ function drawOffer(): void {
 
 function drawDaily(sc: Screen): void {
   const reward = sc.reward || 0;
-  card(60, 260, 360, 320, '#2FB36B', 'Daily bonus');
-  txt('Day ' + S.dailyStreak + ' in a row', 240, 340, 18, 800, '#2A2320', 'center', 'middle');
+  card(60, 260, 360, 320, '#2FB36B', t('daily.title'));
+  txt(t('daily.day', { n: S.dailyStreak }), 240, 340, 18, 800, '#2A2320', 'center', 'middle');
   coinIcon(196, 400, 22);
   txt('+' + reward, 226, 401, 36, 800, '#2A2320', 'left', 'middle');
-  txt('Come back tomorrow for a bigger bonus.', 240, 452, 14, 700, '#5A4E45', 'center', 'middle');
-  button(120, 500, 240, 52, 'Collect', null, {
+  txt(t('daily.tomorrow'), 240, 452, 14, 700, '#5A4E45', 'center', 'middle');
+  button(120, 500, 240, 52, t('daily.collect'), null, {
     primary: true,
     onTap: () => {
       S.lastDaily = todayKey();
@@ -208,7 +184,7 @@ function drawDaily(sc: Screen): void {
 
 function drawDev(): void {
   const L = cur();
-  card(30, 80, 420, 760, '#3B3F4A', 'Dev panel');
+  card(30, 80, 420, 760, '#3B3F4A', t('dev.title'));
   closeBtn();
   const lv = L.lv;
   let y = 168;
@@ -216,34 +192,29 @@ function drawDev(): void {
     txt(s, 50, y, 14, 700, col || '#2A2320', 'left', 'middle');
     y += 22;
   };
-  line('Level ' + L.n + ' · schedule ' + lv.P.tier + ' · label ' + lv.tierLabel + (lv.authored ? ' · authored' : ''));
-  line('Measured fail rate (noisy solver, 40 runs): ' + Math.round(lv.diff * 100) + '%', '#E5484D');
   line(
-    'Grid ' +
-      lv.rows +
-      '×' +
-      lv.cols +
-      ' · ' +
-      lv.diners.length +
-      ' diners · ' +
-      lv.kitchen.length +
-      ' plates · ' +
-      lv.P.colors +
-      ' colours'
+    t('dev.levelLine', { n: L.n, sched: lv.P.tier, label: lv.tierLabel }) + (lv.authored ? t('dev.authoredTag') : '')
+  );
+  line(t('dev.failRate', { pct: Math.round(lv.diff * 100) }), '#E5484D');
+  line(
+    t('dev.gridLine', {
+      rows: lv.rows,
+      cols: lv.cols,
+      diners: lv.diners.length,
+      plates: lv.kitchen.length,
+      colours: lv.P.colors,
+    })
   );
   line(
-    'Seats ' +
-      L.seatCount +
-      ' · belt cap ' +
-      L.beltCap +
-      ' · next visible ' +
-      L.visibleNext +
-      ' · loop ' +
-      (1 / L.speed).toFixed(1) +
-      's'
+    t('dev.seatsLine', {
+      seats: L.seatCount,
+      cap: L.beltCap,
+      vis: L.visibleNext,
+      loop: (1 / L.speed).toFixed(1),
+    })
   );
-  line('Mechanics here: ' + (lv.mechs.length ? lv.mechs.join(', ') : 'none'));
-  line('Stats logged: ' + S.stats.length + ' · this week ' + S.weekly + ' cleared · streak ' + S.streak, '#5A4E45');
+  line(t('dev.mechs', { list: lv.mechs.length ? lv.mechs.join(', ') : t('dev.none') }));
+  line(t('dev.stats', { n: S.stats.length, w: S.weekly, s: S.streak, fps: Math.round(G.fps) }), '#5A4E45');
   const bx = 50,
     bw = 184;
   const go = (n: number) => () => {
@@ -251,19 +222,27 @@ function drawDev(): void {
     G.screen = null;
     newLevel(n);
   };
-  button(bx, 310, bw, 44, 'Skip +1 level', null, { tone: '#148F82', onTap: go(L.n + 1) });
-  button(bx + 196, 310, bw, 44, 'Skip +10 levels', null, { tone: '#148F82', onTap: go(L.n + 10) });
-  button(bx, 364, bw, 44, 'Back 10 levels', null, { tone: '#148F82', onTap: go(Math.max(1, L.n - 10)) });
-  button(bx + 196, 364, bw, 44, 'All mechanics: ' + (S.devAllMech ? 'ON' : 'off'), 'from level 1', {
-    tone: S.devAllMech ? '#E25E12' : '#6B6560',
-    onTap: () => {
-      sfx.ui();
-      S.devAllMech = !S.devAllMech;
-      save();
-      newLevel(L.n);
-    },
-  });
-  button(bx, 418, bw, 44, 'Demo ads: ' + (S.demoAds ? 'ON' : 'off'), null, {
+  button(bx, 310, bw, 44, t('dev.skip1'), null, { tone: '#148F82', onTap: go(L.n + 1) });
+  button(bx + 196, 310, bw, 44, t('dev.skip10'), null, { tone: '#148F82', onTap: go(L.n + 10) });
+  button(bx, 364, bw, 44, t('dev.back10'), null, { tone: '#148F82', onTap: go(Math.max(1, L.n - 10)) });
+  button(
+    bx + 196,
+    364,
+    bw,
+    44,
+    t('dev.allMech', { state: S.devAllMech ? t('dev.on') : t('dev.off') }),
+    t('dev.fromLevel1'),
+    {
+      tone: S.devAllMech ? '#E25E12' : '#6B6560',
+      onTap: () => {
+        sfx.ui();
+        S.devAllMech = !S.devAllMech;
+        save();
+        newLevel(L.n);
+      },
+    }
+  );
+  button(bx, 418, bw, 44, t('dev.demoAds', { state: S.demoAds ? t('dev.on') : t('dev.off') }), null, {
     tone: S.demoAds ? '#E25E12' : '#6B6560',
     onTap: () => {
       sfx.ui();
@@ -271,7 +250,7 @@ function drawDev(): void {
       save();
     },
   });
-  button(bx + 196, 418, bw, 44, 'Give 1,000 coins', null, {
+  button(bx + 196, 418, bw, 44, t('dev.giveCoins'), null, {
     tone: '#6A4C93',
     onTap: () => {
       S.coins += 1000;
@@ -280,14 +259,14 @@ function drawDev(): void {
       sfx.cash();
     },
   });
-  button(bx, 472, bw, 44, 'Export stats JSON', null, {
+  button(bx, 472, bw, 44, t('dev.export'), null, {
     tone: '#3E7BFA',
     onTap: () => {
       sfx.ui();
       showStats();
     },
   });
-  button(bx + 196, 472, bw, 44, 'Clear stats', null, {
+  button(bx + 196, 472, bw, 44, t('dev.clearStats'), null, {
     tone: '#6B6560',
     onTap: () => {
       sfx.ui();
@@ -295,7 +274,16 @@ function drawDev(): void {
       save();
     },
   });
-  button(bx, 526, bw * 2 + 12, 44, 'Reset all progress', null, {
+  button(bx, 526, bw, 44, t('dev.replayTutorial'), null, {
+    tone: '#6A4C93',
+    onTap: () => {
+      sfx.ui();
+      resetTutorial();
+      G.screen = null;
+      newLevel(1);
+    },
+  });
+  button(bx + 196, 526, bw, 44, t('dev.reset'), null, {
     tone: '#E5484D',
     onTap: () => {
       sfx.ui();
@@ -303,28 +291,19 @@ function drawDev(): void {
       location.reload();
     },
   });
-  txt('Open this panel by tapping the level label five times.', 240, 600, 12, 700, '#8A8378', 'center', 'middle');
-  txt(
-    'Per-level log fields: time, taps, fails, boosters, belt peak, result.',
-    240,
-    620,
-    12,
-    700,
-    '#8A8378',
-    'center',
-    'middle'
-  );
+  txt(t('dev.hint1'), 240, 600, 12, 700, '#8A8378', 'center', 'middle');
+  txt(t('dev.hint2'), 240, 620, 12, 700, '#8A8378', 'center', 'middle');
 }
 
 function drawMap(sc: Screen): void {
   const L = cur(),
     gt = G.gt;
-  card(30, 80, 420, 760, '#6A4C93', 'Map');
+  card(30, 80, 420, 760, '#6A4C93', t('map.title'));
   closeBtn();
   const tabs: [MapTab, string][] = [
-    ['path', 'Path'],
-    ['decor', 'Decor'],
-    ['weekly', 'Weekly'],
+    ['path', t('map.path')],
+    ['decor', t('map.decor')],
+    ['weekly', t('map.weekly')],
   ];
   tabs.forEach(([id, label], i) =>
     button(50 + i * 130, 160, 120, 38, label, null, {
@@ -370,13 +349,13 @@ function drawMap(sc: Screen): void {
         ctx.fill();
       }
       if (p.lvl % 10 === 1 && p.lvl > 20 && Object.values(MECH_UNLOCK).includes(p.lvl))
-        txt('new rule', p.x, p.y - 26, 11, 800, '#3E7BFA', 'center', 'middle');
+        txt(t('map.newRule'), p.x, p.y - 26, 11, 800, '#3E7BFA', 'center', 'middle');
     }
     ctx.restore();
-    txt('Ring colour = scheduled tier · flag = hand-made wall', 240, 815, 12, 700, '#8A8378', 'center', 'middle');
+    txt(t('map.legend'), 240, 815, 12, 700, '#8A8378', 'center', 'middle');
   } else if (sc.tab === 'decor') {
     coinIcon(70, 226, 11);
-    txt(S.coins.toLocaleString() + ' coins', 88, 227, 18, 800, '#2A2320', 'left', 'middle');
+    txt(t('shop.coins', { n: S.coins.toLocaleString() }), 88, 227, 18, 800, '#2A2320', 'left', 'middle');
     DECOR.forEach((d, i) => {
       const y = 250 + i * 96,
         owned = S.decor.includes(d.id);
@@ -387,38 +366,29 @@ function drawMap(sc: Screen): void {
       ctx.lineWidth = 1;
       rrect(50, y, 380, 84, 12);
       ctx.stroke();
-      txt(d.name, 66, y + 26, 20, 800, '#2A2320', 'left', 'middle');
-      txt(d.desc, 66, y + 54, 13, 700, '#5A4E45', 'left', 'middle');
-      button(318, y + 20, 96, 44, owned ? 'Owned' : d.cost + '', owned ? null : 'coins', {
+      txt(t('decor.' + d.id + '.name'), 66, y + 26, 20, 800, '#2A2320', 'left', 'middle');
+      txt(t('decor.' + d.id + '.desc'), 66, y + 54, 13, 700, '#5A4E45', 'left', 'middle');
+      button(318, y + 20, 96, 44, owned ? t('shop.owned') : d.cost + '', owned ? null : t('map.coinsLabel'), {
         tone: owned ? '#B9B2A5' : '#6A4C93',
         disabled: owned || S.coins < d.cost,
         onTap: () => buyDecor(d.id),
       });
       if (!owned && S.coins < d.cost)
-        txt('need ' + (d.cost - S.coins) + ' more', 366, y + 74, 11, 700, '#8A8378', 'center', 'middle');
+        txt(t('map.need', { n: d.cost - S.coins }), 366, y + 74, 11, 700, '#8A8378', 'center', 'middle');
     });
   } else {
     const rows = weeklyBoard();
-    txt('Levels cleared this week · ' + (S.weekKey || weekKey()), 240, 226, 13, 700, '#5A4E45', 'center', 'middle');
+    txt(t('map.week', { wk: S.weekKey || weekKey() }), 240, 226, 13, 700, '#5A4E45', 'center', 'middle');
     rows.forEach((r, i) => {
       const y = 248 + i * 46;
       ctx.fillStyle = r.me ? '#FFF0D6' : i % 2 ? '#FFFDF7' : '#F7F0E0';
       rrect(50, y, 380, 40, 10);
       ctx.fill();
       txt('#' + (i + 1), 66, y + 21, 15, 800, i < 3 ? GOLD : '#8A8378', 'left', 'middle');
-      txt(r.name, 110, y + 21, 17, 800, '#2A2320', 'left', 'middle');
+      txt(r.me ? t('map.you') : r.name, 110, y + 21, 17, 800, '#2A2320', 'left', 'middle');
       txt(r.score, 414, y + 21, 17, 800, r.me ? '#E5484D' : '#2A2320', 'right', 'middle');
     });
-    txt(
-      'Rivals are local ghosts seeded by the week. Swap in a backend later.',
-      240,
-      720,
-      12,
-      700,
-      '#8A8378',
-      'center',
-      'middle'
-    );
+    txt(t('map.rivals'), 240, 720, 12, 700, '#8A8378', 'center', 'middle');
   }
 }
 

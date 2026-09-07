@@ -186,7 +186,7 @@ export class ParticleSystem {
   }
 
   /** Coin burst: up to 8 coins that fly to the counter, each delivering part of the value on arrival. */
-  coins(n: number, x: number, y: number, onArrive: (value: number) => void): number {
+  coins(n: number, x: number, y: number, onArrive: (value: number) => void, tx = COIN_POS.x, ty = COIN_POS.y): number {
     const k = Math.min(n, this.reduced ? 1 : 8),
       per = Math.floor(n / k);
     let rem = n - per * k,
@@ -202,8 +202,8 @@ export class ParticleSystem {
       p.kind = 'coin';
       p.x = x + (Math.random() - 0.5) * 30;
       p.y = y + (Math.random() - 0.5) * 20;
-      p.tx = COIN_POS.x;
-      p.ty = COIN_POS.y;
+      p.tx = tx;
+      p.ty = ty;
       p.life = 0.55 + i * 0.06;
       p.value = value;
       p.onArrive = onArrive;
