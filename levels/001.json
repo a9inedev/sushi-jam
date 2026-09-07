@@ -1,0 +1,22 @@
+{
+  "n": 1,
+  "beat": "teach",
+  "band": [
+    0,
+    0.12
+  ],
+  "rows": 3,
+  "cols": 3,
+  "colors": 3,
+  "seats": 4,
+  "beltCap": 8,
+  "visibleNext": 3,
+  "cells": [
+    "2>3 0>2 .",
+    ". 2<2 .",
+    ". 0<2 1<2"
+  ],
+  "kitchen": "0 2 2 0 2 0 2 1 1 2 0",
+  "seed": 907926,
+  "diff": 0
+}

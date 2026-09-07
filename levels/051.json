@@ -1,0 +1,24 @@
+{
+  "n": 51,
+  "beat": "intro:lock",
+  "band": [
+    0,
+    0.15
+  ],
+  "rows": 5,
+  "cols": 5,
+  "colors": 6,
+  "seats": 4,
+  "beltCap": 8,
+  "visibleNext": 3,
+  "cells": [
+    "2^2 . . . 2v2",
+    "4v2 1v2 2<3V 2^2 4>2",
+    ". . 2v3L4 2^3 4>2",
+    "1v2 0<3 4v2V 2>3 .",
+    ". 2>2 0v3V 0>3 2v3"
+  ],
+  "kitchen": "2 2 4 2 2 4 1 4 4 2C 2 4C 0 2 1C 4W 4V 0V 0 0V 4V 2 0V 2 2 2 0C 2 2 2C 2 0W 2 0 2 1 2 0W 2 2 2V 2V 1 2VC",
+  "seed": 1618063,
+  "diff": 0.075
+}
