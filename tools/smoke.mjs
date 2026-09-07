@@ -41,14 +41,18 @@ const page = await browser.newPage();
 await page.setViewport({ width: 480, height: 900, deviceScaleFactor: 1 });
 const errors = [];
 page.on('pageerror', (e) => errors.push('pageerror: ' + e.message));
+// The curve fetch is allowed to fail: a 404 (URL not deployed yet, or the deliberate one in the override step)
+// is the fallback path under test, not an error.
+const expectedFailure = (url) => /fonts\.g/.test(url) || /curve(-test)?\.json/.test(url);
 page.on('console', (m) => {
-  if (m.type() === 'error') errors.push('console: ' + m.text());
+  const url = (m.location() && m.location().url) || '';
+  if (m.type() === 'error' && !expectedFailure(url)) errors.push('console: ' + m.text() + (url ? ' @ ' + url : ''));
 });
 page.on('requestfailed', (r) => {
-  if (!/fonts\.g/.test(r.url())) errors.push('requestfailed: ' + r.url());
+  if (!expectedFailure(r.url())) errors.push('requestfailed: ' + r.url());
 });
 page.on('response', (r) => {
-  if (r.status() >= 400 && !/fonts\.g/.test(r.url())) errors.push(`http ${r.status()}: ${r.url()}`);
+  if (r.status() >= 400 && !expectedFailure(r.url())) errors.push(`http ${r.status()}: ${r.url()}`);
 });
 
 const sj = (expr) => page.evaluate(expr);
@@ -591,6 +595,45 @@ await step('level editor: dev panel only, load, paint, solve, export/import roun
     throw new Error('play test: ' + JSON.stringify(lv));
   // The HUD and map never link to the editor: only the dev panel button does.
   await sj('window.__SJ.closeScreen()');
+});
+await step('remote curve override: fetched, applied on the next launch, cached, safe fallback', async () => {
+  const testFile = path.join(DIR, 'curve-test.json');
+  try {
+    const c = JSON.parse(fs.readFileSync(path.join(DIR, 'curve.json'), 'utf8'));
+    c.levels[1].seats = 3; // level 2
+    fs.writeFileSync(testFile, JSON.stringify(c));
+    const before = await sj('window.__SJ.getLevel(2).P.seats');
+    if (before !== 4) throw new Error('level 2 seats before the override: ' + before);
+    await sj("localStorage.setItem('sushijam.curveUrl', './curve-test.json')");
+    await reloadAndWait();
+    await page.waitForFunction(() => window.__SJ.curve.status().lastResult !== null, { timeout: 10000 });
+    const s1 = await sj('window.__SJ.curve.status()');
+    const seats1 = await sj('window.__SJ.getLevel(2).P.seats');
+    if (s1.lastResult !== 'applied' || s1.source !== 'remote' || seats1 !== 3)
+      throw new Error('fetch did not apply: ' + JSON.stringify({ s1, seats1 }));
+    // Next launch with the file gone (404): the cache carries the tuning and the failed fetch changes nothing.
+    fs.unlinkSync(testFile);
+    await reloadAndWait();
+    const s2 = await sj('window.__SJ.curve.status()');
+    const seats2 = await sj('window.__SJ.getLevel(2).P.seats');
+    await page.waitForFunction(() => window.__SJ.curve.status().lastResult !== null, { timeout: 10000 });
+    const s3 = await sj('window.__SJ.curve.status()');
+    const seats3 = await sj('window.__SJ.getLevel(2).P.seats');
+    if (s2.source !== 'cache' || seats2 !== 3 || s3.lastResult !== 'failed' || seats3 !== 3)
+      throw new Error('cache/fallback: ' + JSON.stringify({ s2, seats2, s3, seats3 }));
+    // Back to the bundled curve.
+    await sj("localStorage.removeItem('sushijam.curveUrl'); window.__SJ.curve.reset()");
+    await reloadAndWait();
+    const after = await sj('window.__SJ.getLevel(2).P.seats');
+    if (after !== 4) throw new Error('did not return to the bundled curve: ' + after);
+    return 'applied from fetch, then from cache, then a 404 kept the cache';
+  } finally {
+    try {
+      fs.unlinkSync(testFile);
+    } catch {
+      /* already gone */
+    }
+  }
 });
 await step('no console errors', async () => {
   if (errors.length) throw new Error(errors.join(' | '));

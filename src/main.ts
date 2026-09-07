@@ -57,6 +57,15 @@ import { applyLanguage } from './ui/modals';
 import { drawStatusOverlay } from './ui/overlays';
 import { drawTutorial, resetTutorial, tutorialStep, tutorialTarget, updateTutorial } from './ui/tutorial';
 import { locale, setLocale, t } from './i18n';
+import { curve, curveFor, setCurve, validateCurve, type Curve, type CurveLevel } from './data/curve';
+import {
+  applyCachedCurve,
+  clearCurveCache,
+  curveStatus,
+  fetchRemoteCurve,
+  setCurveUrl,
+  type CurveStatus,
+} from './data/curve-remote';
 import { editorApi } from './ui/editor';
 import { bindStatsBox, drawScreen } from './ui/screens';
 
@@ -280,6 +289,7 @@ window.addEventListener('resize', onResize);
 if (window.visualViewport) window.visualViewport.addEventListener('resize', onResize);
 setCloudProvider(cloudProviderFor(platform));
 const loaded = load();
+applyCachedCurve(); // last validated remote tuning, before the first level is built
 applyLanguage();
 initMotion();
 bindAudio();
@@ -293,6 +303,7 @@ if (loaded.recovered) toast(t('toast.recovered'), 3.2, 0.8);
 checkDaily();
 bindInput();
 bindStatsBox();
+void fetchRemoteCurve(); // background; applies to the next level built
 const startLoop = () =>
   requestAnimationFrame((ts) => {
     frame(ts);
@@ -346,6 +357,15 @@ export interface DevApi {
     set: (code: string) => void;
     get: () => string;
     t: (key: string, vars?: Record<string, string | number>) => string;
+  };
+  curve: {
+    get: () => Curve;
+    for: (n: number) => CurveLevel;
+    status: () => CurveStatus;
+    set: (json: unknown) => string | null;
+    fetch: (url?: string) => Promise<string>;
+    setUrl: (url: string | null) => void;
+    reset: () => void;
   };
   editor: typeof editorApi;
   audio: {
@@ -422,6 +442,19 @@ window.__SJ = {
     },
     get: locale,
     t,
+  },
+  curve: {
+    get: curve,
+    for: curveFor,
+    status: () => curveStatus(),
+    set: (json) => {
+      const v = validateCurve(json);
+      if (v.curve) setCurve(v.curve, 'remote');
+      return v.error;
+    },
+    fetch: (url) => fetchRemoteCurve(url ? { url } : {}),
+    setUrl: (url) => setCurveUrl(url),
+    reset: () => clearCurveCache(),
   },
   editor: editorApi,
   audio: {

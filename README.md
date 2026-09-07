@@ -30,6 +30,7 @@ Vite + TypeScript, Canvas 2D, Web Audio, no runtime dependencies. The production
 - The kitchen order comes from simulating that solution with four seats, so every level is winnable.
 - Levels 1 to 100 are authored files in `levels/` (see docs/editor.md and the table in docs/levels.md): twelve teaching levels, a ramp, a wall on every level ending in 0 with a relief level after it, and each new rule introduced on a level ending in 1. Beyond 100 the generator takes over.
 - A noisy solver measures every level's fail rate; the tier badge shows that rate, not the level number. CI reruns the solver on all 100 files and fails if one leaves its band.
+- Difficulty is a tunable curve: `src/data/curve.json` holds the target fail rate, grid, colours, seats, belt, window, appetite and speed per level. The generator, solver and beat sheet read it, CI plots measured versus target for levels 1 to 200 (the curve-report artifact, snapshot in docs/curve.svg), and a validated remote copy fetched at boot can retune the game without an update (docs/curve.md).
 - A level editor (paint diners, edit the kitchen, live solver, JSON export/import, play test) sits behind the dev panel.
 - Levels 1 to 3 carry a guided tutorial (see docs/tutorial.md). Settings cover sound, music, haptics, reduce motion, colour patterns, left-handed layout and language.
 - Art is layered SVG authored in code and rasterised into cached canvases at the exact device pixel size. See `docs/style-guide.md` and the sheets in `docs/art/`.
@@ -68,7 +69,7 @@ src/art/            layered SVG builders: characters, sushi, room, decor (raster
 src/audio/          authored sound set, adaptive music, mixer (see docs/audio.md)
 src/i18n/           t() helper, en.json source strings and ten draft locales (see docs/i18n.md)
 src/meta/           save + migration, daily bonus, weekly ghosts, economy, between-level flow
-src/data/           constants, mechanics schedule, products, decor, loader for levels/*.json
+src/data/           constants, mechanics schedule, products, decor, curve.json + remote override, loader for levels/*.json
 levels/             the 100 authored levels as JSON (docs/editor.md describes the format)
 tests/              Vitest suites and the legacy level fixture
 tools/              static server, smoke test, build validator, legacy level dump, level authoring tool
