@@ -7,3 +7,6 @@ android/
 ios/
 resources/
 assets/
+levels/
+src/data/curve.json
+docs/levels.md

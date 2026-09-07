@@ -1,7 +1,9 @@
 /* Proves the TypeScript engine generates exactly the levels the legacy single-file build did.
    The fixture was dumped from the pre-split index.html with tools/dump-legacy-levels.mjs. */
-import { describe, expect, it } from 'vitest';
-import { makeGenerated } from '../src/engine/levels';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { resetCurve, setCurve } from '../src/data/curve';
+import { clearLevelCache, makeGenerated } from '../src/engine/levels';
+import { legacyCurve } from './helpers/legacy-curve';
 import fixture from './fixtures/legacy-levels.json';
 
 interface Compact {
@@ -38,6 +40,13 @@ function compact(n: number, allMech: boolean): Compact {
 }
 
 describe('parity with the legacy build', () => {
+  // The fixture predates curve.json; the formula schedule it was dumped with is installed for these tests.
+  beforeAll(() => setCurve(legacyCurve(), 'remote'));
+  afterAll(() => {
+    resetCurve();
+    clearLevelCache();
+  });
+
   it('levels 1..120 are identical (board, kitchen, tuning, measured fail rate)', () => {
     for (const legacy of fixture.normal as Compact[]) {
       expect(compact(legacy.n, false), `level ${legacy.n}`).toEqual(legacy);

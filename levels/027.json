@@ -8,9 +8,6 @@
   "rows": 5,
   "cols": 5,
   "colors": 5,
-  "seats": 4,
-  "beltCap": 8,
-  "visibleNext": 2,
   "cells": [
     "0<4 0>3 . 4>4 0>3",
     ". 3<3 3<4 3<3 0^3",

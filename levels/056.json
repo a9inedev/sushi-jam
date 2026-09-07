@@ -8,9 +8,6 @@
   "rows": 6,
   "cols": 6,
   "colors": 7,
-  "seats": 4,
-  "beltCap": 8,
-  "visibleNext": 3,
   "cells": [
     "1^2 6>4V . 4^4 1^2 3^2",
     "6<4V 1<2L3 5^3V 0^2 5^4 2^3",

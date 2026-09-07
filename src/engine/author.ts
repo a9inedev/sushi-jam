@@ -4,6 +4,7 @@
    x2-x6 medium, x7-x9 hard. The search generates boards by reverse placement, decorates them to the beat,
    measures the fail rate with 200 solver runs and keeps the seed that lands closest to the band centre. */
 
+import { curveFor } from '../data/curve';
 import { MECH_UNLOCK } from '../data/mechanics';
 import {
   finishedBeforeSeat,
@@ -42,18 +43,6 @@ export interface Beat {
 const INTRO_AT: Record<number, MechKind> = {};
 for (const [k, n] of Object.entries(MECH_UNLOCK)) INTRO_AT[n] = k as MechKind;
 
-const TEACH: Omit<Beat, 'n' | 'kind' | 'band' | 'mechs'>[] = [
-  { rows: 3, cols: 3, colors: 3, fill: 0.56, app: [2, 3], visibleNext: 3, beltCap: 8, seats: 4 },
-  { rows: 3, cols: 3, colors: 3, fill: 0.67, app: [2, 3], visibleNext: 3, beltCap: 8, seats: 4 },
-  { rows: 3, cols: 3, colors: 3, fill: 0.78, app: [2, 3], visibleNext: 3, beltCap: 8, seats: 4 },
-  { rows: 4, cols: 3, colors: 3, fill: 0.7, app: [2, 3], visibleNext: 3, beltCap: 8, seats: 4 },
-  { rows: 4, cols: 3, colors: 4, fill: 0.8, app: [2, 3], visibleNext: 3, beltCap: 8, seats: 4 },
-  { rows: 4, cols: 4, colors: 4, fill: 0.7, app: [2, 3], visibleNext: 3, beltCap: 8, seats: 4 },
-  { rows: 4, cols: 4, colors: 4, fill: 0.75, app: [2, 4], visibleNext: 3, beltCap: 8, seats: 4 },
-  { rows: 4, cols: 4, colors: 4, fill: 0.8, app: [2, 4], visibleNext: 3, beltCap: 8, seats: 4 },
-  { rows: 5, cols: 4, colors: 4, fill: 0.75, app: [2, 4], visibleNext: 3, beltCap: 8, seats: 4 },
-];
-
 /** Unlocked mechanics for level n with a gentle default density. */
 function unlocked(n: number): Partial<Record<MechKind, number>> {
   const m: Partial<Record<MechKind, number>> = {};
@@ -66,108 +55,36 @@ function unlocked(n: number): Partial<Record<MechKind, number>> {
   return m;
 }
 
-export function beatFor(n: number): Beat {
-  if (n <= 9) return { n, kind: 'teach', band: [0, 0.12], mechs: {}, ...TEACH[n - 1] };
-  const decade = Math.floor(n / 10); // 1 for 10-19, 2 for 20-29 ...
-  const pos = n % 10;
-  // Grid and palette grow by decade, capped at 6x6 with all seven colours.
-  const rows = Math.min(6, 4 + Math.floor((decade + 1) / 2)),
-    cols = Math.min(6, 3 + Math.floor((decade + 2) / 2));
-  const colors = Math.min(7, 4 + Math.floor(decade / 1.5));
-  const mechs = unlocked(n);
-  if (pos === 0) {
-    // Wall: fuller board, one more colour, short kitchen window, tighter belt.
-    return {
-      n,
-      kind: 'wall',
-      rows: Math.min(6, rows + (decade >= 2 ? 1 : 0)),
-      cols: Math.min(6, cols + 1),
-      colors: Math.min(7, colors + 1),
-      fill: decade === 1 ? 0.82 : 0.9,
-      app: decade === 1 ? [2, 4] : [3, 5],
-      visibleNext: decade === 1 ? 2 : 1,
-      beltCap: decade === 1 ? 8 : 7,
-      seats: 4,
-      band: decade === 1 ? [0.3, 0.6] : [0.45, 0.75],
-      mechs,
-    };
-  }
+/** Beat kind, mechanic densities and the intro rule; every number comes from the curve. */
+function beatShape(n: number): { kind: BeatKind; mechs: Partial<Record<MechKind, number>>; intro?: MechKind } {
+  if (n <= 9) return { kind: 'teach', mechs: {} };
+  const pos = n % 10,
+    mechs = unlocked(n);
+  if (pos === 0) return { kind: 'wall', mechs };
   if (pos === 1) {
     const intro = INTRO_AT[n];
-    const relief = {
-      rows: Math.max(3, rows - 1),
-      cols: Math.max(3, cols - 1),
-      colors: Math.max(3, colors - 1),
-      fill: 0.7,
-      app: [2, 3] as [number, number],
-      visibleNext: 3,
-      beltCap: 8,
-      seats: 4,
-    };
-    if (intro) return { n, kind: 'intro', ...relief, band: [0, 0.15], mechs: { ...unlocked(n), [intro]: 0 }, intro };
-    return { n, kind: 'relief', ...relief, band: [0, 0.15], mechs };
+    return intro ? { kind: 'intro', mechs: { ...mechs, [intro]: 0 }, intro } : { kind: 'relief', mechs };
   }
-  if (n <= 12)
-    return {
-      n,
-      kind: 'teach',
-      rows: 4,
-      cols: 4,
-      colors: 4,
-      fill: 0.72,
-      app: [2, 3],
-      visibleNext: 3,
-      beltCap: 8,
-      seats: 4,
-      band: [0, 0.15],
-      mechs: {},
-    };
-  if (n <= 19) {
-    const k = n - 13; // 0..6
-    return {
-      n,
-      kind: 'ramp',
-      rows: 5,
-      cols: k < 3 ? 4 : 5,
-      colors: k < 2 ? 4 : 5,
-      fill: 0.76 + k * 0.02,
-      app: [2, 4],
-      visibleNext: k < 4 ? 3 : 2,
-      beltCap: 8,
-      seats: 4,
-      band: [+(0.05 + k * 0.02).toFixed(2), +(0.25 + k * 0.03).toFixed(2)],
-      mechs: {},
-    };
-  }
-  if (pos >= 7) {
-    return {
-      n,
-      kind: 'hard',
-      rows,
-      cols,
-      colors,
-      fill: 0.86,
-      app: [3, 4],
-      visibleNext: 2,
-      beltCap: 8,
-      seats: 4,
-      band: [0.25, 0.55],
-      mechs,
-    };
-  }
+  if (n <= 12) return { kind: 'teach', mechs: {} };
+  if (n <= 19) return { kind: 'ramp', mechs: {} };
+  if (pos >= 7) return { kind: 'hard', mechs };
+  return { kind: 'medium', mechs };
+}
+
+export function beatFor(n: number): Beat {
+  const c = curveFor(n);
   return {
     n,
-    kind: 'medium',
-    rows,
-    cols,
-    colors,
-    fill: 0.78 + (pos - 2) * 0.02,
-    app: [2, 4],
-    visibleNext: 3,
-    beltCap: 8,
-    seats: 4,
-    band: [0.1, 0.35],
-    mechs,
+    ...beatShape(n),
+    rows: c.rows,
+    cols: c.cols,
+    colors: c.colors,
+    fill: c.fill,
+    app: [c.app[0], c.app[1]],
+    visibleNext: c.visibleNext,
+    beltCap: c.beltCap,
+    seats: c.seats,
+    band: [c.band[0], c.band[1]],
   };
 }
 
@@ -271,7 +188,8 @@ export interface AuthorResult {
 export function authorLevel(n: number, opts: { seeds?: number; runs?: number } = {}): AuthorResult {
   const seeds = opts.seeds ?? 60,
     runs = opts.runs ?? 200;
-  const beat = beatFor(n);
+  const beat = beatFor(n),
+    cv = curveFor(n);
   const adjusted: string[] = [];
   let fill = beat.fill,
     visibleNext = beat.visibleNext,
@@ -313,9 +231,10 @@ export function authorLevel(n: number, opts: { seeds?: number; runs?: number } =
         rows: beat.rows,
         cols: beat.cols,
         colors: beat.colors,
-        seats: beat.seats,
-        beltCap,
-        visibleNext,
+        // Only what differs from the curve is pinned; the rest follows curve.json at load time.
+        seats: beat.seats === cv.seats ? undefined : beat.seats,
+        beltCap: beltCap === cv.beltCap ? undefined : beltCap,
+        visibleNext: visibleNext === cv.visibleNext ? undefined : visibleNext,
         cells: formatCells(built.cells, beat.rows, beat.cols),
         kitchen: formatKitchen(built.lv.kitchen),
         seed,

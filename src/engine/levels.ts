@@ -3,6 +3,7 @@
    measured fail rate. The order of calls into the RNG is part of the contract with existing player progress. */
 
 import { AUTHORED } from '../data/authored';
+import { curve, curveFor, onCurveChange } from '../data/curve';
 import { MECH_UNLOCK } from '../data/mechanics';
 import { rng } from './rng';
 import type {
@@ -24,29 +25,25 @@ export const DIR_DC = [0, 1, 0, -1];
 
 /* ---------- schedule and parameters ---------- */
 
+/** The tier the curve plans for level n (used by the map before a level is built). */
 export function schedTier(n: number): Tier {
-  if (n <= 3) return 'Easy';
-  const m = n % 10;
-  if (m === 0) return 'Super Hard';
-  if (m >= 7) return 'Hard';
-  if (m <= 3 && n < 10) return 'Easy';
-  return 'Medium';
+  return tierFromDiff(curveFor(n).fail);
 }
 
 export function paramsFor(n: number): LevelParams {
-  const tier = schedTier(n);
-  let colors = Math.min(7, 3 + Math.floor((n - 1) / 5));
-  if (tier === 'Super Hard') colors = Math.min(7, colors + 1);
-  const cols = Math.min(6, 3 + Math.floor(n / 6)),
-    rows = Math.min(6, 3 + Math.floor((n + 3) / 6));
-  const fill = { Easy: 0.7, Medium: 0.8, Hard: 0.88, 'Super Hard': 0.92 }[tier];
-  const app = ({ Easy: [2, 3], Medium: [2, 4], Hard: [3, 4], 'Super Hard': [3, 5] } as Record<Tier, [number, number]>)[
-    tier
-  ];
-  const visibleNext = { Easy: 3, Medium: 3, Hard: 2, 'Super Hard': 1 }[tier];
-  const beltCap = tier === 'Super Hard' ? 7 : 8;
-  const speed = 1 / Math.max(6, 9 - n * 0.12);
-  return { tier, colors, cols, rows, fill, app, visibleNext, beltCap, speed, seats: 4 };
+  const c = curveFor(n);
+  return {
+    tier: schedTier(n),
+    colors: c.colors,
+    cols: c.cols,
+    rows: c.rows,
+    fill: c.fill,
+    app: [c.app[0], c.app[1]],
+    visibleNext: c.visibleNext,
+    beltCap: c.beltCap,
+    speed: c.speed,
+    seats: c.seats,
+  };
 }
 
 export function mechActive(kind: MechKind, n: number, allMech = false): boolean {
@@ -315,7 +312,7 @@ export function simulate(lv: LevelLike, R: Rng, noise: number, opts: SimOptions 
 export function evalLevel(lv: LevelLike, runs: number): number {
   const R = rng((lv.seed ^ 0x9e3779b9) >>> 0);
   let fails = 0;
-  for (let i = 0; i < runs; i++) if (simulate(lv, R, 0.25) === 'fail') fails++;
+  for (let i = 0; i < runs; i++) if (simulate(lv, R, curve().solver.noise) === 'fail') fails++;
   return fails / runs;
 }
 
@@ -330,7 +327,8 @@ type Candidate = LevelLike & { diff?: number; authored?: boolean; tuned?: boolea
 /** The procedurally generated level for n (plus the three legacy string boards). Deterministic by seed. */
 export function makeGenerated(n: number, allMech = false): LevelDef {
   const P = paramsFor(n),
-    target = { Easy: 0.06, Medium: 0.2, Hard: 0.4, 'Super Hard': 0.6 }[P.tier],
+    target = curveFor(n).fail,
+    runs = curve().solver.runs,
     cands: Candidate[] = [];
   const auth = AUTHORED[n] ? parseAuthored(AUTHORED[n]) : null;
   if (auth) {
@@ -343,19 +341,19 @@ export function makeGenerated(n: number, allMech = false): LevelDef {
       const P2: LevelParams = { ...P, rows: auth.rows, cols: auth.cols },
         dec = decorate(n, P2, R, order, allMech);
       const lv: Candidate = { P: P2, rows: auth.rows, cols: auth.cols, ...dec, authored: true, seed };
-      let diff = evalLevel(lv, 40),
+      let diff = evalLevel(lv, runs),
         guard = 0;
       while (diff > 0.75 && guard++ < 6) {
         if (P2.visibleNext < 3) P2.visibleNext++;
         else if (P2.beltCap < 10) P2.beltCap++;
         else break;
-        diff = evalLevel(lv, 40);
+        diff = evalLevel(lv, runs);
       }
       while (diff < 0.35 && guard++ < 12) {
         if (P2.visibleNext > 1) P2.visibleNext--;
         else if (P2.beltCap > 6) P2.beltCap--;
         else break;
-        diff = evalLevel(lv, 40);
+        diff = evalLevel(lv, runs);
       }
       lv.diff = diff;
       lv.tuned = true;
@@ -383,7 +381,7 @@ export function makeGenerated(n: number, allMech = false): LevelDef {
     }
     if (!cands.length && best) cands.push(best);
   }
-  for (const c of cands) if (c.diff == null) c.diff = evalLevel(c, 40);
+  for (const c of cands) if (c.diff == null) c.diff = evalLevel(c, runs);
   cands.sort((a, b) => Math.abs((a.diff as number) - target) - Math.abs((b.diff as number) - target));
   const c0 = cands[0];
   const lv: LevelDef = {
@@ -444,3 +442,6 @@ export function getLevel(n: number, allMech = false): LevelDef {
 export function clearLevelCache(): void {
   levelCache.clear();
 }
+
+// A new curve (remote override, editor, tests) means every level must be rebuilt.
+onCurveChange(clearLevelCache);

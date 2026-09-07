@@ -8,9 +8,6 @@
   "rows": 5,
   "cols": 5,
   "colors": 6,
-  "seats": 4,
-  "beltCap": 8,
-  "visibleNext": 3,
   "cells": [
     "4>2 2^3V 3>3V . .",
     ". 5^3 . 5^2I3 .",
