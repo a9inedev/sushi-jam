@@ -1,14 +1,36 @@
 /* Shared types for level definitions (pure data) and the runtime level state. */
 
 export type Tier = 'Easy' | 'Medium' | 'Hard' | 'Super Hard';
-export type MechKind = 'wasabi' | 'covered' | 'vip' | 'lock' | 'frozen' | 'double';
+export type MechKind =
+  | 'wasabi'
+  | 'covered'
+  | 'vip'
+  | 'lock'
+  | 'frozen'
+  | 'double'
+  | 'chain'
+  | 'rush'
+  | 'special'
+  | 'picky'
+  | 'reserved'
+  | 'reverse';
 export type BoosterKind = 'vip' | 'takeout' | 'sendback';
 export type ExprType = 'idle' | 'happy' | 'chew' | 'grumpy';
 export type DinerState = 'grid' | 'walking' | 'seated' | 'paying' | 'leaving' | 'done';
 export type LevelStatus = 'intro' | 'mech' | 'play' | 'failing' | 'fail' | 'win';
-export type FailReason = 'jam' | 'wasabi';
+export type FailReason = 'jam' | 'wasabi' | 'rush' | 'reserved' | 'chain' | 'reverse' | 'picky';
 export type SimResult = 'win' | 'fail';
 export type Rng = () => number;
+
+/** Level-wide rules. chain: seats 1 and 2 share one queue (the back seat waits). rush: the plate index at
+    which rush hour starts (0 = none). reserved: per seat, the only colour that may sit there (-1 = anyone).
+    reverse: [seconds between reversals, seconds reversed]. */
+export interface LevelRules {
+  chain: number;
+  rush: number;
+  reserved: number[];
+  reverse: [number, number] | null;
+}
 
 export interface LevelParams {
   tier: Tier;
@@ -21,6 +43,7 @@ export interface LevelParams {
   beltCap: number;
   speed: number;
   seats: number;
+  rules?: LevelRules;
 }
 
 /** A grid cell from generation or an authored board. Direction: 0 up, 1 right, 2 down, 3 left. */
@@ -41,6 +64,10 @@ export interface DinerDef {
   vip: boolean;
   lockColor: number;
   ice: number;
+  /** Picky (ticket) guest: the colours they eat, in order; length equals need. */
+  seq?: number[];
+  /** Ticket number of a picky guest, in reading order; matches PlateDef.owner. */
+  picky?: number;
 }
 
 export interface PlateDef {
@@ -49,6 +76,10 @@ export interface PlateDef {
   double: boolean;
   wasabi: boolean;
   covered: boolean;
+  /** Chef's special: an extra plate any ordinary diner may take. */
+  special?: boolean;
+  /** Named plate for the picky guest with this ticket number. */
+  owner?: number;
 }
 
 /** Minimal plate shape accepted by matching and drawing helpers. */
@@ -59,6 +90,8 @@ export interface PlateLike {
   wasabi?: boolean;
   covered?: boolean;
   revealed?: boolean;
+  special?: boolean;
+  owner?: number;
 }
 
 export interface LevelDef {
@@ -117,6 +150,8 @@ export interface Diner extends DinerDef {
   paidT: number;
   leaveT: number;
   iceMax: number;
+  /** Sitting in the back seat of a chained pair: eats only once promoted to the front. */
+  waiting: boolean;
   /** Animation-only: rotation in radians and squash scale, driven by the tween manager. */
   lean: number;
   sx: number;
@@ -144,6 +179,8 @@ export interface Plate extends PlateDef {
   timer: number;
   id: number;
   arc?: PlateArc;
+  /** Nobody can take it any more: the chef takes it back at the kitchen door. */
+  surplus?: boolean;
 }
 
 export interface Seat {
@@ -153,6 +190,10 @@ export interface Seat {
   diner: Diner | null;
   /** 1 right after someone sits, decaying to 0: the stool compresses. */
   press: number;
+  /** Only this colour may sit here; -1 for anyone. */
+  reserved: number;
+  /** 0 plain, 1 front of a chained pair, 2 back of a chained pair. */
+  chain: 0 | 1 | 2;
 }
 
 export interface LevelStat {
@@ -220,5 +261,14 @@ export interface RuntimeLevel {
   newMechs: MechKind[];
   mechIdx: number;
   plateId: number;
+  /** Plates sent so far (rush hour triggers on a plate index). */
+  emitted: number;
+  /** Seconds of rush hour left. */
+  rushT: number;
+  reversed: boolean;
+  /** Seconds until the belt flips direction (only with the reverse rule). */
+  reverseT: number;
+  /** Belt travel in laps, for the belt texture; runs backwards while reversed. */
+  beltPhase: number;
   stat: LevelStat;
 }

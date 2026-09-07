@@ -7,20 +7,31 @@
 import { curveFor } from '../data/curve';
 import { MECH_UNLOCK } from '../data/mechanics';
 import {
-  finishedBeforeSeat,
   formatCells,
   formatKitchen,
-  kitchenFromSolution,
   levelLikeFromJson,
   validateLevel,
   type AuthoredCell,
   type LevelJson,
 } from './authored';
-import { gridGenerate, paramsFor, peelOrder } from './levels';
+import {
+  assignPicky,
+  gridGenerate,
+  hasRules,
+  kitchenSim,
+  NEW_MECHS,
+  paramsFor,
+  peelOrder,
+  randomSeq,
+  reserveSeat,
+  REVERSE_DEFAULT,
+  rulesJson,
+  rulesOf,
+} from './levels';
 import { rng } from './rng';
-import type { DinerDef, LevelLike, LevelParams, MechKind, PlateDef, Rng } from './types';
+import type { DinerDef, LevelLike, LevelParams, LevelRules, MechKind, Rng } from './types';
 
-export type BeatKind = 'teach' | 'ramp' | 'medium' | 'hard' | 'wall' | 'relief' | 'intro';
+export type BeatKind = 'teach' | 'ramp' | 'medium' | 'hard' | 'wall' | 'relief' | 'intro' | 'showcase';
 
 export interface Beat {
   n: number;
@@ -38,6 +49,8 @@ export interface Beat {
   mechs: Partial<Record<MechKind, number>>;
   /** The rule this level introduces; exactly one instance is guaranteed. */
   intro?: MechKind;
+  /** Showcase level: this rule is guaranteed present at a higher density. */
+  feature?: MechKind;
 }
 
 const INTRO_AT: Record<number, MechKind> = {};
@@ -52,11 +65,31 @@ function unlocked(n: number): Partial<Record<MechKind, number>> {
   if (n > MECH_UNLOCK.lock) m.lock = 0.12;
   if (n > MECH_UNLOCK.frozen) m.frozen = 0.12;
   if (n > MECH_UNLOCK.double) m.double = 0.25;
+  // Level-wide rules: the density is the chance the level has the rule at all.
+  if (n > MECH_UNLOCK.chain) m.chain = 0.45;
+  if (n > MECH_UNLOCK.rush) m.rush = 0.4;
+  if (n > MECH_UNLOCK.special) m.special = 0.06;
+  if (n > MECH_UNLOCK.picky) m.picky = 0.1;
+  if (n > MECH_UNLOCK.reserved) m.reserved = 0.45;
+  if (n > MECH_UNLOCK.reverse) m.reverse = 0.35;
   return m;
 }
 
+/** Showcase levels: the third and sixth level of each decade that introduced a rule from 81 on. */
+const SHOWCASE_AT: Record<number, MechKind> = {};
+for (const [k, n] of Object.entries(MECH_UNLOCK))
+  if (n >= 81) {
+    SHOWCASE_AT[n + 2] = k as MechKind;
+    SHOWCASE_AT[n + 5] = k as MechKind;
+  }
+
 /** Beat kind, mechanic densities and the intro rule; every number comes from the curve. */
-function beatShape(n: number): { kind: BeatKind; mechs: Partial<Record<MechKind, number>>; intro?: MechKind } {
+function beatShape(n: number): {
+  kind: BeatKind;
+  mechs: Partial<Record<MechKind, number>>;
+  intro?: MechKind;
+  feature?: MechKind;
+} {
   if (n <= 9) return { kind: 'teach', mechs: {} };
   const pos = n % 10,
     mechs = unlocked(n);
@@ -68,6 +101,8 @@ function beatShape(n: number): { kind: BeatKind; mechs: Partial<Record<MechKind,
   if (n <= 12) return { kind: 'teach', mechs: {} };
   if (n <= 19) return { kind: 'ramp', mechs: {} };
   if (pos >= 7) return { kind: 'hard', mechs };
+  const feature = SHOWCASE_AT[n];
+  if (feature) return { kind: 'showcase', mechs: { ...mechs, [feature]: Math.max(mechs[feature] ?? 0, 0.3) }, feature };
   return { kind: 'medium', mechs };
 }
 
@@ -93,7 +128,8 @@ interface Built {
   cells: AuthoredCell[];
 }
 
-/** Decorate a placed board to the beat: colours, appetites, then mechanics with the beat's densities. */
+/** Decorate a placed board to the beat: colours, appetites, then rules at the beat's densities. The intro or
+    showcase rule is forced to appear at least once. Returns null when the board cannot host the forced rule. */
 function decorateToBeat(beat: Beat, P: LevelParams, R: Rng, order: AuthoredCell[], forceIntro: boolean): Built | null {
   const K = P.seats;
   const diners: DinerDef[] = order.map((c, i) => ({
@@ -110,8 +146,9 @@ function decorateToBeat(beat: Beat, P: LevelParams, R: Rng, order: AuthoredCell[
   if (diners.length > 1 && diners.every((d) => d.color === diners[0].color))
     diners[1].color = (diners[0].color + 1) % P.colors;
   const rate = (k: MechKind) => beat.mechs[k] ?? 0;
-  const want = (k: MechKind) => forceIntro && beat.intro === k;
-  if (rate('frozen') > 0 || want('frozen')) {
+  const want = (k: MechKind) => (forceIntro && beat.intro === k) || beat.feature === k;
+  const on = (k: MechKind) => rate(k) > 0 || want(k);
+  if (on('frozen')) {
     for (const d of diners) if (d.id >= K && R() < rate('frozen')) d.ice = 3;
     if (want('frozen') && !diners.some((d) => d.ice > 0)) {
       const c = diners.filter((d) => d.id >= K);
@@ -119,20 +156,48 @@ function decorateToBeat(beat: Beat, P: LevelParams, R: Rng, order: AuthoredCell[
       c[Math.floor(R() * c.length)].ice = 3;
     }
   }
-  if (rate('vip') > 0 || want('vip')) {
+  if (on('vip')) {
     for (const d of diners) if (R() < rate('vip')) d.vip = true;
     if (want('vip') && !diners.some((d) => d.vip)) diners[Math.floor(R() * diners.length)].vip = true;
     if (diners.every((d) => d.vip)) diners[0].vip = false;
   }
-  const doubleP = want('double') ? Math.max(0.3, rate('double')) : rate('double');
-  let kitchen: PlateDef[] = kitchenFromSolution(diners, K, R, doubleP);
-  if (want('double') && !kitchen.some((p) => p.double)) {
-    // Re-roll the service order until a stack appears; every diner needs at least two.
-    for (let i = 0; i < 20 && !kitchen.some((p) => p.double); i++) kitchen = kitchenFromSolution(diners, K, R, 0.6);
-    if (!kitchen.some((p) => p.double)) return null;
+  if (on('picky')) {
+    const eligible = (d: DinerDef) => d.id >= K && !d.vip && d.need >= 2;
+    for (const d of diners) if (eligible(d) && R() < rate('picky')) d.seq = randomSeq(d, P.colors, R);
+    if (want('picky') && !diners.some((d) => d.seq)) {
+      const c = diners.filter(eligible);
+      if (!c.length) return null;
+      const d = c[Math.floor(R() * c.length)];
+      d.seq = randomSeq(d, P.colors, R);
+    }
+    assignPicky(diners);
   }
-  if (rate('lock') > 0 || want('lock')) {
-    const before = finishedBeforeSeat(diners, kitchen, K);
+  const rules: LevelRules = { chain: 0, rush: 0, reserved: [], reverse: null };
+  if (on('chain') && K >= 3 && (want('chain') || R() < rate('chain'))) rules.chain = 1;
+  if (on('reserved') && K >= 3 && (want('reserved') || R() < rate('reserved'))) rules.reserved = reserveSeat(diners, K);
+  const doubleP = want('double') ? Math.max(0.3, rate('double')) : rate('double');
+  const specialP = want('special') ? Math.max(0.08, rate('special')) : rate('special');
+  const appetite = diners.reduce((a, d) => a + d.need, 0);
+  if (on('rush') && appetite >= 10 && (want('rush') || R() < rate('rush'))) rules.rush = 4 + Math.floor(R() * 5);
+  if (on('reverse') && (want('reverse') || R() < rate('reverse')))
+    rules.reverse = [REVERSE_DEFAULT[0], REVERSE_DEFAULT[1]];
+  let res = kitchenSim(diners, K, R, { doubleP, specialP, rules, exact: NEW_MECHS.some(on) });
+  if (want('double') && !res.kitchen.some((p) => p.double)) {
+    // Re-roll the service order until a stack appears; every diner needs at least two.
+    for (let i = 0; i < 20 && !res.kitchen.some((p) => p.double); i++)
+      res = kitchenSim(diners, K, R, { doubleP: 0.6, specialP, rules, exact: NEW_MECHS.some(on) });
+    if (!res.kitchen.some((p) => p.double)) return null;
+  }
+  if (want('special') && !res.kitchen.some((p) => p.special)) {
+    for (let i = 0; i < 20 && !res.kitchen.some((p) => p.special); i++)
+      res = kitchenSim(diners, K, R, { doubleP, specialP: 0.3, rules, exact: NEW_MECHS.some(on) });
+    if (!res.kitchen.some((p) => p.special)) return null;
+  }
+  const kitchen = res.kitchen;
+  const exact = NEW_MECHS.some(on);
+  const settled = (i: number) => !exact || res.servedBefore[i] >= 1;
+  if (on('lock')) {
+    const before = res.seatedAfter;
     for (const d of diners) {
       const fin = before[d.id] || [];
       if (d.id >= K && fin.length && R() < rate('lock')) d.lockColor = diners[fin[Math.floor(R() * fin.length)]].color;
@@ -145,37 +210,42 @@ function decorateToBeat(beat: Beat, P: LevelParams, R: Rng, order: AuthoredCell[
       d.lockColor = diners[fin[Math.floor(R() * fin.length)]].color;
     }
   }
-  if (rate('wasabi') > 0 || want('wasabi')) {
+  if (on('wasabi')) {
     kitchen.forEach((p, i) => {
-      if (i >= 6 && !p.double && R() < rate('wasabi')) p.wasabi = true;
+      if (i >= 6 && !p.double && !p.special && settled(i) && R() < rate('wasabi')) p.wasabi = true;
     });
     if (want('wasabi') && !kitchen.some((p) => p.wasabi)) {
-      const idx = kitchen.findIndex((p, i) => i >= 5 && !p.double);
+      const idx = kitchen.findIndex((p, i) => i >= 5 && !p.double && !p.special && settled(i));
       if (idx < 0) return null;
       kitchen[idx].wasabi = true;
     }
   }
-  if (rate('covered') > 0 || want('covered')) {
+  if (on('covered')) {
     kitchen.forEach((p, i) => {
-      if (i >= 4 && !p.wasabi && R() < rate('covered')) p.covered = true;
+      if (i >= 4 && !p.wasabi && !p.special && R() < rate('covered')) p.covered = true;
     });
     if (want('covered') && !kitchen.some((p) => p.covered)) {
-      const idx = kitchen.findIndex((p, i) => i >= 3 && !p.wasabi);
+      const idx = kitchen.findIndex((p, i) => i >= 3 && !p.wasabi && !p.special);
       if (idx < 0) return null;
       kitchen[idx].covered = true;
     }
   }
-  const cells: AuthoredCell[] = diners.map((d) => ({
-    r: d.r,
-    c: d.c,
-    dir: d.dir,
-    color: d.color,
-    need: d.need,
-    vip: d.vip,
-    lockColor: d.lockColor,
-    ice: d.ice,
-  }));
-  return { lv: { P, rows: beat.rows, cols: beat.cols, diners, kitchen, seed: 0 }, cells };
+  const cells: AuthoredCell[] = diners.map((d) => {
+    const c: AuthoredCell = {
+      r: d.r,
+      c: d.c,
+      dir: d.dir,
+      color: d.color,
+      need: d.need,
+      vip: d.vip,
+      lockColor: d.lockColor,
+      ice: d.ice,
+    };
+    if (d.seq) c.seq = d.seq.slice();
+    return c;
+  });
+  const Pr: LevelParams = hasRules(rules) ? { ...P, rules } : P;
+  return { lv: { P: Pr, rows: beat.rows, cols: beat.cols, diners, kitchen, seed: 0 }, cells };
 }
 
 export interface AuthorResult {
@@ -226,7 +296,7 @@ export function authorLevel(n: number, opts: { seeds?: number; runs?: number } =
       built.lv.seed = seed;
       const json: LevelJson = {
         n,
-        beat: beat.intro ? `intro:${beat.intro}` : beat.kind,
+        beat: beat.intro ? `intro:${beat.intro}` : beat.feature ? `showcase:${beat.feature}` : beat.kind,
         band: beat.band,
         rows: beat.rows,
         cols: beat.cols,
@@ -237,6 +307,7 @@ export function authorLevel(n: number, opts: { seeds?: number; runs?: number } =
         visibleNext: visibleNext === cv.visibleNext ? undefined : visibleNext,
         cells: formatCells(built.cells, beat.rows, beat.cols),
         kitchen: formatKitchen(built.lv.kitchen),
+        rules: rulesJson(rulesOf(built.lv.P)),
         seed,
       };
       // Measure the level as it will be loaded, not the one in memory.

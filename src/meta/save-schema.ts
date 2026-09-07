@@ -195,7 +195,20 @@ export function detectVersion(x: unknown): number | null {
   return null;
 }
 
-const MECHS: MechKind[] = ['wasabi', 'covered', 'vip', 'lock', 'frozen', 'double'];
+const MECHS: MechKind[] = [
+  'wasabi',
+  'covered',
+  'vip',
+  'lock',
+  'frozen',
+  'double',
+  'chain',
+  'rush',
+  'special',
+  'picky',
+  'reserved',
+  'reverse',
+];
 
 /** Coerce any blob into a well-typed SaveState. Bad fields fall back to their defaults, never to garbage. */
 export function normalize(x: unknown): SaveState {
