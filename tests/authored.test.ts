@@ -7,8 +7,11 @@ import { MECH_UNLOCK } from '../src/data/mechanics';
 import { beatFor } from '../src/engine/author';
 import { levelFromJson, parseCells, validateLevel, type LevelJson } from '../src/engine/authored';
 import { evalLevel, simulate } from '../src/engine/levels';
+import { NEW_MECHS } from '../src/engine/levels';
 import { rng } from '../src/engine/rng';
 import type { MechKind } from '../src/engine/types';
+
+const AUTHORED_MAX = 140;
 
 const DIR = join(process.cwd(), 'levels');
 const FILES = readdirSync(DIR)
@@ -17,10 +20,10 @@ const FILES = readdirSync(DIR)
 const LEVELS: LevelJson[] = FILES.map((f) => JSON.parse(readFileSync(join(DIR, f), 'utf8')));
 
 describe('authored level files', () => {
-  it('cover levels 1 to 100 exactly once, named by number', () => {
-    expect(LEVELS.length).toBe(100);
+  it('cover levels 1 to 140 exactly once, named by number', () => {
+    expect(LEVELS.length).toBe(AUTHORED_MAX);
     const ns = LEVELS.map((j) => j.n).sort((a, b) => a - b);
-    expect(ns).toEqual(Array.from({ length: 100 }, (_, i) => i + 1));
+    expect(ns).toEqual(Array.from({ length: AUTHORED_MAX }, (_, i) => i + 1));
     FILES.forEach((f, i) => expect(f).toBe(String(LEVELS[i].n).padStart(3, '0') + '.json'));
   });
 
@@ -62,9 +65,10 @@ describe('authored level files', () => {
         expect(j.band[1]).toBeLessThanOrEqual(0.15);
       }
       if (j.n % 10 >= 7 && j.n > 19) expect(kind).toBe('hard');
+      if (kind === 'showcase') expect([3, 6]).toContain(j.n % 10);
     }
     // A relief level follows every wall and is easier than it.
-    for (let n = 10; n < 100; n += 10) {
+    for (let n = 10; n < AUTHORED_MAX; n += 10) {
       const wall = LEVELS.find((j) => j.n === n) as LevelJson,
         relief = LEVELS.find((j) => j.n === n + 1) as LevelJson;
       expect(relief.diff as number, `relief ${n + 1}`).toBeLessThan((wall.diff as number) - 0.2);
@@ -86,6 +90,21 @@ describe('authored level files', () => {
       }
     }
     for (const j of LEVELS.filter((j) => j.n <= 12)) expect(levelFromJson(j).mechs, `level ${j.n}`).toEqual([]);
+  });
+
+  it('gives each of the six later rules at least three authored showcase levels, all in band', () => {
+    for (const kind of NEW_MECHS) {
+      const withRule = LEVELS.filter((j) => levelFromJson(j).mechs.includes(kind));
+      expect(withRule.length, kind).toBeGreaterThanOrEqual(3);
+      expect(LEVELS.filter((j) => j.beat === 'showcase:' + kind).length, kind + ' showcases').toBe(2);
+      for (const j of withRule) {
+        expect(j.diff as number, `level ${j.n} (${kind})`).toBeGreaterThanOrEqual(j.band[0] - 1e-9);
+        expect(j.diff as number, `level ${j.n} (${kind})`).toBeLessThanOrEqual(j.band[1] + 1e-9);
+      }
+    }
+    // From 132 on the roster repeats in combination: every hard level there carries at least two rules.
+    for (const j of LEVELS.filter((j) => j.n >= 132 && (j.beat || '').startsWith('hard')))
+      expect(levelFromJson(j).mechs.length, `level ${j.n}`).toBeGreaterThanOrEqual(2);
   });
 
   it('grows the board and the palette with the level number', () => {

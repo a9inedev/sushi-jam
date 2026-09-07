@@ -83,18 +83,19 @@ describe('the engine reads the curve', () => {
   });
 
   it('changing one number changes the next generated level, and the level cache is dropped', () => {
-    const before = getLevel(150);
+    // Level 75 has no timing rules, so the generator applies no relief on top of the curve's numbers.
+    const before = getLevel(75);
     expect(before.P.seats).toBe(4);
     const c = clone();
-    c.levels[149].seats = 3;
-    c.levels[149].beltCap = 6;
+    c.levels[74].seats = 3;
+    c.levels[74].beltCap = 6;
     setCurve(c, 'remote');
-    const after = getLevel(150);
+    const after = getLevel(75);
     expect(after).not.toBe(before);
     expect(after.P.seats).toBe(3);
     expect(after.P.beltCap).toBe(6);
-    expect(makeGenerated(150).P.seats).toBe(3);
-    expect(paramsFor(150).seats).toBe(3);
+    expect(makeGenerated(75).P.seats).toBe(3);
+    expect(paramsFor(75).seats).toBe(3);
   });
 
   it('changing one number changes an authored level too, through the defaults its file leaves out', () => {
@@ -123,7 +124,8 @@ describe('the engine reads the curve', () => {
   });
 
   it('the solver noise comes from the curve', () => {
-    const lv = makeGenerated(150);
+    // A level without timing rules: the noiseless reader is not guaranteed to beat rule-heavy boards.
+    const lv = makeGenerated(50);
     const noisy = evalLevel(lv, 40);
     const c = clone();
     c.solver.noise = 0;

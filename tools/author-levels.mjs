@@ -1,5 +1,5 @@
 // Authors levels/NNN.json for a range of levels from the beat sheet and writes docs/levels.md.
-//   node tools/author-levels.mjs [from] [to] [--force]
+//   node tools/author-levels.mjs [from] [to] [--force]      (defaults: 1 140)
 // Existing files are kept unless --force is given, so hand edits made in the editor survive re-runs.
 import { build } from 'esbuild';
 import fs from 'node:fs';
@@ -9,7 +9,7 @@ import { pathToFileURL } from 'node:url';
 const args = process.argv.slice(2).filter((a) => !a.startsWith('--'));
 const force = process.argv.includes('--force');
 const from = Number(args[0] || 1),
-  to = Number(args[1] || 100);
+  to = Number(args[1] || 140);
 const DIR = path.resolve('levels');
 fs.mkdirSync(DIR, { recursive: true });
 fs.mkdirSync(path.resolve('tools/out'), { recursive: true });
@@ -37,7 +37,7 @@ for (let n = from; n <= to; n++) {
   made++;
   const j = r.json;
   console.log(
-    `${String(n).padStart(3)} ${j.beat.padEnd(14)} ${j.rows}x${j.cols} c${j.colors} v${j.visibleNext} b${j.beltCap} diff ${j.diff.toFixed(2)} band ${j.band[0]}-${j.band[1]} tries ${r.tries}${r.adjusted.length ? '  [' + r.adjusted.join('; ') + ']' : ''}`
+    `${String(n).padStart(3)} ${j.beat.padEnd(14)} ${j.rows}x${j.cols} c${j.colors} v${j.visibleNext ?? '-'} b${j.beltCap ?? '-'} diff ${j.diff.toFixed(2)} band ${j.band[0]}-${j.band[1]} tries ${r.tries}${r.adjusted.length ? '  [' + r.adjusted.join('; ') + ']' : ''}`
   );
 }
 console.log(`authored ${made}, kept ${kept}, ${((Date.now() - t0) / 1000).toFixed(1)} s`);
@@ -50,7 +50,7 @@ const rows = fs
   .sort((x, y) => x.n - y.n)
   .map((j) => {
     const lv = a.levelFromJson(j);
-    return `| ${j.n} | ${j.beat} | ${j.rows}×${j.cols} | ${j.colors} | ${lv.diners.length} | ${j.visibleNext} | ${j.beltCap} | ${lv.mechs.join(', ') || '-'} | ${(j.diff * 100).toFixed(0)}% | ${(j.band[0] * 100).toFixed(0)}–${(j.band[1] * 100).toFixed(0)}% |`;
+    return `| ${j.n} | ${j.beat} | ${j.rows}×${j.cols} | ${j.colors} | ${lv.diners.length} | ${lv.P.visibleNext} | ${lv.P.beltCap} | ${lv.mechs.join(', ') || '-'} | ${(j.diff * 100).toFixed(0)}% | ${(j.band[0] * 100).toFixed(0)}–${(j.band[1] * 100).toFixed(0)}% |`;
   });
 const md = `# Authored levels
 

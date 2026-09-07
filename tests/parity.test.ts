@@ -47,8 +47,10 @@ describe('parity with the legacy build', () => {
     clearLevelCache();
   });
 
-  it('levels 1..120 are identical (board, kitchen, tuning, measured fail rate)', () => {
-    for (const legacy of fixture.normal as Compact[]) {
+  // From level 81 the game adds rules the legacy build never had (chained seats and the rest), so the
+  // generated content there is expected to differ; the fixture guards RNG order on levels 1 to 80.
+  it('levels 1..80 are identical (board, kitchen, tuning, measured fail rate)', () => {
+    for (const legacy of (fixture.normal as Compact[]).filter((l) => l.n <= 80)) {
       expect(compact(legacy.n, false), `level ${legacy.n}`).toEqual(legacy);
     }
   });

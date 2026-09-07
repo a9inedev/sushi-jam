@@ -51,7 +51,7 @@ describe('reverse generation', () => {
 });
 
 describe('kitchen accounting', () => {
-  it('plate units always equal total appetite (levels 1..200)', () => {
+  it('plate units always equal total appetite (levels 1..200; a special counts one)', () => {
     for (const n of LEVELS) {
       const lv = makeGenerated(n);
       const units = lv.kitchen.reduce((a, p) => a + plateUnits(p), 0);
@@ -66,6 +66,16 @@ describe('kitchen accounting', () => {
       const units = lv.kitchen.reduce((a, p) => a + plateUnits(p), 0);
       const appetite = lv.diners.reduce((a, d) => a + d.need, 0);
       expect(units, `level ${n} (all mechanics)`).toBe(appetite);
+    }
+  });
+
+  it('plate units equal appetite and the intended order wins with all twelve rules forced on (levels 1..80)', () => {
+    for (let n = 1; n <= 80; n++) {
+      const lv = makeGenerated(n, 'all');
+      const units = lv.kitchen.reduce((a, p) => a + plateUnits(p), 0);
+      const appetite = lv.diners.reduce((a, d) => a + d.need, 0);
+      expect(units, `level ${n} (all rules)`).toBe(appetite);
+      expect(simulate(lv, rng(1), 0, { intended: true }), `level ${n} (all rules)`).toBe('win');
     }
   });
 

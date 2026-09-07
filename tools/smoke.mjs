@@ -548,8 +548,79 @@ await step('settings: reset progress wipes the save and reloads', async () => {
   const stale = s.keys.filter((k) => k !== 'sushijam.save');
   if (s.level !== 1 || s.coins !== 300 || stale.length || !fresh) throw new Error(JSON.stringify({ ...s, fresh }));
 });
-await step('levels 1 to 100 are the authored files; 101 falls back to the generator', async () => {
-  const r = await sj(`(() => { const a = window.__SJ.getLevel(37), b = window.__SJ.getLevel(101);
+await step('the six later rules: intro cards, autoplay and fail messaging on levels 81 to 131', async () => {
+  const notes = [];
+  for (const [n, kind] of [
+    [81, 'chain'],
+    [91, 'rush'],
+    [101, 'special'],
+    [111, 'picky'],
+    [121, 'reserved'],
+    [131, 'reverse'],
+  ]) {
+    await sj('window.__SJ.closeScreen()');
+    await sj(`window.__SJ.jump(${n})`);
+    await sj('window.__SJ.skipIntro()');
+    await sleep(120);
+    const st = await sj('window.__SJ.state()');
+    if (!st || st.n !== n || !st.lv.mechs.includes(kind))
+      throw new Error(`level ${n} does not carry ${kind}: ${st && st.lv.mechs}`);
+    // The intro card for the new rule shows once, then never again.
+    const status = await sj('window.__SJ.state().status');
+    const shown = await sj(
+      `(() => { const L = window.__SJ.state(); return L.status === 'mech' ? L.newMechs[L.mechIdx] : null; })()`
+    );
+    if (status === 'mech' && shown !== kind) {
+      // Earlier unseen rules may queue first; page through to ours.
+      for (let i = 0; i < 12 && (await sj('window.__SJ.state().status')) === 'mech'; i++)
+        await sj('window.__SJ.mechCard()');
+    } else if (status === 'mech') {
+      if (n === 81) await page.screenshot({ path: path.join(OUT, 'smoke-rule-card-chain.png') });
+      while ((await sj('window.__SJ.state().status')) === 'mech') await sj('window.__SJ.mechCard()');
+    }
+    if ((await sj('window.__SJ.S.seenMech.includes("' + kind + '")')) !== true)
+      throw new Error(`${kind} not recorded as seen`);
+    // Autoplay for a while: the runtime must run every rule without errors and keep making progress.
+    const t0 = Date.now();
+    let moves = 0;
+    while (Date.now() - t0 < 9000) {
+      const L = await sj('window.__SJ.state()');
+      if (!L || L.status === 'win' || L.status === 'fail') break;
+      if (L.status === 'play' && (await sj('window.__SJ.auto()'))) moves++;
+      await sleep(180);
+    }
+    const L = await sj(
+      '(() => { const L = window.__SJ.state(); return { status: L.status, done: L.diners.filter((d) => d.state === "done").length, total: L.diners.length, rushT: L.rushT, reversed: L.reversed, emitted: L.emitted, seats: L.seats.map((s) => [s.reserved, s.chain]) }; })()'
+    );
+    // The naive auto player may park itself (a ticket guest's plates block it); the belt must still have run.
+    if (L.emitted < 6 && L.done < 2 && L.status !== 'win' && L.status !== 'fail')
+      throw new Error(`level ${n} (${kind}) made no progress: ${JSON.stringify(L)}`);
+    if (kind === 'reserved' && !L.seats.some((s) => s[0] >= 0)) throw new Error('reserved seat not laid out');
+    if (kind === 'chain' && !(L.seats[0][1] === 1 && L.seats[1][1] === 2)) throw new Error('chained pair not laid out');
+    if (n === 121) await page.screenshot({ path: path.join(OUT, 'smoke-rule-reserved.png') });
+    if (n === 81) await page.screenshot({ path: path.join(OUT, 'smoke-rule-chain.png') });
+    if (n === 111) await page.screenshot({ path: path.join(OUT, 'smoke-rule-picky.png') });
+    notes.push(`${n}:${kind} ${L.done}/${L.total} in ${moves} moves`);
+  }
+  // Fail messaging: every reason has its own card text.
+  for (const why of ['rush', 'reserved', 'chain', 'reverse', 'picky']) {
+    await sj('window.__SJ.jump(3)');
+    await sj('window.__SJ.skipIntro()');
+    await sleep(100);
+    await sj('window.__SJ.forceFail()');
+    await sj(`window.__SJ.state().failReason = '${why}'`);
+    await page.waitForFunction(() => window.__SJ.state().status === 'fail', { timeout: 5000 });
+    await sleep(150);
+    const title = await sj(`window.__SJ.i18n.t('fail.${why}Title')`);
+    if (!title || title.startsWith('fail.')) throw new Error('no fail text for ' + why);
+    if (why === 'reserved') await page.screenshot({ path: path.join(OUT, 'smoke-fail-reserved.png') });
+  }
+  await sj('window.__SJ.jump(1)');
+  await sj('window.__SJ.skipIntro()');
+  return notes.join(', ');
+});
+await step('levels 1 to 140 are the authored files; 141 falls back to the generator', async () => {
+  const r = await sj(`(() => { const a = window.__SJ.getLevel(137), b = window.__SJ.getLevel(141);
     return { a: !!a.authored, b: !!b.authored, rows: a.rows, cols: a.cols }; })()`);
   if (!r.a || r.b) throw new Error(JSON.stringify(r));
 });
