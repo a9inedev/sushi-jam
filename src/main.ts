@@ -1,4 +1,5 @@
 import './style.css';
+import './data/levels';
 import { applyMotion, initMotion } from './anim/motion';
 import { particles } from './anim/particles';
 import { tweens } from './anim/tween';
@@ -56,6 +57,7 @@ import { applyLanguage } from './ui/modals';
 import { drawStatusOverlay } from './ui/overlays';
 import { drawTutorial, resetTutorial, tutorialStep, tutorialTarget, updateTutorial } from './ui/tutorial';
 import { locale, setLocale, t } from './i18n';
+import { editorApi } from './ui/editor';
 import { bindStatsBox, drawScreen } from './ui/screens';
 
 function update(dt: number): void {
@@ -345,6 +347,7 @@ export interface DevApi {
     get: () => string;
     t: (key: string, vars?: Record<string, string | number>) => string;
   };
+  editor: typeof editorApi;
   audio: {
     state: () => string;
     unlock: () => void;
@@ -420,6 +423,7 @@ window.__SJ = {
     get: locale,
     t,
   },
+  editor: editorApi,
   audio: {
     state: () => engine.state(),
     unlock: () => audio(),

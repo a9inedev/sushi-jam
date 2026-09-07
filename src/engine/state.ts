@@ -19,7 +19,8 @@ export interface Toast {
   dur: number;
 }
 
-export type ScreenType = 'ad' | 'shop' | 'offer' | 'daily' | 'dev' | 'map' | 'settings' | 'pause' | 'confirm';
+export type ScreenType =
+  'ad' | 'shop' | 'offer' | 'daily' | 'dev' | 'map' | 'settings' | 'pause' | 'confirm' | 'editor';
 export type MapTab = 'path' | 'decor' | 'weekly' | 'game' | 'account';
 
 export interface Screen {

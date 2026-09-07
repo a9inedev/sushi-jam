@@ -1,12 +1,11 @@
 /* Full-screen panels: demo ad, shop, starter offer, daily bonus, dev panel and the map. */
 
 import { sfx } from '../audio/audio';
-import { AUTHORED } from '../data/authored';
 import { GOLD, H, TIER_COLOR, W } from '../data/constants';
 import { DECOR } from '../data/decor';
 import { MECH_UNLOCK } from '../data/mechanics';
 import { PRODUCTS } from '../data/products';
-import { schedTier } from '../engine/levels';
+import { schedTier, isAuthored } from '../engine/levels';
 import { rng } from '../engine/rng';
 import { addCoins, newLevel } from '../engine/rules';
 import { cur, G, runPending, type MapTab, type Screen } from '../engine/state';
@@ -19,6 +18,7 @@ import { ctx } from '../render/canvas';
 import { drawPlate } from '../render/plate';
 import { card, coinIcon, dim, rrect, txt } from '../render/primitives';
 import { button, closeBtn } from './buttons';
+import { drawEditor, importJson, openEditor } from './editor';
 import { drawConfirm, drawPause, drawSettings } from './modals';
 import { resetTutorial } from './tutorial';
 
@@ -38,6 +38,12 @@ export function bindStatsBox(): void {
   if (close)
     close.addEventListener('click', () => {
       (document.getElementById('statsBox') as HTMLElement).style.display = 'none';
+    });
+  const apply = document.getElementById('statsApply');
+  if (apply)
+    apply.addEventListener('click', () => {
+      const ta = document.getElementById('statsText') as HTMLTextAreaElement;
+      if (importJson(ta.value)) (document.getElementById('statsBox') as HTMLElement).style.display = 'none';
     });
 }
 
@@ -291,8 +297,15 @@ function drawDev(): void {
       location.reload();
     },
   });
-  txt(t('dev.hint1'), 240, 600, 12, 700, '#8A8378', 'center', 'middle');
-  txt(t('dev.hint2'), 240, 620, 12, 700, '#8A8378', 'center', 'middle');
+  button(bx, 580, bw * 2 + 16, 44, t('dev.editor'), null, {
+    tone: '#3B3F4A',
+    onTap: () => {
+      sfx.ui();
+      openEditor(cur().n);
+    },
+  });
+  txt(t('dev.hint1'), 240, 650, 12, 700, '#8A8378', 'center', 'middle');
+  txt(t('dev.hint2'), 240, 670, 12, 700, '#8A8378', 'center', 'middle');
 }
 
 function drawMap(sc: Screen): void {
@@ -339,7 +352,7 @@ function drawMap(sc: Screen): void {
       ctx.arc(p.x, p.y, curL ? 20 : 16, 0, 7);
       ctx.stroke();
       txt(p.lvl, p.x, p.y + 1, curL ? 16 : 13, 800, cleared || curL ? '#fff' : '#8A8378', 'center', 'middle');
-      if (AUTHORED[p.lvl]) {
+      if (isAuthored(p.lvl)) {
         ctx.fillStyle = '#E5484D';
         ctx.beginPath();
         ctx.moveTo(p.x + 14, p.y - 22);
@@ -404,6 +417,7 @@ export function drawScreen(): void {
   else if (sc.type === 'offer') drawOffer();
   else if (sc.type === 'daily') drawDaily(sc);
   else if (sc.type === 'dev') drawDev();
+  else if (sc.type === 'editor') drawEditor();
   else if (sc.type === 'map') drawMap(sc);
   else if (sc.type === 'settings') drawSettings(sc);
   else if (sc.type === 'pause') drawPause(sc);

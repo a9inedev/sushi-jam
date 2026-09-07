@@ -1,9 +1,8 @@
 /* In-level overlays: level intro, mechanic cards, the fail card and the win card. */
 
 import { sfx } from '../audio/audio';
-import { AUTHORED } from '../data/authored';
 import { TIER_COLOR } from '../data/constants';
-import { schedTier } from '../engine/levels';
+import { isAuthored, schedTier } from '../engine/levels';
 import { adRescue, newLevel, nextMechCard, paidRescue } from '../engine/rules';
 import { cur, G } from '../engine/state';
 import { t } from '../i18n';
@@ -17,7 +16,7 @@ import { button } from './buttons';
 import { tierLabel } from './hud';
 
 export function getLevelLabelQuick(n: number): string {
-  return (AUTHORED[n] ? t('tier.authored') : '') + tierLabel(schedTier(n));
+  return (isAuthored(n) ? t('tier.authored') : '') + tierLabel(schedTier(n));
 }
 
 export function drawStatusOverlay(): void {
