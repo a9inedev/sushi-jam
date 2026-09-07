@@ -1,7 +1,7 @@
 /* Proves the TypeScript engine generates exactly the levels the legacy single-file build did.
    The fixture was dumped from the pre-split index.html with tools/dump-legacy-levels.mjs. */
 import { describe, expect, it } from 'vitest';
-import { makeLevel } from '../src/engine/levels';
+import { makeGenerated } from '../src/engine/levels';
 import fixture from './fixtures/legacy-levels.json';
 
 interface Compact {
@@ -20,7 +20,7 @@ interface Compact {
 }
 
 function compact(n: number, allMech: boolean): Compact {
-  const lv = makeLevel(n, allMech);
+  const lv = makeGenerated(n, allMech);
   return {
     n: lv.n,
     seed: lv.seed,

@@ -3,7 +3,7 @@ import { isRTL, LANGUAGES, locale, matchLocale, setLocale, t, TABLES } from '../
 
 const en = TABLES.en;
 const keys = Object.keys(en);
-const playerKeys = keys.filter((k) => !k.startsWith('dev.'));
+const playerKeys = keys.filter((k) => !k.startsWith('dev.') && !k.startsWith('editor.'));
 
 describe('locale tables', () => {
   it('every locale in the language list has a table and every player-facing key', () => {

@@ -544,6 +544,54 @@ await step('settings: reset progress wipes the save and reloads', async () => {
   const stale = s.keys.filter((k) => k !== 'sushijam.save');
   if (s.level !== 1 || s.coins !== 300 || stale.length || !fresh) throw new Error(JSON.stringify({ ...s, fresh }));
 });
+await step('levels 1 to 100 are the authored files; 101 falls back to the generator', async () => {
+  const r = await sj(`(() => { const a = window.__SJ.getLevel(37), b = window.__SJ.getLevel(101);
+    return { a: !!a.authored, b: !!b.authored, rows: a.rows, cols: a.cols }; })()`);
+  if (!r.a || r.b) throw new Error(JSON.stringify(r));
+});
+await step('level editor: dev panel only, load, paint, solve, export/import round trip, play test', async () => {
+  await sj('window.__SJ.closeScreen()');
+  await sj("window.__SJ.setScreen({ type: 'dev', t: 0 })");
+  await sleep(120);
+  await tapCanvas(240, 602); // Level editor button on the dev panel
+  await sleep(150);
+  if ((await screenType()) !== 'editor') throw new Error('editor did not open from the dev panel');
+  await sj('window.__SJ.editor.load(21)');
+  await sleep(100);
+  await page.screenshot({ path: path.join(OUT, 'smoke-editor.png') });
+  const st = await sj('window.__SJ.editor.state()');
+  if (st.n !== 21 || st.cells < 4) throw new Error('load: ' + JSON.stringify(st));
+  const v = await sj('window.__SJ.editor.solve(40)');
+  if (!v.ok) throw new Error('level 21 does not validate in the editor: ' + v.problems.join('; '));
+  const before = await sj('window.__SJ.editor.get()');
+  const back = await sj(
+    `(() => { const j = window.__SJ.editor.get(); window.__SJ.editor.set(JSON.parse(JSON.stringify(j))); return window.__SJ.editor.get(); })()`
+  );
+  if (JSON.stringify({ ...back, diff: 0 }) !== JSON.stringify({ ...before, diff: 0 }))
+    throw new Error('export/import round trip changed the level');
+  // Paint a diner that blocks the peel and confirm the solver reports it, then erase it again.
+  const empty = await sj(
+    `(() => { const j = window.__SJ.editor.get(); for (let r = 0; r < j.rows; r++) { const t = j.cells[r].split(' '); const c = t.indexOf('.'); if (c >= 0) return [r, c]; } return null; })()`
+  );
+  if (!empty) throw new Error('no empty cell to paint on level 21');
+  await sj(`window.__SJ.editor.paint(${empty[0]}, ${empty[1]}, '0v9')`);
+  const tok = await sj(`window.__SJ.editor.cellToken(${empty[0]}, ${empty[1]})`);
+  if (tok !== '0v9') throw new Error('paint wrote ' + tok);
+  const bad = await sj('window.__SJ.editor.solve(20)');
+  if (bad.ok) throw new Error('an appetite of 9 with no plates for it should fail validation');
+  await sj(`window.__SJ.editor.paint(${empty[0]}, ${empty[1]}, null)`);
+  const good = await sj('window.__SJ.editor.solve(20)');
+  if (!good.ok) throw new Error('erase did not restore the level: ' + good.problems.join('; '));
+  const played = await sj('window.__SJ.editor.play()');
+  await sleep(200);
+  const lv = await sj(
+    '(() => { const s = window.__SJ.state(); return s ? { n: s.lv.n, authored: !!s.lv.authored, status: s.status } : null; })()'
+  );
+  if (!played || !lv || lv.n !== 21 || !lv.authored || (await screenType()))
+    throw new Error('play test: ' + JSON.stringify(lv));
+  // The HUD and map never link to the editor: only the dev panel button does.
+  await sj('window.__SJ.closeScreen()');
+});
 await step('no console errors', async () => {
   if (errors.length) throw new Error(errors.join(' | '));
 });

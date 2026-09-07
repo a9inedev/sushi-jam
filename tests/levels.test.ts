@@ -4,7 +4,7 @@ import { rng } from '../src/engine/rng';
 import {
   decorate,
   gridGenerate,
-  makeLevel,
+  makeGenerated,
   paramsFor,
   parseAuthored,
   pathClear,
@@ -39,7 +39,7 @@ describe('reverse generation', () => {
 
   it('every generated level board (1..200) is peelable in its intended order', () => {
     for (const n of LEVELS) {
-      const lv = makeLevel(n);
+      const lv = makeGenerated(n);
       const occ: (unknown | null)[][] = Array.from({ length: lv.rows }, () => Array(lv.cols).fill(null));
       for (const d of lv.diners) occ[d.r][d.c] = d;
       for (const d of lv.diners) {
@@ -53,7 +53,7 @@ describe('reverse generation', () => {
 describe('kitchen accounting', () => {
   it('plate units always equal total appetite (levels 1..200)', () => {
     for (const n of LEVELS) {
-      const lv = makeLevel(n);
+      const lv = makeGenerated(n);
       const units = lv.kitchen.reduce((a, p) => a + plateUnits(p), 0);
       const appetite = lv.diners.reduce((a, d) => a + d.need, 0);
       expect(units, `level ${n}`).toBe(appetite);
@@ -62,7 +62,7 @@ describe('kitchen accounting', () => {
 
   it('plate units equal appetite with every mechanic forced on (levels 1..80)', () => {
     for (let n = 1; n <= 80; n++) {
-      const lv = makeLevel(n, true);
+      const lv = makeGenerated(n, true);
       const units = lv.kitchen.reduce((a, p) => a + plateUnits(p), 0);
       const appetite = lv.diners.reduce((a, d) => a + d.need, 0);
       expect(units, `level ${n} (all mechanics)`).toBe(appetite);
@@ -85,21 +85,21 @@ describe('kitchen accounting', () => {
 describe('solver', () => {
   it('returns win on the intended order for every level 1..200', () => {
     for (const n of LEVELS) {
-      const lv = makeLevel(n);
+      const lv = makeGenerated(n);
       expect(simulate(lv, rng(1), 0, { intended: true }), `level ${n}`).toBe('win');
     }
   });
 
   it('returns win on the intended order with every mechanic forced on (levels 1..80)', () => {
     for (let n = 1; n <= 80; n++) {
-      const lv = makeLevel(n, true);
+      const lv = makeGenerated(n, true);
       expect(simulate(lv, rng(1), 0, { intended: true }), `level ${n} (all mechanics)`).toBe('win');
     }
   });
 
   it('measures a fail rate in [0,1] and labels a tier', () => {
     for (const n of [1, 5, 10, 20, 30, 50, 77, 100]) {
-      const lv = makeLevel(n);
+      const lv = makeGenerated(n);
       expect(lv.diff).toBeGreaterThanOrEqual(0);
       expect(lv.diff).toBeLessThanOrEqual(1);
       expect(['Easy', 'Medium', 'Hard', 'Super Hard']).toContain(lv.tierLabel);
@@ -125,7 +125,7 @@ describe('authored boards', () => {
 
   it('authored levels keep their hand-made layout', () => {
     for (const k of Object.keys(AUTHORED).map(Number)) {
-      const lv = makeLevel(k);
+      const lv = makeGenerated(k);
       const parsed = parseAuthored(AUTHORED[k]);
       if (!parsed) throw new Error('unparseable');
       // The generated level may fall back to a generated board if the authored one cannot be tuned into band.
@@ -141,8 +141,8 @@ describe('authored boards', () => {
 describe('determinism', () => {
   it('the same level number always produces the same level', () => {
     for (const n of [1, 7, 10, 23, 48, 99, 150]) {
-      const a = makeLevel(n),
-        b = makeLevel(n);
+      const a = makeGenerated(n),
+        b = makeGenerated(n);
       expect(JSON.stringify(a)).toBe(JSON.stringify(b));
     }
   });
