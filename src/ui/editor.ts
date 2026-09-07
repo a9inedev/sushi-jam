@@ -21,17 +21,17 @@ import {
   type Validation,
 } from '../engine/authored';
 import { beatFor } from '../engine/author';
-import { makeGenerated, paramsFor, tierFromDiff } from '../engine/levels';
+import { hasRules, makeGenerated, normaliseRules, paramsFor, rulesJson, rulesOf, tierFromDiff } from '../engine/levels';
 import { rng } from '../engine/rng';
 import { newLevelDef } from '../engine/rules';
 import { G, toast } from '../engine/state';
-import type { LevelDef, LevelLike, PlateDef } from '../engine/types';
+import type { LevelDef, LevelLike, LevelRules, PlateDef } from '../engine/types';
 import { t } from '../i18n';
 import { ctx } from '../render/canvas';
 import { card, glyph, rrect, txt } from '../render/primitives';
 import { button, closeBtn } from './buttons';
 
-type Tool = 'paint' | 'erase' | 'rotate' | 'need' | 'vip' | 'lock' | 'ice';
+type Tool = 'paint' | 'erase' | 'rotate' | 'need' | 'vip' | 'lock' | 'ice' | 'picky';
 
 interface EditorState {
   n: number;
@@ -48,8 +48,16 @@ interface EditorState {
   brush: { color: number; dir: number; need: number };
   tool: Tool;
   sel: number;
+  rules: LevelRules;
   result: Validation | null;
 }
+
+const cloneRules = (r: LevelRules): LevelRules => ({
+  chain: r.chain,
+  rush: r.rush,
+  reserved: r.reserved.slice(),
+  reverse: r.reverse ? [r.reverse[0], r.reverse[1]] : null,
+});
 
 const ed: EditorState = {
   n: 1,
@@ -65,6 +73,7 @@ const ed: EditorState = {
   brush: { color: 0, dir: 2, need: 2 },
   tool: 'paint',
   sel: 0,
+  rules: { chain: 0, rush: 0, reserved: [], reverse: null },
   result: null,
 };
 
@@ -100,8 +109,10 @@ export function loadLevel(n: number): void {
     vip: d.vip,
     lockColor: d.lockColor,
     ice: d.ice,
+    ...(d.seq && d.seq.length ? { seq: d.seq.slice() } : {}),
   }));
   ed.kitchen = lv.kitchen.map((p) => ({ ...p }));
+  ed.rules = cloneRules(rulesOf(lv.P));
   ed.result = null;
 }
 
@@ -118,6 +129,7 @@ export function fromJson(j: LevelJson): void {
   ed.seed = (j.seed ?? j.n * 7919 + 991) >>> 0;
   ed.cells = parsed.cells;
   ed.kitchen = j.kitchen ? parseKitchen(j.kitchen) : null;
+  ed.rules = cloneRules(normaliseRules(j.rules));
   ed.result = null;
 }
 
@@ -126,7 +138,7 @@ export function toJson(): LevelJson {
   const beat = beatFor(ed.n);
   return {
     n: ed.n,
-    beat: beat.intro ? 'intro:' + beat.intro : beat.kind,
+    beat: beat.intro ? 'intro:' + beat.intro : beat.feature ? 'showcase:' + beat.feature : beat.kind,
     band: beat.band,
     rows: ed.rows,
     cols: ed.cols,
@@ -136,6 +148,7 @@ export function toJson(): LevelJson {
     visibleNext: ed.visibleNext,
     cells: formatCells(ed.cells, ed.rows, ed.cols),
     kitchen: lv ? formatKitchen(lv.kitchen) : '',
+    rules: rulesJson(ed.rules),
     seed: ed.seed,
     diff: ed.result && ed.result.ok ? +ed.result.diff.toFixed(3) : undefined,
   };
@@ -153,8 +166,11 @@ export function currentLevel(): LevelLike | null {
     seats: ed.seats,
     beltCap: ed.beltCap,
     visibleNext: ed.visibleNext,
+    ...(hasRules(ed.rules) ? { rules: cloneRules(ed.rules) } : {}),
   };
-  const kitchen = ed.kitchen ? ed.kitchen.map((p) => ({ ...p })) : kitchenFromSolution(diners, ed.seats, rng(ed.seed));
+  const kitchen = ed.kitchen
+    ? ed.kitchen.map((p) => ({ ...p }))
+    : kitchenFromSolution(diners, ed.seats, rng(ed.seed), 0, ed.rules);
   return { P, rows: ed.rows, cols: ed.cols, diners, kitchen, seed: ed.seed };
 }
 
@@ -230,16 +246,34 @@ function applyTool(r: number, c: number): void {
       if (cell) cell.dir = (cell.dir + 1) % 4;
       break;
     case 'need':
-      if (cell) cell.need = (cell.need % 5) + 1;
+      if (cell) {
+        cell.need = (cell.need % 5) + 1;
+        if (cell.seq) cell.seq = Array.from({ length: cell.need }, (_, i) => cell.seq?.[i] ?? cell.color);
+      }
       break;
     case 'vip':
-      if (cell) cell.vip = !cell.vip;
+      if (cell) {
+        cell.vip = !cell.vip;
+        if (cell.vip) delete cell.seq;
+      }
       break;
     case 'lock':
       if (cell) cell.lockColor = cell.lockColor + 1 >= ed.colors ? -1 : cell.lockColor + 1;
       break;
     case 'ice':
       if (cell) cell.ice = (cell.ice + 1) % 4;
+      break;
+    case 'picky':
+      // First tap: a ticket guest eating their own colour. Further taps push the brush colour into the
+      // sequence; when the sequence is all their own colour again the ticket is removed.
+      if (cell) {
+        if (!cell.seq) cell.seq = Array(cell.need).fill(cell.color);
+        else {
+          cell.seq = [...cell.seq.slice(1), ed.brush.color];
+          if (cell.seq.every((c) => c === cell.color)) delete cell.seq;
+        }
+        if (cell.seq) cell.vip = false;
+      }
       break;
   }
   ed.result = null;
@@ -250,7 +284,9 @@ function clampCells(): void {
   for (const x of ed.cells) {
     if (x.color >= ed.colors) x.color = ed.colors - 1;
     if (x.lockColor >= ed.colors) x.lockColor = -1;
+    if (x.seq) x.seq = x.seq.map((c) => Math.min(c, ed.colors - 1));
   }
+  ed.rules.reserved = ed.rules.reserved.map((c) => (c >= ed.colors ? -1 : c));
   if (ed.kitchen) for (const p of ed.kitchen) if (p.color >= ed.colors) p.color = ed.colors - 1;
   ed.result = null;
 }
@@ -314,6 +350,19 @@ function drawCellDiner(x: number, y: number, size: number, cell: AuthoredCell): 
     glyph(0, -r * 1.02, COLORS[cell.lockColor].glyph, r * 0.36, COLORS[cell.lockColor].hex);
   }
   if (cell.ice > 0) txt('I' + cell.ice, -r * 0.6, r * 0.7, r * 0.5, 800, '#1C5D8A', 'center', 'middle'); // i18n-ignore
+  if (cell.seq) {
+    const step = r * 0.4,
+      x0 = (-(cell.seq.length - 1) * step) / 2;
+    ctx.fillStyle = '#FFFDF7';
+    rrect(x0 - r * 0.25, r * 1.05, cell.seq.length * step + r * 0.1, r * 0.42, r * 0.1);
+    ctx.fill();
+    cell.seq.forEach((c, i) => {
+      ctx.fillStyle = COLORS[c].hex;
+      ctx.beginPath();
+      ctx.arc(x0 + i * step, r * 1.26, r * 0.15, 0, 7);
+      ctx.fill();
+    });
+  }
   ctx.restore();
 }
 
@@ -388,12 +437,13 @@ function drawPalette(): void {
     ['vip', t('editor.vip')],
     ['lock', t('editor.lock')],
     ['ice', t('editor.ice')],
+    ['picky', t('editor.picky')],
   ];
-  tools.forEach(([id, label], i) => chip(40 + i * 58, 572, 54, label, ed.tool === id, () => (ed.tool = id)));
+  tools.forEach(([id, label], i) => chip(40 + i * 51, 566, 48, label, ed.tool === id, () => (ed.tool = id)));
 }
 
 function drawKitchenRow(): void {
-  const y = 612;
+  const y = 598;
   const custom = !!ed.kitchen;
   chip(
     40,
@@ -418,10 +468,11 @@ function drawKitchenRow(): void {
   plates.slice(0, 60).forEach((p, i) => {
     const px = 140 + (i % 30) * 10,
       py = y + 6 + Math.floor(i / 30) * 16;
-    ctx.fillStyle = COLORS[p.color]?.hex || '#000';
+    ctx.fillStyle = p.special ? '#F2B705' : COLORS[p.color]?.hex || '#000';
     ctx.beginPath();
     ctx.arc(px, py, 4, 0, 7);
     ctx.fill();
+    if (p.owner != null && p.owner >= 0) txt(String(p.owner + 1), px, py - 8, 7, 800, '#2A2320', 'center', 'middle');
     if (p.vip) {
       ctx.strokeStyle = '#F2B705';
       ctx.lineWidth = 1.5;
@@ -461,8 +512,45 @@ function drawKitchenRow(): void {
     flag(74, 'D', 'double'); // i18n-ignore
     flag(108, 'W', 'wasabi'); // i18n-ignore
     flag(142, 'C', 'covered'); // i18n-ignore
+    const pickyCount = ed.cells.filter((c) => c.seq && c.seq.length).length;
     chip(
-      190,
+      176,
+      y + 40,
+      30,
+      t('editor.special'),
+      !!ed.kitchen?.[ed.sel]?.special,
+      () => {
+        const p = ed.kitchen?.[ed.sel];
+        if (p) {
+          p.special = !p.special;
+          if (p.special) delete p.owner;
+          ed.result = null;
+        }
+      },
+      '#F2B705'
+    );
+    chip(
+      210,
+      y + 40,
+      30,
+      t('editor.owner') + (ed.kitchen?.[ed.sel]?.owner != null ? String((ed.kitchen[ed.sel].owner as number) + 1) : ''),
+      ed.kitchen?.[ed.sel]?.owner != null,
+      () => {
+        const p = ed.kitchen?.[ed.sel];
+        if (!p) return;
+        const cur = p.owner ?? -1;
+        const next = cur + 1 >= pickyCount ? -1 : cur + 1;
+        if (next < 0) delete p.owner;
+        else {
+          p.owner = next;
+          delete p.special;
+        }
+        ed.result = null;
+      },
+      '#2A2320'
+    );
+    chip(
+      250,
       y + 40,
       26,
       '+',
@@ -475,7 +563,7 @@ function drawKitchenRow(): void {
       '#4A4540'
     );
     chip(
-      220,
+      280,
       y + 40,
       26,
       '−',
@@ -489,12 +577,58 @@ function drawKitchenRow(): void {
       },
       '#4A4540'
     );
-    chip(256, y + 40, 90, t('editor.generate'), true, () => generateKitchen(), '#6A4C93');
+    chip(316, y + 40, 90, t('editor.generate'), true, () => generateKitchen(), '#6A4C93');
   }
 }
 
+function drawRulesRow(): void {
+  const y = 672,
+    r = ed.rules;
+  const set = (fn: () => void) => {
+    fn();
+    ed.result = null;
+  };
+  chip(40, y, 60, t('editor.rulesChain'), r.chain > 0, () => set(() => (r.chain = r.chain ? 0 : 1)), '#148F82');
+  const rsv = r.reserved.length ? r.reserved[ed.seats - 1] : -1;
+  chip(
+    106,
+    y,
+    70,
+    t('editor.rulesReserved') + (rsv >= 0 ? ' ' + COLORS[rsv].glyph[0].toUpperCase() : ''),
+    rsv >= 0,
+    () =>
+      set(() => {
+        const next = rsv + 1 >= ed.colors ? -1 : rsv + 1;
+        if (next < 0) r.reserved = [];
+        else {
+          r.reserved = Array(ed.seats).fill(-1);
+          r.reserved[ed.seats - 1] = next;
+        }
+      }),
+    rsv >= 0 ? COLORS[rsv].hex : '#6A4C93'
+  );
+  chip(
+    182,
+    y,
+    70,
+    t('editor.rulesRush') + (r.rush ? ' ' + r.rush : ''),
+    r.rush > 0,
+    () => set(() => (r.rush = r.rush >= 10 ? 0 : r.rush ? r.rush + 2 : 4)),
+    '#E5484D'
+  );
+  chip(
+    258,
+    y,
+    60,
+    t('editor.rulesReverse'),
+    !!r.reverse,
+    () => set(() => (r.reverse = r.reverse ? null : [14, 4])),
+    '#3E7BFA'
+  );
+}
+
 function drawStatus(): void {
-  const y = 706;
+  const y = 712;
   const beat = beatFor(ed.n);
   const r = ed.result;
   if (!r) txt(t('editor.unsolved'), 240, y, 13, 700, '#8A8378', 'center', 'middle');
@@ -572,6 +706,7 @@ export function drawEditor(): void {
   drawGridArea();
   drawPalette();
   drawKitchenRow();
+  drawRulesRow();
   drawStatus();
   const bw = 96,
     by = 742;
@@ -640,7 +775,12 @@ export const editorApi = {
     cols: ed.cols,
     cells: ed.cells.length,
     kitchen: ed.kitchen ? ed.kitchen.length : null,
+    rules: cloneRules(ed.rules),
   }),
+  setRules: (r: Partial<LevelRules>) => {
+    ed.rules = cloneRules(normaliseRules(r));
+    ed.result = null;
+  },
   cellToken: (r: number, c: number) => {
     const cell = cellAt(r, c);
     return cell ? formatCell(cell) : null;

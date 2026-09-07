@@ -5,7 +5,9 @@
   "hud.map": "지도",
   "hud.shop": "상점",
   "hud.kitchen": "주방 · 다음 접시",
-  "hud.platesLeft": { "other": "접시 {n}개 남음" },
+  "hud.platesLeft": {
+    "other": "접시 {n}개 남음"
+  },
   "hud.belt": "벨트 {a} / {b}",
   "hud.paid": "계산 완료",
   "tier.easy": "쉬움",
@@ -68,7 +70,9 @@
   "fail.wasabiText2": "와사비 접시가 상해버렸어요.",
   "fail.jamText1": "모든 자리가 찼고 벨트 위 접시를",
   "fail.jamText2": "아무도 원하지 않아요.",
-  "fail.left": { "other": "손님 {n}명만 더 대접하면 돼요!" },
+  "fail.left": {
+    "other": "손님 {n}명만 더 대접하면 돼요!"
+  },
   "fail.waiting": "손님 {n}명이 아직 기다리고 있어요.",
   "fail.rescue": "셰프의 구조  ·  $4.99  ·  데모",
   "fail.rescueSub": "+1 자리 · 손님 1명 대접 · 벨트 비우기 · +200 코인",
@@ -185,9 +189,15 @@
   "settings.version": "Sushi Jam v{v} · {platform}",
   "settings.done": "완료",
   "time.justNow": "방금",
-  "time.minAgo": { "other": "{n}분 전" },
-  "time.hAgo": { "other": "{n}시간 전" },
-  "time.dAgo": { "other": "{n}일 전" },
+  "time.minAgo": {
+    "other": "{n}분 전"
+  },
+  "time.hAgo": {
+    "other": "{n}시간 전"
+  },
+  "time.dAgo": {
+    "other": "{n}일 전"
+  },
   "time.earlier": "이전",
   "pause.title": "일시정지",
   "pause.resume": "계속",
@@ -205,5 +215,39 @@
   "tutorial.blocked": "다른 손님을 마주 보는 손님은 아직 못 움직여요",
   "tutorial.readKitchen": "창에 다음 접시가 보여요",
   "tutorial.keepSeat": "자리가 다 차고 맞는 접시가 없으면 정체예요. 다음 색을 위해 자리 하나를 남겨 두세요.",
-  "tutorial.skip": "튜토리얼 건너뛰기"
+  "tutorial.skip": "튜토리얼 건너뛰기",
+  "mech.chain.title": "연결 좌석",
+  "mech.chain.text": "두 자리가 한 줄을 공유합니다. 뒷자리는 기다리기만 하고, 앞손님이 떠나야 먹기 시작합니다.",
+  "mech.rush.title": "러시아워",
+  "mech.rush.text": "종이 울리면 15초 동안 접시가 더 빨리 나오고 벨트도 빨라집니다.",
+  "mech.special.title": "셰프 특선",
+  "mech.special.text": "누구나 가져갈 수 있는 보너스 접시. VIP와 주문표 손님은 거절합니다. 남는 접시는 셰프가 거둬 갑니다.",
+  "mech.picky.title": "주문표 손님",
+  "mech.picky.text": "접시가 주문 제작되어 인쇄된 순서대로 나옵니다. 다른 사람은 가져갈 수 없습니다.",
+  "mech.reserved.title": "예약석",
+  "mech.reserved.text": "표시된 자리는 그 색의 손님만 앉을 수 있습니다. 다른 손님은 다른 자리가 필요합니다.",
+  "mech.reverse.title": "벨트 역회전",
+  "mech.reverse.text": "가끔 벨트가 거꾸로 돕니다. 주방 입구에 닿은 접시는 잠시 안으로 돌아갑니다.",
+  "fail.rushTitle": "러시아워 정체!",
+  "fail.rushText1": "손님이 먹는 속도보다",
+  "fail.rushText2": "접시가 더 빨리 쌓였습니다.",
+  "fail.reservedTitle": "예약석이 비어 있었어요!",
+  "fail.reservedText1": "예약석은 한 가지 색만 받고,",
+  "fail.reservedText2": "나머지 손님은 자리가 없었습니다.",
+  "fail.chainTitle": "연결에 발이 묶였어요!",
+  "fail.chainText1": "뒷자리는 기다리기만 합니다.",
+  "fail.chainText2": "앞손님이 떠나야 먹기 시작합니다.",
+  "fail.reverseTitle": "역회전에 당했어요!",
+  "fail.reverseText1": "벨트가 거꾸로 돌아 손님이 기다리던",
+  "fail.reverseText2": "접시를 가져가 버렸습니다.",
+  "fail.pickyTitle": "주문표 손님이 자리를 차지했어요!",
+  "fail.pickyText1": "그 접시는 주문 제작이라 순서대로 나옵니다.",
+  "fail.pickyText2": "차례 직전에 앉히세요.",
+  "toast.reservedSeat": "그 자리는 {colour} 손님 예약석입니다",
+  "toast.rushOn": "러시아워! 접시가 더 빨리 나옵니다",
+  "toast.reverseOn": "벨트가 거꾸로 돌고 있어요!",
+  "toast.reverseOff": "벨트가 정상으로 돌아왔어요",
+  "hud.rush": "러시아워 {s}초",
+  "hud.reverse": "역회전",
+  "hud.waitSeat": "대기"
 }

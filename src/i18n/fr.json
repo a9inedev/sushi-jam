@@ -5,7 +5,10 @@
   "hud.map": "CARTE",
   "hud.shop": "BOUTIQUE",
   "hud.kitchen": "CUISINE · À SUIVRE",
-  "hud.platesLeft": { "one": "{n} assiette restante", "other": "{n} assiettes restantes" },
+  "hud.platesLeft": {
+    "one": "{n} assiette restante",
+    "other": "{n} assiettes restantes"
+  },
   "hud.belt": "TAPIS {a} / {b}",
   "hud.paid": "PAYÉ",
   "tier.easy": "FACILE",
@@ -68,7 +71,10 @@
   "fail.wasabiText2": "de sa couleur ne s'assoie.",
   "fail.jamText1": "Toutes les places sont prises et personne",
   "fail.jamText2": "ne veut ce qu'il y a sur le tapis.",
-  "fail.left": { "one": "Plus qu'1 client à servir !", "other": "Plus que {n} clients à servir !" },
+  "fail.left": {
+    "one": "Plus qu'1 client à servir !",
+    "other": "Plus que {n} clients à servir !"
+  },
   "fail.waiting": "{n} clients attendent encore.",
   "fail.rescue": "Secours du chef  ·  4,99 $  ·  démo",
   "fail.rescueSub": "+1 place · un client servi · tapis vidé · +200 pièces",
@@ -185,9 +191,18 @@
   "settings.version": "Sushi Jam v{v} · {platform}",
   "settings.done": "OK",
   "time.justNow": "à l'instant",
-  "time.minAgo": { "one": "il y a {n} min", "other": "il y a {n} min" },
-  "time.hAgo": { "one": "il y a {n} h", "other": "il y a {n} h" },
-  "time.dAgo": { "one": "il y a {n} j", "other": "il y a {n} j" },
+  "time.minAgo": {
+    "one": "il y a {n} min",
+    "other": "il y a {n} min"
+  },
+  "time.hAgo": {
+    "one": "il y a {n} h",
+    "other": "il y a {n} h"
+  },
+  "time.dAgo": {
+    "one": "il y a {n} j",
+    "other": "il y a {n} j"
+  },
   "time.earlier": "plus tôt",
   "pause.title": "Pause",
   "pause.resume": "Reprendre",
@@ -205,5 +220,39 @@
   "tutorial.blocked": "Un client qui en regarde un autre ne peut pas encore bouger",
   "tutorial.readKitchen": "La fenêtre montre les prochaines assiettes",
   "tutorial.keepSeat": "Places pleines sans assiette assortie, c'est l'embouteillage. Garde une place pour la couleur suivante.",
-  "tutorial.skip": "Passer le tutoriel"
+  "tutorial.skip": "Passer le tutoriel",
+  "mech.chain.title": "Sièges enchaînés",
+  "mech.chain.text": "Deux tabourets partagent une file. Celui de derrière attend : son client mange quand celui de devant s'en va.",
+  "mech.rush.title": "Coup de feu",
+  "mech.rush.text": "Quand la cloche sonne, les assiettes arrivent plus vite et le tapis accélère pendant quinze secondes.",
+  "mech.special.title": "Spécial du chef",
+  "mech.special.text": "Une assiette bonus que tout client peut prendre. Les VIP et les clients à ticket la refusent. Le chef reprend ce qu'elle remplace.",
+  "mech.picky.title": "Client à ticket",
+  "mech.picky.text": "Ses assiettes sont faites sur commande et arrivent dans l'ordre imprimé. Personne d'autre ne peut les prendre.",
+  "mech.reserved.title": "Siège réservé",
+  "mech.reserved.text": "Le tabouret marqué n'accepte que les clients de sa couleur. Les autres ont besoin d'un autre siège.",
+  "mech.reverse.title": "Tapis inversé",
+  "mech.reverse.text": "De temps en temps le tapis tourne à l'envers. Les assiettes qui atteignent la porte de la cuisine y retournent un moment.",
+  "fail.rushTitle": "Embouteillage du coup de feu !",
+  "fail.rushText1": "Les assiettes se sont empilées plus vite",
+  "fail.rushText2": "que vos clients ne pouvaient manger.",
+  "fail.reservedTitle": "Le siège réservé est resté vide !",
+  "fail.reservedText1": "Le tabouret réservé n'accepte qu'une couleur,",
+  "fail.reservedText2": "et les autres n'avaient plus de place.",
+  "fail.chainTitle": "Enchaînés !",
+  "fail.chainText1": "Le tabouret de derrière attend : son client",
+  "fail.chainText2": "mange quand celui de devant s'en va.",
+  "fail.reverseTitle": "Pris par l'inversion !",
+  "fail.reverseText1": "Le tapis a tourné à l'envers et emporté",
+  "fail.reverseText2": "les assiettes qu'attendaient vos clients.",
+  "fail.pickyTitle": "Un client à ticket a bloqué un siège !",
+  "fail.pickyText1": "Ses assiettes arrivent sur commande, dans l'ordre.",
+  "fail.pickyText2": "Installez-le juste avant son ticket.",
+  "toast.reservedSeat": "Ce tabouret est réservé aux clients {colour}",
+  "toast.rushOn": "Coup de feu ! Les assiettes arrivent plus vite",
+  "toast.reverseOn": "Le tapis tourne à l'envers !",
+  "toast.reverseOff": "Le tapis est revenu à la normale",
+  "hud.rush": "COUP DE FEU {s}s",
+  "hud.reverse": "INVERSION",
+  "hud.waitSeat": "ATTENTE"
 }

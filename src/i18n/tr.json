@@ -5,7 +5,10 @@
   "hud.map": "HARİTA",
   "hud.shop": "MAĞAZA",
   "hud.kitchen": "MUTFAK · SIRADAKİ",
-  "hud.platesLeft": { "one": "{n} tabak kaldı", "other": "{n} tabak kaldı" },
+  "hud.platesLeft": {
+    "one": "{n} tabak kaldı",
+    "other": "{n} tabak kaldı"
+  },
   "hud.belt": "BANT {a} / {b}",
   "hud.paid": "ÖDENDİ",
   "tier.easy": "KOLAY",
@@ -68,7 +71,10 @@
   "fail.wasabiText2": "bir vasabi tabağı bozuldu.",
   "fail.jamText1": "Tüm koltuklar dolu ve banttakini",
   "fail.jamText2": "kimse istemiyor.",
-  "fail.left": { "one": "Sadece 1 müşteri kaldı!", "other": "Sadece {n} müşteri kaldı!" },
+  "fail.left": {
+    "one": "Sadece 1 müşteri kaldı!",
+    "other": "Sadece {n} müşteri kaldı!"
+  },
   "fail.waiting": "{n} müşteri hâlâ bekliyor.",
   "fail.rescue": "Şefin kurtarışı  ·  4,99 $  ·  demo",
   "fail.rescueSub": "+1 koltuk · bir müşteriye servis · bant boşaltılır · +200 jeton",
@@ -185,9 +191,18 @@
   "settings.version": "Sushi Jam v{v} · {platform}",
   "settings.done": "Tamam",
   "time.justNow": "az önce",
-  "time.minAgo": { "one": "{n} dk önce", "other": "{n} dk önce" },
-  "time.hAgo": { "one": "{n} sa önce", "other": "{n} sa önce" },
-  "time.dAgo": { "one": "{n} gün önce", "other": "{n} gün önce" },
+  "time.minAgo": {
+    "one": "{n} dk önce",
+    "other": "{n} dk önce"
+  },
+  "time.hAgo": {
+    "one": "{n} sa önce",
+    "other": "{n} sa önce"
+  },
+  "time.dAgo": {
+    "one": "{n} gün önce",
+    "other": "{n} gün önce"
+  },
   "time.earlier": "daha önce",
   "pause.title": "Duraklatıldı",
   "pause.resume": "Devam et",
@@ -205,5 +220,39 @@
   "tutorial.blocked": "Birine bakan müşteri henüz hareket edemez",
   "tutorial.readKitchen": "Pencere sıradaki tabakları gösterir",
   "tutorial.keepSeat": "Dolu koltuklar ve eşleşen tabak yoksa tıkanma olur. Sıradaki renk için bir koltuk boş bırak.",
-  "tutorial.skip": "Öğreticiyi atla"
+  "tutorial.skip": "Öğreticiyi atla",
+  "mech.chain.title": "Zincirli koltuklar",
+  "mech.chain.text": "İki tabure tek bir sırayı paylaşır. Arkadaki yalnızca bekler: konuğu, öndeki konuk gidince yer.",
+  "mech.rush.title": "Yoğun saat",
+  "mech.rush.text": "Zil çalınca on beş saniye boyunca tabaklar daha hızlı gelir ve bant hızlanır.",
+  "mech.special.title": "Şefin spesiyali",
+  "mech.special.text": "Her konuğun alabileceği ek bir tabak. VIP ve fişli konuklar reddeder. Şef, yerini aldığı tabağı geri alır.",
+  "mech.picky.title": "Fişli konuk",
+  "mech.picky.text": "Tabakları sipariş üzerine yapılır ve basılı sırayla gelir. Başkası alamaz.",
+  "mech.reserved.title": "Rezerve koltuk",
+  "mech.reserved.text": "İşaretli tabure yalnızca kendi renginin konuklarını alır. Diğerlerine başka koltuk gerekir.",
+  "mech.reverse.title": "Bant tersine",
+  "mech.reverse.text": "Bant ara sıra geriye döner. Mutfak kapısına ulaşan tabaklar bir süre içeri geri gider.",
+  "fail.rushTitle": "Yoğun saat tıkanıklığı!",
+  "fail.rushText1": "Tabaklar, konukların yiyebileceğinden",
+  "fail.rushText2": "daha hızlı birikti.",
+  "fail.reservedTitle": "Rezerve koltuk boş kaldı!",
+  "fail.reservedText1": "Rezerve tabure tek bir renk alır,",
+  "fail.reservedText2": "ve diğerlerine koltuk kalmadı.",
+  "fail.chainTitle": "Zincire takıldın!",
+  "fail.chainText1": "Arkadaki tabure yalnızca bekler: konuğu",
+  "fail.chainText2": "öndeki konuk gidince yer.",
+  "fail.reverseTitle": "Tersine dönüşe yakalandın!",
+  "fail.reverseText1": "Bant geriye döndü ve konukların beklediği",
+  "fail.reverseText2": "tabakları götürdü.",
+  "fail.pickyTitle": "Fişli konuk koltuğu işgal etti!",
+  "fail.pickyText1": "Tabakları sipariş üzerine, sırayla gelir.",
+  "fail.pickyText2": "Onu fişi gelmeden hemen önce oturt.",
+  "toast.reservedSeat": "Bu tabure {colour} konuklar için rezerve",
+  "toast.rushOn": "Yoğun saat! Tabaklar daha hızlı geliyor",
+  "toast.reverseOn": "Bant geriye dönüyor!",
+  "toast.reverseOff": "Bant normale döndü",
+  "hud.rush": "YOĞUN SAAT {s}sn",
+  "hud.reverse": "TERSİNE",
+  "hud.waitSeat": "BEKLE"
 }

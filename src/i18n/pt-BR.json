@@ -5,7 +5,10 @@
   "hud.map": "MAPA",
   "hud.shop": "LOJA",
   "hud.kitchen": "COZINHA · A SEGUIR",
-  "hud.platesLeft": { "one": "Falta {n} prato", "other": "Faltam {n} pratos" },
+  "hud.platesLeft": {
+    "one": "Falta {n} prato",
+    "other": "Faltam {n} pratos"
+  },
   "hud.belt": "ESTEIRA {a} / {b}",
   "hud.paid": "PAGO",
   "tier.easy": "FÁCIL",
@@ -68,7 +71,10 @@
   "fail.wasabiText2": "da cor dele se sentasse.",
   "fail.jamText1": "Todos os assentos estão ocupados e ninguém",
   "fail.jamText2": "quer o que está na esteira.",
-  "fail.left": { "one": "Só falta 1 cliente para servir!", "other": "Só faltam {n} clientes para servir!" },
+  "fail.left": {
+    "one": "Só falta 1 cliente para servir!",
+    "other": "Só faltam {n} clientes para servir!"
+  },
   "fail.waiting": "{n} clientes ainda esperam.",
   "fail.rescue": "Resgate do chef  ·  US$ 4,99  ·  teste",
   "fail.rescueSub": "+1 assento · serve um cliente · esvazia a esteira · +200 moedas",
@@ -185,9 +191,18 @@
   "settings.version": "Sushi Jam v{v} · {platform}",
   "settings.done": "Pronto",
   "time.justNow": "agora mesmo",
-  "time.minAgo": { "one": "há {n} min", "other": "há {n} min" },
-  "time.hAgo": { "one": "há {n} h", "other": "há {n} h" },
-  "time.dAgo": { "one": "há {n} d", "other": "há {n} d" },
+  "time.minAgo": {
+    "one": "há {n} min",
+    "other": "há {n} min"
+  },
+  "time.hAgo": {
+    "one": "há {n} h",
+    "other": "há {n} h"
+  },
+  "time.dAgo": {
+    "one": "há {n} d",
+    "other": "há {n} d"
+  },
   "time.earlier": "antes",
   "pause.title": "Pausa",
   "pause.resume": "Continuar",
@@ -205,5 +220,39 @@
   "tutorial.blocked": "Quem olha para outro cliente ainda não pode se mover",
   "tutorial.readKitchen": "A janela mostra os próximos pratos",
   "tutorial.keepSeat": "Assentos cheios sem prato combinando é engarrafamento. Guarde um assento para a próxima cor.",
-  "tutorial.skip": "Pular tutorial"
+  "tutorial.skip": "Pular tutorial",
+  "mech.chain.title": "Assentos encadeados",
+  "mech.chain.text": "Dois bancos dividem uma fila. O de trás só espera: seu cliente come quando o da frente sai.",
+  "mech.rush.title": "Hora do rush",
+  "mech.rush.text": "Quando o sino toca, os pratos chegam mais rápido e a esteira acelera por quinze segundos.",
+  "mech.special.title": "Especial do chef",
+  "mech.special.text": "Um prato extra que qualquer cliente pode pegar. VIPs e clientes com ticket recusam. O chef recolhe o que ele substitui.",
+  "mech.picky.title": "Cliente com ticket",
+  "mech.picky.text": "Seus pratos são feitos sob encomenda e chegam na ordem impressa. Ninguém mais pode pegá-los.",
+  "mech.reserved.title": "Assento reservado",
+  "mech.reserved.text": "O banco marcado só aceita clientes da sua cor. Os outros precisam de outro assento.",
+  "mech.reverse.title": "Esteira ao contrário",
+  "mech.reverse.text": "De vez em quando a esteira anda para trás. Os pratos que chegam à porta da cozinha voltam para dentro por um tempo.",
+  "fail.rushTitle": "Engarrafamento no rush!",
+  "fail.rushText1": "Os pratos se acumularam mais rápido",
+  "fail.rushText2": "do que seus clientes conseguiam comer.",
+  "fail.reservedTitle": "O assento reservado ficou vazio!",
+  "fail.reservedText1": "O banco reservado aceita só uma cor,",
+  "fail.reservedText2": "e os outros ficaram sem assento.",
+  "fail.chainTitle": "Acorrentados!",
+  "fail.chainText1": "O banco de trás só espera: seu cliente",
+  "fail.chainText2": "come quando o da frente sai.",
+  "fail.reverseTitle": "A marcha a ré pegou você!",
+  "fail.reverseText1": "A esteira andou para trás e levou os pratos",
+  "fail.reverseText2": "que seus clientes esperavam.",
+  "fail.pickyTitle": "Cliente com ticket ocupou um assento!",
+  "fail.pickyText1": "Seus pratos vêm sob encomenda, em sequência.",
+  "fail.pickyText2": "Sente-o pouco antes de o ticket ser chamado.",
+  "toast.reservedSeat": "Esse banco é reservado para clientes {colour}",
+  "toast.rushOn": "Hora do rush! Os pratos chegam mais rápido",
+  "toast.reverseOn": "A esteira está andando para trás!",
+  "toast.reverseOff": "A esteira voltou ao normal",
+  "hud.rush": "HORA DO RUSH {s}s",
+  "hud.reverse": "MARCHA A RÉ",
+  "hud.waitSeat": "ESPERA"
 }

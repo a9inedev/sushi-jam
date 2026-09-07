@@ -5,7 +5,9 @@
   "hud.map": "地图",
   "hud.shop": "商店",
   "hud.kitchen": "厨房 · 接下来",
-  "hud.platesLeft": { "other": "还剩 {n} 盘" },
+  "hud.platesLeft": {
+    "other": "还剩 {n} 盘"
+  },
   "hud.belt": "传送带 {a} / {b}",
   "hud.paid": "已付款",
   "tier.easy": "简单",
@@ -68,7 +70,9 @@
   "fail.wasabiText2": "芥末盘就变质了。",
   "fail.jamText1": "座位全满，传送带上的盘子",
   "fail.jamText2": "没有人想要。",
-  "fail.left": { "other": "只剩 {n} 位顾客要招待！" },
+  "fail.left": {
+    "other": "只剩 {n} 位顾客要招待！"
+  },
   "fail.waiting": "还有 {n} 位顾客在等。",
   "fail.rescue": "主厨救援  ·  $4.99  ·  演示",
   "fail.rescueSub": "+1 座位 · 招待一位顾客 · 清空传送带 · +200 金币",
@@ -185,9 +189,15 @@
   "settings.version": "Sushi Jam v{v} · {platform}",
   "settings.done": "完成",
   "time.justNow": "刚刚",
-  "time.minAgo": { "other": "{n} 分钟前" },
-  "time.hAgo": { "other": "{n} 小时前" },
-  "time.dAgo": { "other": "{n} 天前" },
+  "time.minAgo": {
+    "other": "{n} 分钟前"
+  },
+  "time.hAgo": {
+    "other": "{n} 小时前"
+  },
+  "time.dAgo": {
+    "other": "{n} 天前"
+  },
   "time.earlier": "更早",
   "pause.title": "已暂停",
   "pause.resume": "继续",
@@ -205,5 +215,39 @@
   "tutorial.blocked": "面前有人的顾客暂时不能动",
   "tutorial.readKitchen": "窗口显示接下来的盘子",
   "tutorial.keepSeat": "座位全满又没有匹配的盘子就是堵塞。给下一种颜色留一个座位。",
-  "tutorial.skip": "跳过教程"
+  "tutorial.skip": "跳过教程",
+  "mech.chain.title": "连座",
+  "mech.chain.text": "两个座位共用一条队伍。后座只能等待：前面的客人离开后才能开吃。",
+  "mech.rush.title": "高峰时段",
+  "mech.rush.text": "铃声一响，十五秒内上菜更快，传送带也会加速。",
+  "mech.special.title": "主厨特荐",
+  "mech.special.text": "任何客人都可以拿的加菜。VIP 和点单客人会拒绝。多出来的盘子由主厨收回。",
+  "mech.picky.title": "点单客人",
+  "mech.picky.text": "他们的菜是定制的，按印好的顺序送达。别人拿不了。",
+  "mech.reserved.title": "预留座",
+  "mech.reserved.text": "有标记的座位只接待对应颜色的客人。其他人需要别的座位。",
+  "mech.reverse.title": "传送带倒转",
+  "mech.reverse.text": "传送带会不时倒转。到达厨房门口的盘子会被收回去一会儿。",
+  "fail.rushTitle": "高峰时段堵住了！",
+  "fail.rushText1": "盘子堆积的速度",
+  "fail.rushText2": "超过了客人吃的速度。",
+  "fail.reservedTitle": "预留座一直空着！",
+  "fail.reservedText1": "预留座只接待一种颜色，",
+  "fail.reservedText2": "其他客人没座位了。",
+  "fail.chainTitle": "被连座卡住了！",
+  "fail.chainText1": "后座只能等待：",
+  "fail.chainText2": "前面的客人离开后才能开吃。",
+  "fail.reverseTitle": "被倒转坑了！",
+  "fail.reverseText1": "传送带倒转，把客人",
+  "fail.reverseText2": "正在等的盘子带走了。",
+  "fail.pickyTitle": "点单客人霸占了座位！",
+  "fail.pickyText1": "他们的菜是定制的，按顺序上。",
+  "fail.pickyText2": "在轮到他们之前再让他们入座。",
+  "toast.reservedSeat": "这个座位预留给{colour}客人",
+  "toast.rushOn": "高峰时段！上菜更快了",
+  "toast.reverseOn": "传送带在倒转！",
+  "toast.reverseOff": "传送带恢复正常",
+  "hud.rush": "高峰 {s}秒",
+  "hud.reverse": "倒转中",
+  "hud.waitSeat": "等待"
 }

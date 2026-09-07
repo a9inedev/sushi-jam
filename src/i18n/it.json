@@ -5,7 +5,10 @@
   "hud.map": "MAPPA",
   "hud.shop": "NEGOZIO",
   "hud.kitchen": "CUCINA · IN ARRIVO",
-  "hud.platesLeft": { "one": "{n} piatto rimasto", "other": "{n} piatti rimasti" },
+  "hud.platesLeft": {
+    "one": "{n} piatto rimasto",
+    "other": "{n} piatti rimasti"
+  },
   "hud.belt": "NASTRO {a} / {b}",
   "hud.paid": "PAGATO",
   "tier.easy": "FACILE",
@@ -68,7 +71,10 @@
   "fail.wasabiText2": "qualcuno del suo colore si sedesse.",
   "fail.jamText1": "Tutti i posti sono occupati e nessuno vuole",
   "fail.jamText2": "quello che c'è sul nastro.",
-  "fail.left": { "one": "Solo 1 cliente da servire!", "other": "Solo {n} clienti da servire!" },
+  "fail.left": {
+    "one": "Solo 1 cliente da servire!",
+    "other": "Solo {n} clienti da servire!"
+  },
   "fail.waiting": "{n} clienti stanno ancora aspettando.",
   "fail.rescue": "Soccorso dello chef  ·  4,99 $  ·  demo",
   "fail.rescueSub": "+1 posto · un cliente servito · nastro svuotato · +200 monete",
@@ -185,9 +191,18 @@
   "settings.version": "Sushi Jam v{v} · {platform}",
   "settings.done": "Fatto",
   "time.justNow": "adesso",
-  "time.minAgo": { "one": "{n} min fa", "other": "{n} min fa" },
-  "time.hAgo": { "one": "{n} h fa", "other": "{n} h fa" },
-  "time.dAgo": { "one": "{n} g fa", "other": "{n} g fa" },
+  "time.minAgo": {
+    "one": "{n} min fa",
+    "other": "{n} min fa"
+  },
+  "time.hAgo": {
+    "one": "{n} h fa",
+    "other": "{n} h fa"
+  },
+  "time.dAgo": {
+    "one": "{n} g fa",
+    "other": "{n} g fa"
+  },
   "time.earlier": "prima",
   "pause.title": "Pausa",
   "pause.resume": "Riprendi",
@@ -205,5 +220,39 @@
   "tutorial.blocked": "Chi guarda un altro cliente non può ancora muoversi",
   "tutorial.readKitchen": "La finestra mostra i prossimi piatti",
   "tutorial.keepSeat": "Posti pieni senza piatto giusto: ingorgo. Tieni un posto per il prossimo colore.",
-  "tutorial.skip": "Salta tutorial"
+  "tutorial.skip": "Salta tutorial",
+  "mech.chain.title": "Posti incatenati",
+  "mech.chain.text": "Due sgabelli condividono una fila. Quello dietro aspetta soltanto: il suo cliente mangia quando quello davanti se ne va.",
+  "mech.rush.title": "Ora di punta",
+  "mech.rush.text": "Quando suona la campanella, i piatti arrivano più in fretta e il nastro accelera per quindici secondi.",
+  "mech.special.title": "Specialità dello chef",
+  "mech.special.text": "Un piatto extra che qualunque cliente può prendere. VIP e clienti con biglietto lo rifiutano. Lo chef ritira ciò che sostituisce.",
+  "mech.picky.title": "Cliente con biglietto",
+  "mech.picky.text": "I suoi piatti sono fatti su ordinazione e arrivano nell'ordine stampato. Nessun altro può prenderli.",
+  "mech.reserved.title": "Posto riservato",
+  "mech.reserved.text": "Lo sgabello segnato accetta solo clienti del suo colore. Gli altri hanno bisogno di un altro posto.",
+  "mech.reverse.title": "Nastro al contrario",
+  "mech.reverse.text": "Ogni tanto il nastro gira al contrario. I piatti che raggiungono la porta della cucina tornano dentro per un po'.",
+  "fail.rushTitle": "Ingorgo nell'ora di punta!",
+  "fail.rushText1": "I piatti si sono accumulati più in fretta",
+  "fail.rushText2": "di quanto i tuoi clienti riuscissero a mangiare.",
+  "fail.reservedTitle": "Il posto riservato è rimasto vuoto!",
+  "fail.reservedText1": "Lo sgabello riservato accetta un solo colore,",
+  "fail.reservedText2": "e gli altri sono rimasti senza posto.",
+  "fail.chainTitle": "Incatenati!",
+  "fail.chainText1": "Lo sgabello dietro aspetta soltanto: il suo cliente",
+  "fail.chainText2": "mangia quando quello davanti se ne va.",
+  "fail.reverseTitle": "Sorpreso dall'inversione!",
+  "fail.reverseText1": "Il nastro è andato al contrario e ha portato via",
+  "fail.reverseText2": "i piatti che i tuoi clienti aspettavano.",
+  "fail.pickyTitle": "Un cliente con biglietto ha occupato un posto!",
+  "fail.pickyText1": "I suoi piatti arrivano su ordinazione, in sequenza.",
+  "fail.pickyText2": "Fallo sedere appena prima del suo turno.",
+  "toast.reservedSeat": "Quello sgabello è riservato ai clienti {colour}",
+  "toast.rushOn": "Ora di punta! I piatti arrivano più in fretta",
+  "toast.reverseOn": "Il nastro gira al contrario!",
+  "toast.reverseOff": "Il nastro è tornato normale",
+  "hud.rush": "ORA DI PUNTA {s}s",
+  "hud.reverse": "INVERSIONE",
+  "hud.waitSeat": "ATTESA"
 }

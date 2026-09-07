@@ -5,7 +5,10 @@
   "hud.map": "KARTE",
   "hud.shop": "SHOP",
   "hud.kitchen": "KÜCHE · ALS NÄCHSTES",
-  "hud.platesLeft": { "one": "Noch {n} Teller", "other": "Noch {n} Teller" },
+  "hud.platesLeft": {
+    "one": "Noch {n} Teller",
+    "other": "Noch {n} Teller"
+  },
   "hud.belt": "BAND {a} / {b}",
   "hud.paid": "BEZAHLT",
   "tier.easy": "LEICHT",
@@ -68,7 +71,10 @@
   "fail.wasabiText2": "seiner Farbe Platz genommen hat.",
   "fail.jamText1": "Alle Plätze sind belegt und niemand will,",
   "fail.jamText2": "was auf dem Band liegt.",
-  "fail.left": { "one": "Nur noch 1 Gast zu bedienen!", "other": "Nur noch {n} Gäste zu bedienen!" },
+  "fail.left": {
+    "one": "Nur noch 1 Gast zu bedienen!",
+    "other": "Nur noch {n} Gäste zu bedienen!"
+  },
   "fail.waiting": "{n} Gäste warten noch.",
   "fail.rescue": "Chef-Rettung  ·  4,99 $  ·  Demo",
   "fail.rescueSub": "+1 Platz · ein Gast bedient · Band geleert · +200 Münzen",
@@ -185,9 +191,18 @@
   "settings.version": "Sushi Jam v{v} · {platform}",
   "settings.done": "Fertig",
   "time.justNow": "gerade eben",
-  "time.minAgo": { "one": "vor {n} Min.", "other": "vor {n} Min." },
-  "time.hAgo": { "one": "vor {n} Std.", "other": "vor {n} Std." },
-  "time.dAgo": { "one": "vor {n} Tag", "other": "vor {n} Tagen" },
+  "time.minAgo": {
+    "one": "vor {n} Min.",
+    "other": "vor {n} Min."
+  },
+  "time.hAgo": {
+    "one": "vor {n} Std.",
+    "other": "vor {n} Std."
+  },
+  "time.dAgo": {
+    "one": "vor {n} Tag",
+    "other": "vor {n} Tagen"
+  },
   "time.earlier": "früher",
   "pause.title": "Pause",
   "pause.resume": "Weiter",
@@ -205,5 +220,39 @@
   "tutorial.blocked": "Wer auf jemanden blickt, kann noch nicht gehen",
   "tutorial.readKitchen": "Das Fenster zeigt die nächsten Teller",
   "tutorial.keepSeat": "Volle Plätze ohne passenden Teller sind ein Stau. Halte einen Platz für die nächste Farbe frei.",
-  "tutorial.skip": "Tutorial überspringen"
+  "tutorial.skip": "Tutorial überspringen",
+  "mech.chain.title": "Verkettete Plätze",
+  "mech.chain.text": "Zwei Hocker teilen sich eine Schlange. Der hintere wartet nur: sein Gast isst, wenn der vordere geht.",
+  "mech.rush.title": "Stoßzeit",
+  "mech.rush.text": "Wenn die Glocke läutet, kommen die Teller schneller und das Band beschleunigt fünfzehn Sekunden lang.",
+  "mech.special.title": "Empfehlung des Kochs",
+  "mech.special.text": "Ein Bonusteller für jeden Gast. VIPs und Ticketgäste lehnen ihn ab. Der Koch nimmt zurück, was er ersetzt.",
+  "mech.picky.title": "Ticketgast",
+  "mech.picky.text": "Seine Teller werden auf Bestellung gemacht und kommen in der gedruckten Reihenfolge. Niemand sonst darf sie nehmen.",
+  "mech.reserved.title": "Reservierter Platz",
+  "mech.reserved.text": "Der markierte Hocker nimmt nur Gäste seiner Farbe. Alle anderen brauchen einen anderen Platz.",
+  "mech.reverse.title": "Bandumkehr",
+  "mech.reverse.text": "Ab und zu läuft das Band rückwärts. Teller, die die Küchentür erreichen, gehen eine Weile zurück hinein.",
+  "fail.rushTitle": "Stau in der Stoßzeit!",
+  "fail.rushText1": "Die Teller stapelten sich schneller,",
+  "fail.rushText2": "als deine Gäste essen konnten.",
+  "fail.reservedTitle": "Der reservierte Platz blieb leer!",
+  "fail.reservedText1": "Der reservierte Hocker nimmt nur eine Farbe,",
+  "fail.reservedText2": "und allen anderen gingen die Plätze aus.",
+  "fail.chainTitle": "Angekettet!",
+  "fail.chainText1": "Der hintere Hocker wartet nur: sein Gast",
+  "fail.chainText2": "isst erst, wenn der vordere geht.",
+  "fail.reverseTitle": "Von der Umkehr erwischt!",
+  "fail.reverseText1": "Das Band lief rückwärts und nahm die Teller,",
+  "fail.reverseText2": "auf die deine Gäste warteten.",
+  "fail.pickyTitle": "Ticketgast belegte einen Platz!",
+  "fail.pickyText1": "Seine Teller kommen auf Bestellung, der Reihe nach.",
+  "fail.pickyText2": "Setz ihn erst kurz vor seinem Ticket.",
+  "toast.reservedSeat": "Dieser Hocker ist für {colour}-Gäste reserviert",
+  "toast.rushOn": "Stoßzeit! Die Teller kommen schneller",
+  "toast.reverseOn": "Das Band läuft rückwärts!",
+  "toast.reverseOff": "Das Band läuft wieder normal",
+  "hud.rush": "STOSSZEIT {s}s",
+  "hud.reverse": "RÜCKWÄRTS",
+  "hud.waitSeat": "WARTEN"
 }

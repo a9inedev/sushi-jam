@@ -5,7 +5,9 @@
   "hud.map": "マップ",
   "hud.shop": "ショップ",
   "hud.kitchen": "厨房 · 次の皿",
-  "hud.platesLeft": { "other": "残り {n} 皿" },
+  "hud.platesLeft": {
+    "other": "残り {n} 皿"
+  },
   "hud.belt": "レーン {a} / {b}",
   "hud.paid": "お会計",
   "tier.easy": "かんたん",
@@ -68,7 +70,9 @@
   "fail.wasabiText2": "わさび皿が傷んでしまいました。",
   "fail.jamText1": "全席満席で、レーンの皿を",
   "fail.jamText2": "誰も欲しがっていません。",
-  "fail.left": { "other": "残りあと {n} 人！" },
+  "fail.left": {
+    "other": "残りあと {n} 人！"
+  },
   "fail.waiting": "{n} 人がまだ待っています。",
   "fail.rescue": "シェフの救援  ·  $4.99  ·  デモ",
   "fail.rescueSub": "+1席 · 1人に提供 · レーンを空に · +200 コイン",
@@ -185,9 +189,15 @@
   "settings.version": "Sushi Jam v{v} · {platform}",
   "settings.done": "完了",
   "time.justNow": "たった今",
-  "time.minAgo": { "other": "{n} 分前" },
-  "time.hAgo": { "other": "{n} 時間前" },
-  "time.dAgo": { "other": "{n} 日前" },
+  "time.minAgo": {
+    "other": "{n} 分前"
+  },
+  "time.hAgo": {
+    "other": "{n} 時間前"
+  },
+  "time.dAgo": {
+    "other": "{n} 日前"
+  },
   "time.earlier": "以前",
   "pause.title": "ポーズ",
   "pause.resume": "再開",
@@ -205,5 +215,39 @@
   "tutorial.blocked": "前に誰かがいるお客はまだ動けません",
   "tutorial.readKitchen": "窓には次の皿が見えます",
   "tutorial.keepSeat": "満席で合う皿がないと詰まりです。次の色のために席を空けておこう。",
-  "tutorial.skip": "チュートリアルを飛ばす"
+  "tutorial.skip": "チュートリアルを飛ばす",
+  "mech.chain.title": "連結席",
+  "mech.chain.text": "2つの席が1つの列を共有します。後ろの席は待つだけで、前のお客が帰ってから食べ始めます。",
+  "mech.rush.title": "ラッシュアワー",
+  "mech.rush.text": "ベルが鳴ると15秒間、皿が速く出てきてレーンも加速します。",
+  "mech.special.title": "シェフのおすすめ",
+  "mech.special.text": "誰でも取れるおまけの皿。VIPと注文票のお客は受け取りません。余った皿はシェフが下げます。",
+  "mech.picky.title": "注文票のお客",
+  "mech.picky.text": "皿は特注で、印刷された順番どおりに届きます。ほかの人は取れません。",
+  "mech.reserved.title": "予約席",
+  "mech.reserved.text": "印のある席にはその色のお客しか座れません。ほかの人は別の席が必要です。",
+  "mech.reverse.title": "レーン逆転",
+  "mech.reverse.text": "ときどきレーンが逆回転します。厨房の入口に戻った皿はしばらく中に戻ります。",
+  "fail.rushTitle": "ラッシュで渋滞！",
+  "fail.rushText1": "お客が食べるより速く",
+  "fail.rushText2": "皿がたまってしまいました。",
+  "fail.reservedTitle": "予約席が空いたまま！",
+  "fail.reservedText1": "予約席は1色専用で、",
+  "fail.reservedText2": "ほかのお客の席が足りなくなりました。",
+  "fail.chainTitle": "連結で足止め！",
+  "fail.chainText1": "後ろの席は待つだけです。",
+  "fail.chainText2": "前のお客が帰ってから食べ始めます。",
+  "fail.reverseTitle": "逆転に巻き込まれた！",
+  "fail.reverseText1": "レーンが逆回転して、お客が待っていた",
+  "fail.reverseText2": "皿を持っていってしまいました。",
+  "fail.pickyTitle": "注文票のお客が席を独占！",
+  "fail.pickyText1": "その皿は特注で順番どおりに届きます。",
+  "fail.pickyText2": "順番の直前に座らせましょう。",
+  "toast.reservedSeat": "その席は{colour}のお客の予約席です",
+  "toast.rushOn": "ラッシュアワー！皿が速く出てきます",
+  "toast.reverseOn": "レーンが逆回転中！",
+  "toast.reverseOff": "レーンが元に戻りました",
+  "hud.rush": "ラッシュ {s}秒",
+  "hud.reverse": "逆回転中",
+  "hud.waitSeat": "待機"
 }
