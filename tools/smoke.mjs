@@ -464,7 +464,7 @@ await step('save is a versioned envelope with a valid checksum', async () => {
     const e = JSON.parse(localStorage.getItem('sushijam.save'));
     return { v: e.v, hasSum: typeof e.sum === 'number', level: e.data.level, src: window.__SJ.saveApi.info().source };
   })()`);
-  if (info.v !== 6 || !info.hasSum) throw new Error('bad envelope ' + JSON.stringify(info));
+  if (info.v !== 7 || !info.hasSum) throw new Error('bad envelope ' + JSON.stringify(info));
   return `v${info.v}, loaded from ${info.src}`;
 });
 await step('legacy v2 save migrates with level, coins, decor and stats intact', async () => {
@@ -618,6 +618,90 @@ await step('the six later rules: intro cards, autoplay and fail messaging on lev
   await sj('window.__SJ.jump(1)');
   await sj('window.__SJ.skipIntro()');
   return notes.join(', ');
+});
+await step('side modes: daily, rush and zen from the map; own stats; level progress untouched', async () => {
+  await sj('window.__SJ.closeScreen()');
+  await sj('window.__SJ.jump(2)');
+  await sj('window.__SJ.skipIntro()');
+  const level0 = await sj('window.__SJ.S.level');
+  const stats0 = await sj('window.__SJ.S.stats.length');
+  // Reachable from the map: the Modes tab and its Play button start the daily puzzle.
+  await sj("window.__SJ.setScreen({ type: 'map', tab: 'modes', t: 0 })");
+  await sleep(150);
+  await page.screenshot({ path: path.join(OUT, 'smoke-modes-map.png') });
+  await tapCanvas(366, 244); // Daily: Play
+  await sleep(150);
+  let m = await sj('window.__SJ.modes.state()');
+  if (m.mode !== 'daily' || (await screenType()))
+    throw new Error('daily did not start from the map: ' + JSON.stringify(m));
+  await sj('window.__SJ.skipIntro()');
+  while ((await sj('window.__SJ.state().status')) === 'mech') await sj('window.__SJ.mechCard()');
+  for (let i = 0; i < 6; i++) {
+    await sj('window.__SJ.auto()');
+    await sleep(120);
+  }
+  await sj('window.__SJ.modes.forceWin()');
+  await sleep(200);
+  m = await sj('window.__SJ.modes.state()');
+  const today = await sj(
+    "(() => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); })()"
+  );
+  if (!m.puzzleDays.includes(today)) throw new Error('daily win not recorded: ' + JSON.stringify(m));
+  await page.screenshot({ path: path.join(OUT, 'smoke-modes-daily-win.png') });
+  // Rush: the clock runs, guests refill, plates get served, the end card shows the score and the best.
+  await sj("window.__SJ.modes.start('rush')");
+  await sj('window.__SJ.skipIntro()');
+  const t0 = Date.now();
+  while (Date.now() - t0 < 4000) {
+    await sj('window.__SJ.auto()');
+    await sleep(150);
+  }
+  const mid = await sj(
+    '(() => { const L = window.__SJ.state(); return { mode: L.mode, timeLeft: L.timeLeft, score: L.score, grid: L.diners.filter((d) => d.state === "grid").length, kitchen: L.kitchen.length, status: L.status }; })()'
+  );
+  if (mid.mode !== 'rush' || mid.timeLeft > 87 || mid.timeLeft < 80 || mid.status !== 'play')
+    throw new Error('rush clock: ' + JSON.stringify(mid));
+  if (mid.grid < 10) throw new Error('rush board did not refill: ' + JSON.stringify(mid));
+  await page.screenshot({ path: path.join(OUT, 'smoke-modes-rush.png') });
+  await sj('window.__SJ.state().timeLeft = 0.3');
+  await page.waitForFunction(() => window.__SJ.state().status === 'win', { timeout: 5000 });
+  await sleep(150);
+  m = await sj('window.__SJ.modes.state()');
+  if (m.rushBest < mid.score) throw new Error('rush best not kept: ' + JSON.stringify({ m, mid }));
+  await page.screenshot({ path: path.join(OUT, 'smoke-modes-rush-over.png') });
+  // Zen: no timers on the board, a forced jam is cleared instead of failing, the win climbs the zen rung only.
+  await sj("window.__SJ.modes.start('zen')");
+  await sj('window.__SJ.skipIntro()');
+  while ((await sj('window.__SJ.state().status')) === 'mech') await sj('window.__SJ.mechCard()');
+  const zen = await sj(
+    '(() => { const L = window.__SJ.state(); const r = L.P.rules || {}; return { mode: L.mode, n: L.n, wasabi: L.kitchen.some((p) => p.wasabi), rush: r.rush || 0, reverse: r.reverse || null }; })()'
+  );
+  if (zen.mode !== 'zen' || zen.wasabi || zen.rush || zen.reverse)
+    throw new Error('zen still has timers: ' + JSON.stringify(zen));
+  await sj('window.__SJ.forceFail()');
+  await sleep(200);
+  const st = await sj('window.__SJ.state().status');
+  if (st !== 'play') throw new Error('zen failed instead of clearing: ' + st);
+  await sj('window.__SJ.modes.forceWin()');
+  await sleep(150);
+  m = await sj('window.__SJ.modes.state()');
+  if (m.zenLevel !== zen.n + 1) throw new Error('zen rung did not advance: ' + JSON.stringify(m));
+  // Level progress untouched, and every mode logged its own stat.
+  const level1 = await sj('window.__SJ.S.level');
+  const recent = await sj(
+    `window.__SJ.S.stats.slice(${stats0}).map((s) => s.mode + ':' + s.result + (s.score != null ? ':' + s.score : ''))`
+  );
+  if (level1 !== level0) throw new Error(`level moved from ${level0} to ${level1}`);
+  for (const mode of ['daily', 'rush', 'zen'])
+    if (!recent.some((r) => r.startsWith(mode + ':win')))
+      throw new Error('no stat for ' + mode + ': ' + recent.join(' '));
+  if (!recent.some((r) => /^rush:win:\d+$/.test(r))) throw new Error('rush stat has no score: ' + recent.join(' '));
+  await sj('window.__SJ.modes.leave()');
+  await sleep(100);
+  const back = await sj('(() => { const L = window.__SJ.state(); return { mode: L.mode, n: L.n }; })()');
+  if (back.mode !== 'level' || back.n !== level0)
+    throw new Error('leave did not return to the level: ' + JSON.stringify(back));
+  return `daily won (streak calendar), rush ${mid.score} plates in 4 s, zen cleared a jam; level stayed ${level0}`;
 });
 await step('levels 1 to 140 are the authored files; 141 falls back to the generator', async () => {
   const r = await sj(`(() => { const a = window.__SJ.getLevel(137), b = window.__SJ.getLevel(141);
