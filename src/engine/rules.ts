@@ -24,8 +24,30 @@ import {
   RUSH_SECONDS,
   RUSH_SPEED,
 } from './levels';
+import {
+  modeOf,
+  puzzleStreak,
+  RUSH_KITCHEN_MIN,
+  RUSH_SECONDS_TOTAL,
+  RUSH_SPAWN_DELAY,
+  rushDiner,
+  rushPlateColor,
+  ZEN_COIN_SHARE,
+} from './modes-core';
 import { G, cur, setExpr, showAd, toast } from './state';
-import type { BoosterKind, Diner, DinerDef, FailReason, LevelDef, Plate, PlateDef, PlateLike, Seat } from './types';
+import type {
+  StatRecord,
+  BoosterKind,
+  Diner,
+  DinerDef,
+  FailReason,
+  GameMode,
+  LevelDef,
+  Plate,
+  PlateDef,
+  PlateLike,
+  Seat,
+} from './types';
 import { easeBack, easeIn, easeInOut, easeOut } from './util';
 
 export function makeDiner(d: DinerDef, x: number, y: number): Diner {
@@ -64,8 +86,9 @@ export function newLevel(n: number): void {
   newLevelDef(getLevel(n, S.devAllMech ? 'all' : false));
 }
 
-/** Start a level from a definition. The editor's play test uses this with an unsaved board. */
-export function newLevelDef(lv: LevelDef): void {
+/** Start a level from a definition. The editor's play test uses this with an unsaved board; the side modes
+    pass their mode (and the daily puzzle its calendar day). */
+export function newLevelDef(lv: LevelDef, mode: GameMode = modeOf(lv), modeKey = lv.modeKey || ''): void {
   const n = lv.n,
     P = lv.P,
     rules = rulesOf(P);
@@ -110,7 +133,7 @@ export function newLevelDef(lv: LevelDef): void {
     seatShake: 0,
     shake: 0,
     doneColors: new Set(),
-    newMechs: lv.mechs.filter((m) => !S.seenMech.includes(m)),
+    newMechs: mode === 'rush' ? [] : lv.mechs.filter((m) => !S.seenMech.includes(m)),
     mechIdx: 0,
     plateId: 0,
     emitted: 0,
@@ -118,7 +141,15 @@ export function newLevelDef(lv: LevelDef): void {
     reversed: false,
     reverseT: rules.reverse ? rules.reverse[0] : 0,
     beltPhase: 0,
+    mode,
+    modeKey,
+    timeLeft: mode === 'rush' ? RUSH_SECONDS_TOTAL : 0,
+    score: 0,
+    spawnT: RUSH_SPAWN_DELAY,
+    nextId: lv.diners.length,
     stat: {
+      mode,
+      score: 0,
       n,
       sched: P.tier,
       label: lv.tierLabel,
@@ -133,6 +164,7 @@ export function newLevelDef(lv: LevelDef): void {
   particles.clear();
   G.toasts = [];
   layoutSeats();
+  if (mode !== 'level') return;
   if (n === 1) {
     if (S.tutorial >= 1) {
       toast(t('toast.tapRing'), 3.4, 1.5);
@@ -579,6 +611,10 @@ export function grab(p: Plate, d: Diner): void {
     onDone: () => {
       d.pending -= units;
       d.need -= units;
+      if (L.mode === 'rush') {
+        L.score++;
+        L.stat.score = L.score;
+      }
       if (p.special) markSurplus();
       d.bump = 1;
       d.bubblePop = 1;
@@ -686,7 +722,21 @@ export function checkDeadlock(dt: number): void {
     return;
   }
   L.deadlock += dt;
-  if (L.deadlock > 0.8) fail(jamReason());
+  if (L.deadlock > 0.8) {
+    if (L.mode === 'rush' || L.mode === 'zen') softClear();
+    else fail(jamReason());
+  }
+}
+
+/** Rush and zen never fail: a stall is cleared by the chef instead. */
+export function softClear(): void {
+  const L = cur();
+  clearBeltToKitchen();
+  if (L.mode === 'rush') L.kitchen = [];
+  L.deadlock = 0;
+  L.shake = 0;
+  sfx.swish();
+  toast(t('mode.chefCleared'), 1.6);
 }
 
 /** Which rule the jam message should talk about. */
@@ -708,6 +758,10 @@ export function jamReason(): FailReason {
 export function fail(reason: FailReason): void {
   const L = cur();
   if (L.status !== 'play') return;
+  if (L.mode === 'rush' || L.mode === 'zen') {
+    softClear();
+    return;
+  }
   L.status = 'failing';
   L.failReason = reason;
   L.failSlow = 0.55;
@@ -726,15 +780,34 @@ export function win(): void {
   if (L.status !== 'play') return;
   L.status = 'win';
   L.armed = null;
-  S.streak++;
-  const sb = Math.min(50, (S.streak - 1) * 10);
-  L.earned = 50 + L.n * 2 + sb;
-  L.streakBonus = sb;
+  if (L.mode === 'level') {
+    S.streak++;
+    const sb = Math.min(50, (S.streak - 1) * 10);
+    L.earned = 50 + L.n * 2 + sb;
+    L.streakBonus = sb;
+    S.level = Math.max(S.level, L.n + 1);
+    S.best = Math.max(S.best, S.level);
+    S.weekly = (S.weekly || 0) + 1;
+  } else if (L.mode === 'daily') {
+    // One entry per calendar day; replaying a won day pays nothing more.
+    const fresh = !S.puzzleDays.includes(L.modeKey);
+    if (fresh) {
+      S.puzzleDays.push(L.modeKey);
+      S.puzzleDays.sort();
+      if (S.puzzleDays.length > 400) S.puzzleDays.splice(0, S.puzzleDays.length - 400);
+    }
+    L.earned = fresh ? 100 + Math.min(10, puzzleStreak(S.puzzleDays, L.modeKey)) * 10 : 0;
+  } else if (L.mode === 'rush') {
+    L.earned = Math.min(300, L.score * 3);
+    S.rushBest = Math.max(S.rushBest, L.score);
+    S.rushRuns++;
+  } else {
+    L.earned = Math.round((50 + L.n * 2) * ZEN_COIN_SHARE);
+    S.zenLevel = Math.max(S.zenLevel, L.n + 1);
+    S.zenWins++;
+  }
   S.coins += L.earned;
   G.coinPop = 1;
-  S.level = Math.max(S.level, L.n + 1);
-  S.best = Math.max(S.best, S.level);
-  S.weekly = (S.weekly || 0) + 1;
   logStat('win');
   save();
   sfx.win();
@@ -744,7 +817,9 @@ export function win(): void {
 
 export function logStat(result: string): void {
   const st = cur().stat;
-  const rec = {
+  const rec: StatRecord = {
+    mode: st.mode,
+    score: st.mode === 'rush' ? st.score : undefined,
     n: st.n,
     sched: st.sched,
     label: st.label,
@@ -960,6 +1035,48 @@ export function hitGridDiner(x: number, y: number): Diner | null {
     }
   }
   return best;
+}
+
+/** Per-frame work the side modes add: rush hour's clock, its endless guests and its kitchen cooking to order. */
+export function updateMode(dt: number): void {
+  const L = cur();
+  if (L.mode !== 'rush' || L.status !== 'play') return;
+  L.timeLeft -= dt;
+  if (L.timeLeft <= 0) {
+    L.timeLeft = 0;
+    win();
+    return;
+  }
+  // Guests who left are gone for good; empty cells fill up after a short beat.
+  if (L.diners.some((d) => d.state === 'done')) L.diners = L.diners.filter((d) => d.state !== 'done');
+  L.spawnT -= dt;
+  if (L.spawnT <= 0) {
+    L.spawnT = RUSH_SPAWN_DELAY;
+    const occ: (Diner | null)[][] = Array.from({ length: L.rows }, () => Array(L.cols).fill(null));
+    for (const d of L.diners) if (d.state === 'grid') occ[d.r][d.c] = d;
+    const empty: [number, number][] = [];
+    for (let r = 0; r < L.rows; r++) for (let c = 0; c < L.cols; c++) if (!occ[r][c]) empty.push([r, c]);
+    if (empty.length) {
+      const [r, c] = empty[Math.floor(Math.random() * empty.length)];
+      const def = rushDiner(occ, r, c, L.rows, L.cols, L.P.colors, L.nextId++, Math.random);
+      const d = makeDiner(def, L.gx + (c + 0.5) * L.cell, L.gy + (r + 0.5) * L.cell);
+      d.scale = 0.2;
+      tweens.to(d, { scale: 1 }, 0.25, { ease: easeBack, tag: 'spawn' });
+      L.diners.push(d);
+      particles.emit('puff', d.x, d.y, 1);
+    }
+  }
+  // The kitchen cooks for whoever is seated, in proportion to what they still want.
+  const seated = L.seats
+    .map((s) => s.diner)
+    .filter((d): d is Diner => !!d && d.state === 'seated' && !d.waiting)
+    .map((d) => ({ color: d.color, remaining: remaining(d) }));
+  while (L.kitchen.length < RUSH_KITCHEN_MIN) {
+    const color = rushPlateColor(seated, Math.random);
+    if (color === null) break;
+    L.kitchen.push({ color, vip: false, double: false, wasabi: false, covered: false });
+  }
+  L.totalPlates = L.kitchen.length + L.score;
 }
 
 export function nextMechCard(): void {

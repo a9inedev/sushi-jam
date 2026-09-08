@@ -7,12 +7,13 @@
      v4  same envelope, data gains reduceMotion
      v5  data gains volMusic, volSfx, volUi
      v6  data gains tutorial, colorblind, leftHanded, lang
+     v7  data gains puzzleDays, rushBest, rushRuns, zenLevel, zenWins (the side modes); stats carry a mode
 */
 
 import { hashStr } from '../engine/rng';
 import type { MechKind, StatRecord } from '../engine/types';
 
-export const SAVE_VERSION = 6;
+export const SAVE_VERSION = 7;
 
 export interface Inventory {
   vip: number;
@@ -53,6 +54,12 @@ export interface SaveState {
   leftHanded: boolean;
   /** Locale code, or empty for automatic. */
   lang: string;
+  /** v7: side modes. Calendar days the daily puzzle was won, rush best and runs, zen rung and wins. */
+  puzzleDays: string[];
+  rushBest: number;
+  rushRuns: number;
+  zenLevel: number;
+  zenWins: number;
 }
 
 export function defaultSave(): SaveState {
@@ -84,6 +91,11 @@ export function defaultSave(): SaveState {
     colorblind: false,
     leftHanded: false,
     lang: '',
+    puzzleDays: [],
+    rushBest: 0,
+    rushRuns: 0,
+    zenLevel: 1,
+    zenWins: 0,
   };
 }
 
@@ -176,6 +188,19 @@ export function migrateV5toV6(v5: Blob): Blob {
   };
 }
 
+/** v7 adds the side modes' progress. */
+export function migrateV6toV7(v6: Blob): Blob {
+  const num = (k: string, def: number) => (typeof v6[k] === 'number' ? (v6[k] as number) : def);
+  return {
+    ...v6,
+    puzzleDays: Array.isArray(v6.puzzleDays) ? v6.puzzleDays : [],
+    rushBest: num('rushBest', 0),
+    rushRuns: num('rushRuns', 0),
+    zenLevel: num('zenLevel', 1),
+    zenWins: num('zenWins', 0),
+  };
+}
+
 /** Keyed by the version the migration starts from. */
 export const MIGRATIONS: Record<number, Migration> = {
   1: migrateV1toV2,
@@ -183,6 +208,7 @@ export const MIGRATIONS: Record<number, Migration> = {
   3: migrateV3toV4,
   4: migrateV4toV5,
   5: migrateV5toV6,
+  6: migrateV6toV7,
 };
 
 /** Which schema a parsed blob belongs to, or null if it is not a save at all. */
@@ -230,7 +256,16 @@ export function normalize(x: unknown): SaveState {
     return typeof v === 'number' && Number.isFinite(v) && v >= 0 ? Math.floor(v) : 0;
   };
   const level = int('level', 1, d.level);
-  const stats = Array.isArray(o.stats) ? (o.stats.filter((s) => s && typeof s === 'object') as StatRecord[]) : [];
+  const MODES = ['level', 'daily', 'rush', 'zen'];
+  const stats = Array.isArray(o.stats)
+    ? (o.stats.filter((s) => s && typeof s === 'object') as StatRecord[]).map((s) => ({
+        ...s,
+        mode: MODES.includes(s.mode as string) ? s.mode : ('level' as const),
+      }))
+    : [];
+  const dayKeys = Array.isArray(o.puzzleDays)
+    ? o.puzzleDays.filter((k): k is string => typeof k === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(k))
+    : [];
   return {
     level,
     coins: int('coins', 0, d.coins),
@@ -259,6 +294,11 @@ export function normalize(x: unknown): SaveState {
     colorblind: bool('colorblind', d.colorblind),
     leftHanded: bool('leftHanded', d.leftHanded),
     lang: str('lang', d.lang),
+    puzzleDays: dayKeys.length > 400 ? dayKeys.slice(dayKeys.length - 400) : dayKeys,
+    rushBest: int('rushBest', 0, d.rushBest),
+    rushRuns: int('rushRuns', 0, d.rushRuns),
+    zenLevel: int('zenLevel', 1, d.zenLevel),
+    zenWins: int('zenWins', 0, d.zenWins),
   };
 }
 

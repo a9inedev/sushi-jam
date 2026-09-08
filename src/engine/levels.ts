@@ -723,12 +723,12 @@ export function tierFromDiff(d: number): Tier {
 type Candidate = LevelLike & { diff?: number; authored?: boolean; tuned?: boolean; count?: number };
 
 /** The procedurally generated level for n (plus the three legacy string boards). Deterministic by seed. */
-export function makeGenerated(n: number, allMech: MechSet = false): LevelDef {
+export function makeGenerated(n: number, allMech: MechSet = false, seedBase?: number): LevelDef {
   const P = paramsFor(n),
     target = curveFor(n).fail,
     runs = curve().solver.runs,
     cands: Candidate[] = [];
-  const auth = AUTHORED[n] ? parseAuthored(AUTHORED[n]) : null;
+  const auth = seedBase == null && AUTHORED[n] ? parseAuthored(AUTHORED[n]) : null;
   if (auth) {
     const order = peelOrder(auth.cells, auth.rows, auth.cols);
     if (order) {
@@ -770,7 +770,7 @@ export function makeGenerated(n: number, allMech: MechSet = false): LevelDef {
   if (!cands.length) {
     let best: Candidate | null = null;
     for (let a = 0; a < 12; a++) {
-      const seed = (n * 7919 + a * 104729 + 17) >>> 0,
+      const seed = seedBase != null ? (seedBase + a * 104729) >>> 0 : (n * 7919 + a * 104729 + 17) >>> 0,
         R = rng(seed),
         tgt = Math.max(4, Math.round(P.rows * P.cols * P.fill));
       const placed = gridGenerate(P.rows, P.cols, tgt, R);

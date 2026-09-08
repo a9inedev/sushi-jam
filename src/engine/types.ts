@@ -20,6 +20,8 @@ export type DinerState = 'grid' | 'walking' | 'seated' | 'paying' | 'leaving' | 
 export type LevelStatus = 'intro' | 'mech' | 'play' | 'failing' | 'fail' | 'win';
 export type FailReason = 'jam' | 'wasabi' | 'rush' | 'reserved' | 'chain' | 'reverse' | 'picky';
 export type SimResult = 'win' | 'fail';
+/** The level loop, or one of the side modes (docs/modes.md). */
+export type GameMode = 'level' | 'daily' | 'rush' | 'zen';
 export type Rng = () => number;
 
 /** Level-wide rules. chain: seats 1 and 2 share one queue (the back seat waits). rush: the plate index at
@@ -108,6 +110,10 @@ export interface LevelDef {
   authored?: boolean;
   tuned?: boolean;
   count?: number;
+  /** Side-mode boards carry their mode; the level loop leaves it unset. */
+  mode?: GameMode;
+  /** Daily puzzle: the calendar day the board belongs to. */
+  modeKey?: string;
 }
 
 /** What the solver needs from a level; a LevelDef satisfies it before diff/tier are known. */
@@ -197,6 +203,9 @@ export interface Seat {
 }
 
 export interface LevelStat {
+  mode: GameMode;
+  /** Rush: plates served. */
+  score: number;
   n: number;
   sched: Tier;
   label: Tier;
@@ -209,6 +218,8 @@ export interface LevelStat {
 }
 
 export interface StatRecord {
+  mode: GameMode;
+  score?: number;
   n: number;
   sched: Tier;
   label: Tier;
@@ -270,5 +281,12 @@ export interface RuntimeLevel {
   reverseT: number;
   /** Belt travel in laps, for the belt texture; runs backwards while reversed. */
   beltPhase: number;
+  mode: GameMode;
+  modeKey: string;
+  /** Rush: seconds left, plates served, delay until the next guest fills an empty cell, next diner id. */
+  timeLeft: number;
+  score: number;
+  spawnT: number;
+  nextId: number;
   stat: LevelStat;
 }
