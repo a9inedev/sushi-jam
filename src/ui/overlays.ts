@@ -3,10 +3,12 @@
 import { sfx } from '../audio/audio';
 import { TIER_COLOR } from '../data/constants';
 import { isAuthored, schedTier } from '../engine/levels';
-import { adRescue, newLevel, nextMechCard, paidRescue } from '../engine/rules';
+import { adRescue, nextMechCard, paidRescue } from '../engine/rules';
 import { cur, G } from '../engine/state';
 import { t } from '../i18n';
 import { afterWin } from '../meta/flow';
+import { leaveMode, restartLevel, startMode } from '../meta/modes';
+import { puzzleStreak } from '../engine/modes-core';
 import { S } from '../meta/save';
 import { ctx } from '../render/canvas';
 import { drawMechIcon } from '../render/icons';
@@ -114,9 +116,11 @@ export function drawStatusOverlay(): void {
       tone: '#3B3F4A',
       onTap: () => {
         sfx.ui();
-        newLevel(L.n);
+        restartLevel();
       },
     });
+  } else if (L.mode !== 'level') {
+    drawModeWin(cx, cy, cw, ch);
   } else {
     card(cx, cy, cw, ch, '#2FB36B', t('win.title'));
     coinIcon(196, cy + 108, 16);
@@ -153,7 +157,7 @@ export function drawStatusOverlay(): void {
       tone: '#3B3F4A',
       onTap: () => {
         sfx.ui();
-        newLevel(L.n);
+        restartLevel();
       },
     });
     button(cx + 24, cy + 344, cw - 48, 40, t('win.map'), null, {
@@ -164,4 +168,93 @@ export function drawStatusOverlay(): void {
       },
     });
   }
+}
+
+/** The end card of a side mode. None of these touch the level counter. */
+function drawModeWin(cx: number, cy: number, cw: number, ch: number): void {
+  const L = cur();
+  const toMap = () => {
+    sfx.ui();
+    G.screen = { type: 'map', tab: 'modes', t: 0 };
+  };
+  const toLevels = () => {
+    sfx.ui();
+    leaveMode();
+  };
+  if (L.mode === 'daily') {
+    card(cx, cy, cw, ch, '#3E7BFA', t('mode.dailyWin'));
+    coinIcon(196, cy + 108, 16);
+    txt('+' + L.earned, 220, cy + 109, 34, 800, '#2A2320', 'left', 'middle');
+    txt(
+      t('mode.dailyStreak', { n: puzzleStreak(S.puzzleDays, L.modeKey) }),
+      240,
+      cy + 152,
+      16,
+      800,
+      '#3E7BFA',
+      'center',
+      'middle'
+    );
+    txt(t('mode.dailyBack'), 240, cy + 178, 13, 700, '#8A8378', 'center', 'middle');
+    button(cx + 24, cy + 224, cw - 48, 56, t('mode.backMap'), t('mode.calendarHint'), { primary: true, onTap: toMap });
+    button(cx + 24, cy + 292, cw - 48, 44, t('mode.replay'), null, {
+      tone: '#3B3F4A',
+      onTap: () => {
+        sfx.ui();
+        restartLevel();
+      },
+    });
+    button(cx + 24, cy + 344, cw - 48, 40, t('mode.backLevels', { n: S.level }), null, {
+      tone: '#6A4C93',
+      onTap: toLevels,
+    });
+    return;
+  }
+  if (L.mode === 'rush') {
+    card(cx, cy, cw, ch, '#E25E12', t('mode.rushOver'));
+    txt(t('mode.rushScore', { n: L.score }), 240, cy + 100, 26, 800, '#2A2320', 'center', 'middle');
+    const best = L.score > 0 && L.score >= S.rushBest;
+    txt(
+      best ? t('mode.rushNewBest') : t('mode.rushBest', { n: S.rushBest }),
+      240,
+      cy + 136,
+      15,
+      800,
+      best ? '#E25E12' : '#5A4E45',
+      'center',
+      'middle'
+    );
+    coinIcon(206, cy + 172, 12);
+    txt('+' + L.earned, 224, cy + 173, 20, 800, '#2A2320', 'left', 'middle');
+    button(cx + 24, cy + 224, cw - 48, 56, t('mode.replay'), t('mode.rushAgain'), {
+      primary: true,
+      onTap: () => {
+        sfx.ui();
+        startMode('rush');
+      },
+    });
+    button(cx + 24, cy + 292, cw - 48, 44, t('mode.backMap'), null, { tone: '#3B3F4A', onTap: toMap });
+    button(cx + 24, cy + 344, cw - 48, 40, t('mode.backLevels', { n: S.level }), null, {
+      tone: '#6A4C93',
+      onTap: toLevels,
+    });
+    return;
+  }
+  card(cx, cy, cw, ch, '#148F82', t('win.title'));
+  coinIcon(196, cy + 108, 16);
+  txt('+' + L.earned, 220, cy + 109, 34, 800, '#2A2320', 'left', 'middle');
+  txt(t('mode.zenNote'), 240, cy + 152, 14, 700, '#5A4E45', 'center', 'middle');
+  txt(t('mode.hudZen', { n: L.n }), 240, cy + 178, 13, 700, '#8A8378', 'center', 'middle');
+  button(cx + 24, cy + 224, cw - 48, 56, t('mode.zenNext', { n: L.n + 1 }), null, {
+    primary: true,
+    onTap: () => {
+      sfx.ui();
+      startMode('zen');
+    },
+  });
+  button(cx + 24, cy + 292, cw - 48, 44, t('mode.backMap'), null, { tone: '#3B3F4A', onTap: toMap });
+  button(cx + 24, cy + 344, cw - 48, 40, t('mode.backLevels', { n: S.level }), null, {
+    tone: '#6A4C93',
+    onTap: toLevels,
+  });
 }

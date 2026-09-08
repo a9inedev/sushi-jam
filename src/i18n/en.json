@@ -318,5 +318,41 @@
   "editor.rulesChain": "Chain",
   "editor.rulesReserved": "Rsv",
   "editor.rulesRush": "Rush",
-  "editor.rulesReverse": "Rev"
+  "editor.rulesReverse": "Rev",
+  "map.modes": "Modes",
+  "mode.daily": "Daily puzzle",
+  "mode.rush": "Rush",
+  "mode.zen": "Zen",
+  "mode.play": "Play",
+  "mode.replay": "Play again",
+  "mode.hudDaily": "Daily",
+  "mode.hudRush": "Rush",
+  "mode.hudZen": "Zen {n}",
+  "mode.zenBadge": "ZEN",
+  "mode.dailyDesc": "One board a day, the same for everyone.",
+  "mode.dailyDone": "Done today · streak {n}",
+  "mode.dailyTodo": "Not played yet today · streak {n}",
+  "mode.rushDesc": "90 s, endless guests. Score = plates served.",
+  "mode.zenDesc": "No jams, no timers. Fewer coins.",
+  "mode.rushScore": {
+    "one": "{n} plate served",
+    "other": "{n} plates served"
+  },
+  "mode.rushBest": "Best {n}",
+  "mode.rushNewBest": "New best!",
+  "mode.rushOver": "Time's up!",
+  "mode.rushAgain": "Another 90 seconds",
+  "mode.dailyWin": "Daily puzzle done!",
+  "mode.dailyStreak": {
+    "one": "Streak: {n} day",
+    "other": "Streak: {n} days"
+  },
+  "mode.dailyBack": "Come back tomorrow for a new board.",
+  "mode.calendarHint": "See your streak calendar",
+  "mode.zenNext": "Next: Zen {n}",
+  "mode.zenNote": "Zen pays fewer coins, and nothing can go wrong.",
+  "mode.backMap": "Back to map",
+  "mode.backLevels": "Back to level {n}",
+  "mode.chefCleared": "The chef cleared the belt",
+  "mode.noProgress": "Modes keep their own stats and never move your level."
 }

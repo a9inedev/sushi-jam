@@ -21,7 +21,7 @@ export interface Toast {
 
 export type ScreenType =
   'ad' | 'shop' | 'offer' | 'daily' | 'dev' | 'map' | 'settings' | 'pause' | 'confirm' | 'editor';
-export type MapTab = 'path' | 'decor' | 'weekly' | 'game' | 'account';
+export type MapTab = 'path' | 'modes' | 'decor' | 'weekly' | 'game' | 'account';
 
 export interface Screen {
   type: ScreenType;

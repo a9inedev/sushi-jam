@@ -12,7 +12,17 @@ import { bindAudio, engine } from './audio/engine';
 import type { SfxName } from './audio/patches';
 import { DINER_R, H, W } from './data/constants';
 import { getLevel } from './engine/levels';
-import { canMove, checkDeadlock, devAuto, fail, newLevel, nextMechCard, updateBelt, win } from './engine/rules';
+import {
+  canMove,
+  checkDeadlock,
+  devAuto,
+  fail,
+  newLevel,
+  nextMechCard,
+  updateBelt,
+  updateMode,
+  win,
+} from './engine/rules';
 import { closeScreen, G, toast, type Screen } from './engine/state';
 import type { RuntimeLevel } from './engine/types';
 import { checkDaily, checkWeekly } from './meta/daily';
@@ -66,6 +76,7 @@ import {
   setCurveUrl,
   type CurveStatus,
 } from './data/curve-remote';
+import { leaveMode, restartLevel, startMode, type SideMode } from './meta/modes';
 import { editorApi } from './ui/editor';
 import { bindStatsBox, drawScreen } from './ui/screens';
 
@@ -101,10 +112,11 @@ function update(dt: number): void {
       if (L.status === 'play') {
         for (const d of L.diners) if (d.state === 'grid') d.movable = canMove(d);
         checkDeadlock(dt);
+        updateMode(dt);
         const full = L.seats.every((s) => s.diner);
         L.tension =
           full && L.belt.length >= L.beltCap - 2 ? Math.min(1, L.tension + dt * 2) : Math.max(0, L.tension - dt * 2);
-        if (L.diners.every((d) => d.state === 'done')) win();
+        if (L.mode !== 'rush' && L.diners.every((d) => d.state === 'done')) win();
       }
     }
     if (L.status === 'failing') {
@@ -368,6 +380,21 @@ export interface DevApi {
     reset: () => void;
   };
   editor: typeof editorApi;
+  modes: {
+    start: (mode: SideMode, key?: string) => void;
+    forceWin: () => void;
+    restart: () => void;
+    leave: () => void;
+    state: () => {
+      mode: string;
+      key: string;
+      timeLeft: number;
+      score: number;
+      puzzleDays: string[];
+      rushBest: number;
+      zenLevel: number;
+    };
+  };
   audio: {
     state: () => string;
     unlock: () => void;
@@ -457,6 +484,24 @@ window.__SJ = {
     reset: () => clearCurveCache(),
   },
   editor: editorApi,
+  modes: {
+    start: (mode, key) => startMode(mode, key),
+    forceWin: () => win(),
+    restart: () => restartLevel(),
+    leave: () => leaveMode(),
+    state: () => {
+      const L = G.L;
+      return {
+        mode: L ? L.mode : 'level',
+        key: L ? L.modeKey : '',
+        timeLeft: L ? L.timeLeft : 0,
+        score: L ? L.score : 0,
+        puzzleDays: S.puzzleDays.slice(),
+        rushBest: S.rushBest,
+        zenLevel: S.zenLevel,
+      };
+    },
+  },
   audio: {
     state: () => engine.state(),
     unlock: () => audio(),

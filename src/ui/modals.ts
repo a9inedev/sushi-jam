@@ -6,6 +6,7 @@ import { LINKS, openLink } from '../data/links';
 import { logStat, newLevel } from '../engine/rules';
 import { closeScreen, cur, G, toast, type Screen } from '../engine/state';
 import { LANGUAGES, languageName, locale, matchLocale, setLocale, t } from '../i18n';
+import { restartLevel } from '../meta/modes';
 import { purchases } from '../meta/providers';
 import { backupInfo, clearSave, cloudProvider, restoreFromBackup, S, save } from '../meta/save';
 import { haptic, isNative, platform } from '../platform/native';
@@ -324,7 +325,7 @@ export function drawPause(sc: Screen): void {
       sfx.ui();
       if (L.status === 'play' && L.stat.taps > 0) logStat('restart');
       closeScreen();
-      newLevel(L.n);
+      restartLevel();
     },
   });
   button(100, 480, 280, 44, t('pause.settings'), null, {

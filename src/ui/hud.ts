@@ -16,6 +16,12 @@ const TIER_KEY: Record<Tier, string> = {
   'Super Hard': 'tier.superHard', // i18n-ignore
 };
 
+/** m:ss for the rush clock. */
+export function clock(seconds: number): string {
+  const s = Math.max(0, Math.ceil(seconds));
+  return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
+}
+
 export function tierLabel(tier: Tier): string {
   return t(TIER_KEY[tier]);
 }
@@ -33,16 +39,34 @@ export function coinPos(): { x: number; y: number } {
 export function drawHud(): void {
   const L = cur();
   const left = !S.leftHanded;
-  const label = t('hud.level', { n: L.n });
+  const label =
+    L.mode === 'level'
+      ? t('hud.level', { n: L.n })
+      : L.mode === 'zen'
+        ? t('mode.hudZen', { n: L.n })
+        : L.mode === 'daily'
+          ? t('mode.hudDaily')
+          : t('mode.hudRush');
   const tw = textW(label, 28, 800);
-  const tier = tierLabel(L.lv.tierLabel);
+  const tier =
+    L.mode === 'rush' ? clock(L.timeLeft) : L.mode === 'zen' ? t('mode.zenBadge') : tierLabel(L.lv.tierLabel);
+  const tierColor =
+    L.mode === 'rush'
+      ? L.timeLeft < 10
+        ? '#E5484D'
+        : '#3B3F4A'
+      : L.mode === 'zen'
+        ? '#148F82'
+        : TIER_COLOR[L.lv.tierLabel];
   const bw = textW(tier, 13, 800) + 26;
   // Level label and tier badge sit on the thumb side; the buttons on the other.
   const lx = left ? 20 : W - 20 - tw;
   txt(label, lx, 46, 28, 800, '#FFF7E8');
   const bx = left ? 28 + tw : lx - 8 - bw;
-  badge(tier, bx, 26, TIER_COLOR[L.lv.tierLabel]);
-  if (S.streak > 1) {
+  badge(tier, bx, 26, tierColor);
+  if (L.mode === 'rush')
+    txt(t('mode.rushScore', { n: L.score }), left ? 20 : W - 20, 74, 15, 800, GOLD, left ? 'left' : 'right', 'middle');
+  if (S.streak > 1 && L.mode === 'level') {
     const fx0 = left ? bx + bw + 12 : bx - 22;
     ctx.save();
     ctx.fillStyle = '#F5843B';

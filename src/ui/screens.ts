@@ -18,6 +18,9 @@ import { ctx } from '../render/canvas';
 import { drawPlate } from '../render/plate';
 import { card, coinIcon, dim, rrect, txt } from '../render/primitives';
 import { button, closeBtn } from './buttons';
+import { dateKey, puzzleStreak } from '../engine/modes-core';
+import { startMode } from '../meta/modes';
+import { locale } from '../i18n';
 import { drawEditor, importJson, openEditor } from './editor';
 import { drawConfirm, drawPause, drawSettings } from './modals';
 import { resetTutorial } from './tutorial';
@@ -315,11 +318,12 @@ function drawMap(sc: Screen): void {
   closeBtn();
   const tabs: [MapTab, string][] = [
     ['path', t('map.path')],
+    ['modes', t('map.modes')],
     ['decor', t('map.decor')],
     ['weekly', t('map.weekly')],
   ];
   tabs.forEach(([id, label], i) =>
-    button(50 + i * 130, 160, 120, 38, label, null, {
+    button(50 + i * 100, 160, 94, 38, label, null, {
       tone: sc.tab === id ? '#6A4C93' : '#B9B2A5',
       onTap: () => {
         sfx.ui();
@@ -328,7 +332,9 @@ function drawMap(sc: Screen): void {
     })
   );
   if (sc.tab === 'path') {
-    const start = Math.max(1, L.n - 5);
+    // Side modes never move the path: it is anchored on the level counter while one is being played.
+    const home = L.mode === 'level' ? L.n : S.level;
+    const start = Math.max(1, home - 5);
     ctx.save();
     const pts: { lvl: number; x: number; y: number }[] = [];
     for (let i = 0; i < 16; i++) pts.push({ lvl: start + i, x: 240 + Math.sin(i * 0.95) * 130, y: 780 - i * 38 });
@@ -340,7 +346,7 @@ function drawMap(sc: Screen): void {
     ctx.stroke();
     for (const p of pts) {
       const cleared = p.lvl < S.level,
-        curL = p.lvl === L.n,
+        curL = p.lvl === home,
         st = schedTier(p.lvl);
       ctx.fillStyle = cleared ? '#2FB36B' : curL ? GOLD : '#E4D6B4';
       ctx.beginPath();
@@ -366,6 +372,8 @@ function drawMap(sc: Screen): void {
     }
     ctx.restore();
     txt(t('map.legend'), 240, 815, 12, 700, '#8A8378', 'center', 'middle');
+  } else if (sc.tab === 'modes') {
+    drawModes();
   } else if (sc.tab === 'decor') {
     coinIcon(70, 226, 11);
     txt(t('shop.coins', { n: S.coins.toLocaleString() }), 88, 227, 18, 800, '#2A2320', 'left', 'middle');
@@ -422,4 +430,106 @@ export function drawScreen(): void {
   else if (sc.type === 'settings') drawSettings(sc);
   else if (sc.type === 'pause') drawPause(sc);
   else if (sc.type === 'confirm') drawConfirm(sc);
+}
+
+/** The Modes tab of the map: the daily puzzle with its streak calendar, rush with its best, zen with its rung. */
+function drawModes(): void {
+  const today = dateKey(),
+    done = S.puzzleDays.includes(today),
+    streak = puzzleStreak(S.puzzleDays, today);
+  const panel = (
+    y: number,
+    h: number,
+    color: string,
+    title: string,
+    desc: string,
+    status: string,
+    onPlay: () => void
+  ) => {
+    ctx.fillStyle = '#FFFDF7';
+    rrect(50, y, 380, h, 12);
+    ctx.fill();
+    ctx.fillStyle = color;
+    rrect(50, y, 8, h, 4);
+    ctx.fill();
+    txt(title, 72, y + 26, 20, 800, '#2A2320', 'left', 'middle');
+    txt(desc, 72, y + 52, 11, 700, '#5A4E45', 'left', 'middle');
+    txt(status, 72, y + 74, 13, 800, color, 'left', 'middle');
+    button(318, y + 16, 96, 44, t('mode.play'), null, {
+      tone: color,
+      onTap: () => {
+        sfx.ui();
+        onPlay();
+      },
+    });
+  };
+  panel(
+    206,
+    262,
+    '#3E7BFA',
+    t('mode.daily'),
+    t('mode.dailyDesc'),
+    done ? t('mode.dailyDone', { n: streak }) : t('mode.dailyTodo', { n: streak }),
+    () => startMode('daily')
+  );
+  drawCalendar(72, 318, today);
+  panel(478, 100, '#E25E12', t('mode.rush'), t('mode.rushDesc'), t('mode.rushBest', { n: S.rushBest }), () =>
+    startMode('rush')
+  );
+  panel(588, 100, '#148F82', t('mode.zen'), t('mode.zenDesc'), t('mode.hudZen', { n: S.zenLevel }), () =>
+    startMode('zen')
+  );
+  txt(t('mode.noProgress'), 240, 716, 12, 700, '#8A8378', 'center', 'middle');
+}
+
+/** This month, Monday first: won days filled, today ringed. */
+function drawCalendar(x: number, y: number, today: string): void {
+  const [yy, mm] = today.split('-').map(Number);
+  const first = new Date(yy, mm - 1, 1);
+  const days = new Date(yy, mm, 0).getDate();
+  const offset = (first.getDay() + 6) % 7;
+  const cell = 21;
+  const lang = locale() || 'en';
+  txt(
+    first.toLocaleDateString(lang, { month: 'long', year: 'numeric' }),
+    x,
+    y - 14,
+    12,
+    800,
+    '#5A4E45',
+    'left',
+    'middle'
+  );
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(2024, 0, 1 + i); // a Monday
+    txt(
+      d.toLocaleDateString(lang, { weekday: 'narrow' }),
+      x + i * cell + cell / 2,
+      y + 4,
+      10,
+      800,
+      '#8A8378',
+      'center',
+      'middle'
+    );
+  }
+  for (let d = 1; d <= days; d++) {
+    const idx = offset + d - 1,
+      cx = x + (idx % 7) * cell + cell / 2,
+      cy = y + 20 + Math.floor(idx / 7) * cell + cell / 2;
+    const key = today.slice(0, 8) + String(d).padStart(2, '0');
+    const won = S.puzzleDays.includes(key);
+    ctx.fillStyle = won ? '#2FB36B' : '#EDE6D3';
+    ctx.beginPath();
+    ctx.arc(cx, cy, 10, 0, 7);
+    ctx.fill();
+    if (key === today) {
+      ctx.strokeStyle = GOLD;
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.arc(cx, cy, 11.5, 0, 7);
+      ctx.stroke();
+    }
+    txt(d, cx, cy + 1, 9, 800, won ? '#fff' : '#8A8378', 'center', 'middle');
+  }
 }
