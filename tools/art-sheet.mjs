@@ -20,7 +20,7 @@ await build({
   logLevel: 'silent',
 });
 const art = await import(pathToFileURL(path.resolve('tools/out/art.mjs')).href + '?t=' + Date.now());
-const { CHARACTERS, SPRITE_STATES, characterSvg, SUSHI, foodSvg, COLORS } = art;
+const { CHARACTERS, SPRITE_STATES, characterSvg, SUSHI, foodSvg, COLORS, THEMES, DECOR_ART, backgroundSvg } = art;
 
 const inner = (svg) => svg.replace(/^<svg[^>]*>/, '').replace(/<\/svg>\s*$/, '');
 const png = (svg, size, src = 100) =>
@@ -117,7 +117,97 @@ async function sideBySide(beforeFile, afterFile, outFile) {
   return outFile;
 }
 
-const made = [await characterSheet(40), await characterSheet(96), await plateSheet(30), await plateSheet(96)];
+async function roomSheet() {
+  const w = 192,
+    h = 360,
+    pad = 12;
+  const layers = [];
+  for (let i = 0; i < THEMES.length; i++) {
+    const img = await sharp(Buffer.from(backgroundSvg(THEMES[i])))
+      .resize(w, h)
+      .png()
+      .toBuffer();
+    layers.push({ input: img, left: pad + i * (w + pad), top: 24 });
+    layers.push({ input: label(THEMES[i].id, w, 24), left: pad + i * (w + pad), top: 0 });
+  }
+  const file = path.join(OUT, 'rooms-192px.png');
+  await sharp({
+    create: { width: pad + THEMES.length * (w + pad), height: h + 24 + pad, channels: 4, background: '#FBF3E4' },
+  })
+    .composite(layers)
+    .png()
+    .toFile(file);
+  return file;
+}
+
+async function decorSheet() {
+  const cell = 64,
+    pad = 16;
+  const ids = Object.keys(DECOR_ART);
+  const layers = [];
+  for (let i = 0; i < ids.length; i++) {
+    const a = DECOR_ART[ids[i]];
+    const k = Math.min(cell / a.w, cell / a.h);
+    const img = await sharp(Buffer.from(a.svg()))
+      .resize(Math.round(a.w * k), Math.round(a.h * k))
+      .png()
+      .toBuffer();
+    layers.push({
+      input: img,
+      left: pad + i * (cell + pad) + Math.round((cell - a.w * k) / 2),
+      top: 24 + Math.round((cell - a.h * k) / 2),
+    });
+    layers.push({ input: label(ids[i], cell + pad, 24, 10), left: pad + i * (cell + pad) - pad / 2, top: 0 });
+  }
+  const file = path.join(OUT, 'decor-64px.png');
+  await sharp({
+    create: { width: pad + ids.length * (cell + pad), height: cell + 24 + pad, channels: 4, background: '#FBF3E4' },
+  })
+    .composite(layers)
+    .png()
+    .toFile(file);
+  return file;
+}
+
+async function outfitSheet() {
+  const cell = 64,
+    pad = 16,
+    labelW = 80;
+  const layers = [];
+  for (let r = 0; r < THEMES.length; r++) {
+    const top = 24 + r * (cell + pad);
+    layers.push({ input: label(THEMES[r].outfit, labelW, cell), left: 0, top });
+    for (let c = 0; c < CHARACTERS.length; c++)
+      layers.push({
+        input: await png(characterSvg(CHARACTERS[c].color, 'idle', false, false, THEMES[r].outfit), cell),
+        left: labelW + c * (cell + pad),
+        top,
+      });
+  }
+  const file = path.join(OUT, 'outfits-64px.png');
+  await sharp({
+    create: {
+      width: labelW + CHARACTERS.length * (cell + pad) + pad,
+      height: 24 + THEMES.length * (cell + pad) + pad,
+      channels: 4,
+      background: '#FBF3E4',
+    },
+  })
+    .composite(layers)
+    .png()
+    .toFile(file);
+  return file;
+}
+
+const made = [
+  await characterSheet(40),
+  await characterSheet(96),
+  await plateSheet(30),
+  await plateSheet(96),
+  await roomSheet(),
+  await decorSheet(),
+  await outfitSheet(),
+];
 for (const [b, a, o] of [
   ['before-level2.png', 'after-level2.png', 'before-after-level2.png'],
   ['before-mechanics.png', 'after-mechanics.png', 'before-after-mechanics.png'],

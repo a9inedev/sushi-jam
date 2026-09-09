@@ -21,6 +21,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const results = [];
 const step = async (name, fn) => {
   const t0 = Date.now();
+  if (process.env.SMOKE_TRACE) console.log(`  ...  ${name}`);
   try {
     const info = await fn();
     results.push({ name, ok: true, ms: Date.now() - t0, info });
@@ -40,22 +41,46 @@ const browser = await puppeteer.launch({
 const page = await browser.newPage();
 await page.setViewport({ width: 480, height: 900, deviceScaleFactor: 1 });
 const errors = [];
-page.on('pageerror', (e) => errors.push('pageerror: ' + e.message));
+// Never let a flood of page errors take the runner down; the first few hundred are all a report needs.
+const noteError = (e) => {
+  if (errors.length < 400) errors.push(e);
+};
+page.on('pageerror', (e) => {
+  msgCount++;
+  lastMsg = 'pageerror: ' + e.message;
+  noteError('pageerror: ' + e.message);
+});
 // The curve fetch is allowed to fail: a 404 (URL not deployed yet, or the deliberate one in the override step)
 // is the fallback path under test, not an error.
 const expectedFailure = (url) => /fonts\.g/.test(url) || /curve(-test)?\.json/.test(url);
+let stage = 'boot';
+if (process.env.SMOKE_TRACE) setInterval(() => console.log('       ~ alive at ' + stage), 5000).unref();
+let msgCount = 0,
+  lastMsg = '';
+if (process.env.SMOKE_TRACE)
+  setInterval(() => {
+    if (msgCount > 100) console.log('       > console flood ' + msgCount + '/s: ' + lastMsg.slice(0, 160));
+    msgCount = 0;
+  }, 1000).unref();
 page.on('console', (m) => {
+  msgCount++;
+  lastMsg = m.type() + ': ' + m.text();
   const url = (m.location() && m.location().url) || '';
-  if (m.type() === 'error' && !expectedFailure(url)) errors.push('console: ' + m.text() + (url ? ' @ ' + url : ''));
+  if (m.type() === 'error' && !expectedFailure(url)) noteError('console: ' + m.text() + (url ? ' @ ' + url : ''));
 });
 page.on('requestfailed', (r) => {
-  if (!expectedFailure(r.url())) errors.push('requestfailed: ' + r.url());
+  if (!expectedFailure(r.url())) noteError('requestfailed: ' + r.url());
 });
 page.on('response', (r) => {
-  if (r.status() >= 400 && !expectedFailure(r.url())) errors.push(`http ${r.status()}: ${r.url()}`);
+  if (r.status() >= 400 && !expectedFailure(r.url())) noteError(`http ${r.status()}: ${r.url()}`);
 });
 
-const sj = (expr) => page.evaluate(expr);
+// A page-side stall (an infinite loop in the game) would hang the runner forever; name the call instead.
+const sj = (expr) =>
+  Promise.race([
+    page.evaluate(expr),
+    new Promise((_, rej) => setTimeout(() => rej(new Error('evaluate stalled: ' + String(expr).slice(0, 80))), 20000)),
+  ]);
 // Map logical 480x900 game coordinates to CSS pixels on the scaled canvas.
 const tapCanvas = async (x, y) => {
   const box = await page.$eval('#c', (c) => {
@@ -66,6 +91,19 @@ const tapCanvas = async (x, y) => {
 };
 const status = () => sj('window.__SJ.state() ? window.__SJ.state().status : null');
 const screenType = () => sj('window.__SJ.screen() ? window.__SJ.screen().type : null');
+// Get a freshly started level to 'play': close a restaurant reveal and page through any rule cards.
+const settle = async () => {
+  if ((await sj('window.__SJ.state().status')) === 'reveal') await sj('window.__SJ.reveal()');
+  for (let i = 0; (await sj('window.__SJ.state().status')) === 'mech'; i++) {
+    if (i >= 30) {
+      const why = await sj(
+        '(() => { const L = window.__SJ.state(); return { n: L.n, mode: L.mode, status: L.status, newMechs: L.newMechs, mechIdx: L.mechIdx, seen: window.__SJ.S.seenMech, screen: window.__SJ.screen() && window.__SJ.screen().type }; })()'
+      );
+      throw new Error('rule cards never end: ' + JSON.stringify(why));
+    }
+    await sj('window.__SJ.mechCard()');
+  }
+};
 const autoplayUntil = async (want, maxMs) => {
   const t0 = Date.now();
   while (Date.now() - t0 < maxMs) {
@@ -464,7 +502,7 @@ await step('save is a versioned envelope with a valid checksum', async () => {
     const e = JSON.parse(localStorage.getItem('sushijam.save'));
     return { v: e.v, hasSum: typeof e.sum === 'number', level: e.data.level, src: window.__SJ.saveApi.info().source };
   })()`);
-  if (info.v !== 7 || !info.hasSum) throw new Error('bad envelope ' + JSON.stringify(info));
+  if (info.v !== 8 || !info.hasSum) throw new Error('bad envelope ' + JSON.stringify(info));
   return `v${info.v}, loaded from ${info.src}`;
 });
 await step('legacy v2 save migrates with level, coins, decor and stats intact', async () => {
@@ -559,27 +597,35 @@ await step('the six later rules: intro cards, autoplay and fail messaging on lev
     [131, 'reverse'],
   ]) {
     await sj('window.__SJ.closeScreen()');
+    if (process.env.SMOKE_TRACE) console.log('       > ' + 'jump ' + n);
     await sj(`window.__SJ.jump(${n})`);
     await sj('window.__SJ.skipIntro()');
     await sleep(120);
     const st = await sj('window.__SJ.state()');
     if (!st || st.n !== n || !st.lv.mechs.includes(kind))
       throw new Error(`level ${n} does not carry ${kind}: ${st && st.lv.mechs}`);
+    if (process.env.SMOKE_TRACE) console.log('       > ' + 'state ok ' + n);
     // The intro card for the new rule shows once, then never again.
+    stage = 'reveal check ' + n;
+    if ((await sj('window.__SJ.state().status')) === 'reveal') await sj('window.__SJ.reveal()');
+    stage = 'status ' + n;
     const status = await sj('window.__SJ.state().status');
     const shown = await sj(
       `(() => { const L = window.__SJ.state(); return L.status === 'mech' ? L.newMechs[L.mechIdx] : null; })()`
     );
+    stage = 'cards ' + n + ' status=' + status + ' shown=' + shown;
     if (status === 'mech' && shown !== kind) {
       // Earlier unseen rules may queue first; page through to ours.
       for (let i = 0; i < 12 && (await sj('window.__SJ.state().status')) === 'mech'; i++)
         await sj('window.__SJ.mechCard()');
     } else if (status === 'mech') {
       if (n === 81) await page.screenshot({ path: path.join(OUT, 'smoke-rule-card-chain.png') });
-      while ((await sj('window.__SJ.state().status')) === 'mech') await sj('window.__SJ.mechCard()');
+      await settle();
     }
+    stage = 'seen check ' + n;
     if ((await sj('window.__SJ.S.seenMech.includes("' + kind + '")')) !== true)
       throw new Error(`${kind} not recorded as seen`);
+    if (process.env.SMOKE_TRACE) console.log('       > ' + 'cards done ' + n);
     // Autoplay for a while: the runtime must run every rule without errors and keep making progress.
     const t0 = Date.now();
     let moves = 0;
@@ -592,6 +638,7 @@ await step('the six later rules: intro cards, autoplay and fail messaging on lev
     const L = await sj(
       '(() => { const L = window.__SJ.state(); return { status: L.status, done: L.diners.filter((d) => d.state === "done").length, total: L.diners.length, rushT: L.rushT, reversed: L.reversed, emitted: L.emitted, seats: L.seats.map((s) => [s.reserved, s.chain]) }; })()'
     );
+    if (process.env.SMOKE_TRACE) console.log('       > ' + 'autoplay done ' + n + ' moves ' + moves);
     // The naive auto player may park itself (a ticket guest's plates block it); the belt must still have run.
     if (L.emitted < 6 && L.done < 2 && L.status !== 'win' && L.status !== 'fail')
       throw new Error(`level ${n} (${kind}) made no progress: ${JSON.stringify(L)}`);
@@ -602,11 +649,13 @@ await step('the six later rules: intro cards, autoplay and fail messaging on lev
     if (n === 111) await page.screenshot({ path: path.join(OUT, 'smoke-rule-picky.png') });
     notes.push(`${n}:${kind} ${L.done}/${L.total} in ${moves} moves`);
   }
+  if (process.env.SMOKE_TRACE) console.log('       > fail messaging');
   // Fail messaging: every reason has its own card text.
   for (const why of ['rush', 'reserved', 'chain', 'reverse', 'picky']) {
     await sj('window.__SJ.jump(3)');
     await sj('window.__SJ.skipIntro()');
     await sleep(100);
+    if (process.env.SMOKE_TRACE) console.log('       > ' + 'forceFail ' + why);
     await sj('window.__SJ.forceFail()');
     await sj(`window.__SJ.state().failReason = '${why}'`);
     await page.waitForFunction(() => window.__SJ.state().status === 'fail', { timeout: 5000 });
@@ -619,6 +668,80 @@ await step('the six later rules: intro cards, autoplay and fail messaging on lev
   await sj('window.__SJ.skipIntro()');
   return notes.join(', ');
 });
+await step(
+  'restaurant journey: themes switch every 20 levels with a reveal, decor sets pay out, the album fills',
+  async () => {
+    await sj('window.__SJ.closeScreen()');
+    await sj('window.__SJ.S.themesSeen = []; window.__SJ.S.best = Math.max(window.__SJ.S.best, 61)');
+    // Level 20 is still the stall; 21 opens the diner with a reveal, once.
+    await sj('window.__SJ.jump(20)');
+    await sj('window.__SJ.skipIntro()');
+    await sleep(120);
+    if ((await sj('window.__SJ.theme()')) !== 'stall') throw new Error('level 20 should be the stall');
+    await sj('window.__SJ.jump(21)');
+    await sj('window.__SJ.skipIntro()');
+    await page.waitForFunction(() => window.__SJ.state().status === 'reveal', { timeout: 5000 });
+    await sleep(900);
+    await page.screenshot({ path: path.join(OUT, 'smoke-theme-reveal.png') });
+    if ((await sj('window.__SJ.theme()')) !== 'diner') throw new Error('level 21 should be the diner');
+    await sj('window.__SJ.reveal()');
+    await sleep(100);
+    const after = await sj(
+      '(() => { const L = window.__SJ.state(); return { status: L.status, seen: window.__SJ.S.themesSeen.slice() }; })()'
+    );
+    if (after.status === 'reveal' || !after.seen.includes('diner'))
+      throw new Error('reveal did not close: ' + JSON.stringify(after));
+    await page.screenshot({ path: path.join(OUT, 'smoke-theme-diner.png') });
+    await sj('window.__SJ.jump(21)');
+    await sj('window.__SJ.skipIntro()');
+    await sleep(200);
+    if ((await sj('window.__SJ.state().status')) === 'reveal') throw new Error('reveal replayed on a seen restaurant');
+    // Ryokan at 61 and the station at 81 render their own rooms.
+    for (const [n, id] of [
+      [61, 'ryokan'],
+      [81, 'station'],
+      [41, 'rooftop'],
+    ]) {
+      await sj(`window.__SJ.jump(${n})`);
+      await sj('window.__SJ.skipIntro()');
+      await page.waitForFunction(() => window.__SJ.state().status !== 'intro', { timeout: 5000 });
+      if ((await sj('window.__SJ.state().status')) === 'reveal') await sj('window.__SJ.reveal()');
+      while ((await sj('window.__SJ.state().status')) === 'mech') await sj('window.__SJ.mechCard()');
+      await sleep(200);
+      if ((await sj('window.__SJ.theme()')) !== id) throw new Error(`level ${n} should be the ${id}`);
+      if (n === 81) await page.screenshot({ path: path.join(OUT, 'smoke-theme-station.png') });
+    }
+    // Decor: buying the diner's three pieces pays the set reward once.
+    await sj('window.__SJ.jump(25)');
+    await sj('window.__SJ.skipIntro()');
+    await sleep(150);
+    const coins0 = await sj('(window.__SJ.S.coins = 5000)');
+    const before = await sj('window.__SJ.S.decorRewards.slice()');
+    for (const id of ['neon', 'tank', 'jukebox'])
+      if (!(await sj(`window.__SJ.decor.buy('${id}')`))) throw new Error('could not buy ' + id);
+    const coins1 = await sj('window.__SJ.S.coins');
+    const rewards = await sj('window.__SJ.S.decorRewards.slice()');
+    const expected = coins0 - 400 - 500 - 600 + 400;
+    if (!rewards.includes('diner') || before.includes('diner') || coins1 !== expected)
+      throw new Error('set reward: ' + JSON.stringify({ coins0, coins1, expected, rewards }));
+    await sj("window.__SJ.decor.buy('neon')"); // already owned: no double reward
+    if ((await sj('window.__SJ.S.coins')) !== expected) throw new Error('owned piece charged again');
+    await sleep(300);
+    await page.screenshot({ path: path.join(OUT, 'smoke-theme-decor.png') });
+    await sj("window.__SJ.setScreen({ type: 'map', tab: 'decor', theme: 'diner', t: 0 })");
+    await sleep(150);
+    await page.screenshot({ path: path.join(OUT, 'smoke-theme-shop.png') });
+    await sj("window.__SJ.setScreen({ type: 'map', tab: 'album', t: 0 })");
+    await sleep(150);
+    await page.screenshot({ path: path.join(OUT, 'smoke-theme-album.png') });
+    await sj('window.__SJ.closeScreen()');
+    const music = await sj('window.__SJ.audio.events().filter((e) => e.startsWith("music:palette")).length');
+    if (music < 3) throw new Error('music palette did not change with the restaurants: ' + music);
+    await sj('window.__SJ.jump(1)');
+    await sj('window.__SJ.skipIntro()');
+    return 'stall, diner (reveal once), rooftop, ryokan, station; diner set +400; music retuned ' + music + ' times';
+  }
+);
 await step('side modes: daily, rush and zen from the map; own stats; level progress untouched', async () => {
   await sj('window.__SJ.closeScreen()');
   await sj('window.__SJ.jump(2)');
@@ -635,7 +758,7 @@ await step('side modes: daily, rush and zen from the map; own stats; level progr
   if (m.mode !== 'daily' || (await screenType()))
     throw new Error('daily did not start from the map: ' + JSON.stringify(m));
   await sj('window.__SJ.skipIntro()');
-  while ((await sj('window.__SJ.state().status')) === 'mech') await sj('window.__SJ.mechCard()');
+  await settle();
   for (let i = 0; i < 6; i++) {
     await sj('window.__SJ.auto()');
     await sleep(120);
@@ -672,7 +795,7 @@ await step('side modes: daily, rush and zen from the map; own stats; level progr
   // Zen: no timers on the board, a forced jam is cleared instead of failing, the win climbs the zen rung only.
   await sj("window.__SJ.modes.start('zen')");
   await sj('window.__SJ.skipIntro()');
-  while ((await sj('window.__SJ.state().status')) === 'mech') await sj('window.__SJ.mechCard()');
+  await settle();
   const zen = await sj(
     '(() => { const L = window.__SJ.state(); const r = L.P.rules || {}; return { mode: L.mode, n: L.n, wasabi: L.kitchen.some((p) => p.wasabi), rush: r.rush || 0, reverse: r.reverse || null }; })()'
   );

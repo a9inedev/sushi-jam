@@ -117,7 +117,7 @@ describe('rush', () => {
 
 describe('save v7', () => {
   it('adds the modes progress with defaults and keeps it through normalize', () => {
-    expect(SAVE_VERSION).toBe(7);
+    expect(SAVE_VERSION).toBeGreaterThanOrEqual(7);
     const v6 = { ...(defaultSave() as unknown as Record<string, unknown>) };
     delete v6.puzzleDays;
     delete v6.rushBest;
