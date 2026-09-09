@@ -19,10 +19,14 @@ import {
   fail,
   newLevel,
   nextMechCard,
+  finishReveal,
+  revealOpened,
   updateBelt,
   updateMode,
   win,
 } from './engine/rules';
+import { activeTheme, onThemeChange } from './data/theme-state';
+import { buyDecor } from './meta/economy';
 import { closeScreen, G, toast, type Screen } from './engine/state';
 import type { RuntimeLevel } from './engine/types';
 import { checkDaily, checkWeekly } from './meta/daily';
@@ -101,8 +105,12 @@ function update(dt: number): void {
   if (!G.screen) {
     if (L.status === 'intro') {
       L.introT += dt;
-      if (L.introT >= 1.4) L.status = L.newMechs.length ? 'mech' : 'play';
+      if (L.introT >= 1.4) {
+        L.status = L.reveal ? 'reveal' : L.newMechs.length ? 'mech' : 'play';
+        if (L.status === 'reveal') revealOpened();
+      }
     }
+    if (L.status === 'reveal') L.revealT += dt;
     tweens.update(gdt);
     updateTutorial(dt);
     if (L.status === 'play') {
@@ -306,6 +314,8 @@ applyLanguage();
 initMotion();
 bindAudio();
 applyVolumes();
+onThemeChange((th) => engine.setPalette(th.music));
+engine.setPalette(activeTheme().music);
 checkWeekly();
 resize();
 installPWA();
@@ -380,6 +390,9 @@ export interface DevApi {
     reset: () => void;
   };
   editor: typeof editorApi;
+  theme: () => string;
+  reveal: () => void;
+  decor: { buy: (id: string) => boolean };
   modes: {
     start: (mode: SideMode, key?: string) => void;
     forceWin: () => void;
@@ -484,6 +497,9 @@ window.__SJ = {
     reset: () => clearCurveCache(),
   },
   editor: editorApi,
+  theme: () => activeTheme().id,
+  reveal: () => finishReveal(),
+  decor: { buy: (id) => buyDecor(id) },
   modes: {
     start: (mode, key) => startMode(mode, key),
     forceWin: () => win(),

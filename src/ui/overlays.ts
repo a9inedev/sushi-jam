@@ -1,9 +1,11 @@
 /* In-level overlays: level intro, mechanic cards, the fail card and the win card. */
 
 import { sfx } from '../audio/audio';
-import { TIER_COLOR } from '../data/constants';
+import { H, TIER_COLOR } from '../data/constants';
+import { THEME_SPAN, THEMES, themeById } from '../data/themes';
+import { easeOut } from '../engine/util';
 import { isAuthored, schedTier } from '../engine/levels';
-import { adRescue, nextMechCard, paidRescue } from '../engine/rules';
+import { adRescue, finishReveal, nextMechCard, paidRescue } from '../engine/rules';
 import { cur, G } from '../engine/state';
 import { t } from '../i18n';
 import { afterWin } from '../meta/flow';
@@ -38,6 +40,48 @@ export function drawStatusOverlay(): void {
     ctx.fill();
     txt(lbl, 240, 321, 13, 800, '#fff', 'center', 'middle');
     ctx.restore();
+    return;
+  }
+  if (L.status === 'reveal' && L.reveal) {
+    // Curtains part on the new room, then the name card rises.
+    const th = themeById(L.reveal),
+      P = th.palette;
+    const open = easeOut(Math.min(1, L.revealT / 0.7)) * 250;
+    ctx.fillStyle = P.headerDark;
+    ctx.fillRect(-open, 0, 240, H);
+    ctx.fillRect(240 + open, 0, 240, H);
+    ctx.fillStyle = P.accent;
+    ctx.fillRect(240 - open - 6, 0, 6, H);
+    ctx.fillRect(240 + open, 0, 6, H);
+    if (L.revealT > 0.5) {
+      const a = Math.min(1, (L.revealT - 0.5) / 0.3);
+      const cy = 250 + (1 - a) * 40;
+      ctx.save();
+      ctx.globalAlpha = a;
+      card(60, cy, 360, 300, P.accent, t('theme.reveal'));
+      txt(t('theme.' + th.id + '.name'), 240, cy + 100, 26, 800, '#2A2320', 'center', 'middle');
+      wrapText(t('theme.' + th.id + '.desc'), 240, cy + 138, 300, 15, '#5A4E45');
+      txt(
+        th.index === THEMES.length - 1
+          ? t('theme.levelsFrom', { a: th.from })
+          : t('theme.levels', { a: th.from, b: th.from + THEME_SPAN - 1 }),
+        240,
+        cy + 200,
+        13,
+        700,
+        '#8A8378',
+        'center',
+        'middle'
+      );
+      button(120, cy + 232, 240, 46, t('theme.enter'), null, {
+        primary: true,
+        onTap: () => {
+          sfx.ui();
+          finishReveal();
+        },
+      });
+      ctx.restore();
+    }
     return;
   }
   if (L.status === 'mech') {

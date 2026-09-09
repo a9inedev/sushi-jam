@@ -1,8 +1,14 @@
 /* Full-screen panels: demo ad, shop, starter offer, daily bonus, dev panel and the map. */
 
 import { sfx } from '../audio/audio';
-import { GOLD, H, TIER_COLOR, W } from '../data/constants';
-import { DECOR } from '../data/decor';
+import { COLORS, GOLD, H, TIER_COLOR, W } from '../data/constants';
+import { CHARACTERS } from '../art/characters';
+import { DECOR_ART } from '../art/decor';
+import { sprite } from '../art/svg';
+import { curveFor } from '../data/curve';
+import { activeTheme } from '../data/theme-state';
+import { DECOR, decorOf, themeById, themeUnlocked, THEMES } from '../data/themes';
+import { drawCharacter } from '../render/diner';
 import { MECH_UNLOCK } from '../data/mechanics';
 import { PRODUCTS } from '../data/products';
 import { schedTier, isAuthored } from '../engine/levels';
@@ -320,10 +326,12 @@ function drawMap(sc: Screen): void {
     ['path', t('map.path')],
     ['modes', t('map.modes')],
     ['decor', t('map.decor')],
+    ['album', t('map.album')],
     ['weekly', t('map.weekly')],
   ];
   tabs.forEach(([id, label], i) =>
-    button(50 + i * 100, 160, 94, 38, label, null, {
+    button(50 + i * 80, 160, 76, 38, label, null, {
+      size: 12,
       tone: sc.tab === id ? '#6A4C93' : '#B9B2A5',
       onTap: () => {
         sfx.ui();
@@ -375,28 +383,9 @@ function drawMap(sc: Screen): void {
   } else if (sc.tab === 'modes') {
     drawModes();
   } else if (sc.tab === 'decor') {
-    coinIcon(70, 226, 11);
-    txt(t('shop.coins', { n: S.coins.toLocaleString() }), 88, 227, 18, 800, '#2A2320', 'left', 'middle');
-    DECOR.forEach((d, i) => {
-      const y = 250 + i * 96,
-        owned = S.decor.includes(d.id);
-      ctx.fillStyle = '#FFFDF7';
-      rrect(50, y, 380, 84, 12);
-      ctx.fill();
-      ctx.strokeStyle = '#EADFC4';
-      ctx.lineWidth = 1;
-      rrect(50, y, 380, 84, 12);
-      ctx.stroke();
-      txt(t('decor.' + d.id + '.name'), 66, y + 26, 20, 800, '#2A2320', 'left', 'middle');
-      txt(t('decor.' + d.id + '.desc'), 66, y + 54, 13, 700, '#5A4E45', 'left', 'middle');
-      button(318, y + 20, 96, 44, owned ? t('shop.owned') : d.cost + '', owned ? null : t('map.coinsLabel'), {
-        tone: owned ? '#B9B2A5' : '#6A4C93',
-        disabled: owned || S.coins < d.cost,
-        onTap: () => buyDecor(d.id),
-      });
-      if (!owned && S.coins < d.cost)
-        txt(t('map.need', { n: d.cost - S.coins }), 366, y + 74, 11, 700, '#8A8378', 'center', 'middle');
-    });
+    drawDecorShop(sc);
+  } else if (sc.tab === 'album') {
+    drawAlbum();
   } else {
     const rows = weeklyBoard();
     txt(t('map.week', { wk: S.weekKey || weekKey() }), 240, 226, 13, 700, '#5A4E45', 'center', 'middle');
@@ -532,4 +521,168 @@ function drawCalendar(x: number, y: number, today: string): void {
     }
     txt(d, cx, cy + 1, 9, 800, won ? '#fff' : '#8A8378', 'center', 'middle');
   }
+}
+
+/** A decor piece's picture, fitted into a box; sign pieces show their glow word. */
+function drawDecorPreview(id: string, x: number, y: number, size: number, accent: string, dimmed: boolean): void {
+  const art = DECOR_ART[id];
+  ctx.save();
+  if (dimmed) ctx.globalAlpha = 0.35;
+  if (art) {
+    const img = sprite('decor:' + id, art.svg, art.w, art.h);
+    if (img) {
+      const k = Math.min(size / art.w, size / art.h);
+      ctx.drawImage(img, x + (size - art.w * k) / 2, y + (size - art.h * k) / 2, art.w * k, art.h * k);
+    }
+  } else {
+    ctx.shadowColor = accent;
+    ctx.shadowBlur = 10;
+    txt(t('decor.signPreview'), x + size / 2, y + size / 2, Math.round(size * 0.32), 800, accent, 'center', 'middle');
+  }
+  ctx.restore();
+}
+
+/** The Decor tab: a chip per restaurant, three pieces for the chosen one, and its set reward. */
+function drawDecorShop(sc: Screen): void {
+  const sel = themeById(sc.theme || activeTheme().id);
+  coinIcon(70, 216, 11);
+  txt(t('shop.coins', { n: S.coins.toLocaleString() }), 88, 217, 16, 800, '#2A2320', 'left', 'middle');
+  THEMES.forEach((th, i) => {
+    const open = themeUnlocked(th, S.best);
+    button(
+      50 + i * 78,
+      236,
+      74,
+      34,
+      open ? t('theme.' + th.id + '.short') : t('theme.lockedAt', { n: th.from }),
+      null,
+      {
+        size: 11,
+        tone: sel.id === th.id ? th.palette.accent : open ? '#6B6560' : '#B9B2A5',
+        disabled: !open,
+        onTap: () => {
+          sfx.ui();
+          sc.theme = th.id;
+        },
+      }
+    );
+  });
+  decorOf(sel.id).forEach((d, i) => {
+    const y = 286 + i * 96,
+      owned = S.decor.includes(d.id);
+    ctx.fillStyle = '#FFFDF7';
+    rrect(50, y, 380, 84, 12);
+    ctx.fill();
+    ctx.strokeStyle = '#EADFC4';
+    ctx.lineWidth = 1;
+    rrect(50, y, 380, 84, 12);
+    ctx.stroke();
+    drawDecorPreview(d.id, 62, y + 14, 56, sel.palette.accent, false);
+    txt(t('decor.' + d.id + '.name'), 130, y + 26, 18, 800, '#2A2320', 'left', 'middle');
+    txt(t('decor.' + d.id + '.desc'), 130, y + 54, 12, 700, '#5A4E45', 'left', 'middle');
+    button(318, y + 20, 96, 44, owned ? t('shop.owned') : d.cost + '', owned ? null : t('map.coinsLabel'), {
+      tone: owned ? '#B9B2A5' : sel.palette.accent,
+      disabled: owned || S.coins < d.cost,
+      onTap: () => buyDecor(d.id),
+    });
+    if (!owned && S.coins < d.cost)
+      txt(t('map.need', { n: d.cost - S.coins }), 366, y + 74, 11, 700, '#8A8378', 'center', 'middle');
+  });
+  const paid = S.decorRewards.includes(sel.id);
+  txt(
+    paid ? t('decor.setDone', { n: sel.reward }) : t('decor.setHint', { n: sel.reward }),
+    240,
+    592,
+    13,
+    800,
+    paid ? '#2FB36B' : '#8A8378',
+    'center',
+    'middle'
+  );
+  txt(t('decor.onlyHere', { name: t('theme.' + sel.id + '.name') }), 240, 614, 11, 700, '#8A8378', 'center', 'middle');
+}
+
+/** The Album: restaurants, characters, plates and decor, with what is collected so far. */
+function drawAlbum(): void {
+  const best = S.best;
+  const colors = Math.max(3, curveFor(Math.max(1, best)).colors);
+  let have = 0,
+    total = 0;
+  txt(t('album.restaurants'), 60, 216, 13, 800, '#5A4E45', 'left', 'middle');
+  THEMES.forEach((th, i) => {
+    const open = themeUnlocked(th, best);
+    total++;
+    if (open) have++;
+    const x = 60 + i * 74;
+    ctx.fillStyle = open ? th.palette.headerDark : '#D9D2C4';
+    rrect(x, 228, 66, 46, 8);
+    ctx.fill();
+    ctx.fillStyle = open ? th.palette.accent : '#B9B2A5';
+    rrect(x, 266, 66, 8, 3);
+    ctx.fill();
+    txt(
+      open ? t('theme.' + th.id + '.short') : t('theme.lockedAt', { n: th.from }),
+      x + 33,
+      248,
+      10,
+      800,
+      open ? '#FFF7E8' : '#8A8378',
+      'center',
+      'middle'
+    );
+  });
+  txt(t('album.characters'), 60, 298, 13, 800, '#5A4E45', 'left', 'middle');
+  CHARACTERS.forEach((c, i) => {
+    const open = c.color < colors;
+    total++;
+    if (open) have++;
+    const x = 80 + i * 53;
+    ctx.save();
+    ctx.translate(x, 336);
+    if (open) {
+      if (!drawCharacter(c.color, 'idle', false, 17)) {
+        ctx.fillStyle = COLORS[c.color].hex;
+        ctx.beginPath();
+        ctx.arc(0, 0, 17, 0, 7);
+        ctx.fill();
+      }
+    } else {
+      ctx.fillStyle = '#D9D2C4';
+      ctx.beginPath();
+      ctx.arc(0, 0, 17, 0, 7);
+      ctx.fill();
+      txt(t('album.unknown'), 0, 1, 16, 800, '#B9B2A5', 'center', 'middle');
+    }
+    ctx.restore();
+    txt(open ? c.name : t('album.unknown'), x, 366, 10, 800, open ? '#2A2320' : '#B9B2A5', 'center', 'middle');
+  });
+  txt(t('album.plates'), 60, 392, 13, 800, '#5A4E45', 'left', 'middle');
+  for (let i = 0; i < 7; i++) {
+    const open = i < colors;
+    total++;
+    if (open) have++;
+    const x = 80 + i * 53;
+    if (open) drawPlate(x, 424, { color: i }, 15);
+    else {
+      ctx.fillStyle = '#D9D2C4';
+      ctx.beginPath();
+      ctx.arc(x, 424, 15, 0, 7);
+      ctx.fill();
+      txt(t('album.unknown'), x, 425, 14, 800, '#B9B2A5', 'center', 'middle');
+    }
+  }
+  txt(t('album.decor'), 60, 462, 13, 800, '#5A4E45', 'left', 'middle');
+  DECOR.forEach((d, i) => {
+    const owned = S.decor.includes(d.id);
+    total++;
+    if (owned) have++;
+    const x = 58 + (i % 5) * 74,
+      y = 474 + Math.floor(i / 5) * 78;
+    ctx.fillStyle = owned ? '#FFFDF7' : '#F1EBDD';
+    rrect(x, y, 68, 68, 10);
+    ctx.fill();
+    drawDecorPreview(d.id, x + 14, y + 6, 40, themeById(d.theme).palette.accent, !owned);
+    txt(t('decor.' + d.id + '.name'), x + 34, y + 58, 8, 800, owned ? '#2A2320' : '#B9B2A5', 'center', 'middle');
+  });
+  txt(t('album.collected', { a: have, b: total }), 240, 726, 13, 800, '#5A4E45', 'center', 'middle');
 }
