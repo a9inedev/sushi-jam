@@ -2,6 +2,7 @@ import { reducedMotion } from '../anim/motion';
 import { characterSvg, type DinerSpriteState } from '../art/characters';
 import { sprite } from '../art/svg';
 import { COLORS, GOLD } from '../data/constants';
+import { activeTheme } from '../data/theme-state';
 import { isLocked } from '../engine/rules';
 import { G, cur } from '../engine/state';
 import type { Diner, ExprType } from '../engine/types';
@@ -30,9 +31,10 @@ function spriteState(d: Diner, expr: ExprType, blink: boolean): DinerSpriteState
 /** Draw a character sprite centred on the origin with body radius r. Returns false if not decoded yet. */
 export function drawCharacter(color: number, state: DinerSpriteState, vip: boolean, r: number, dim = false): boolean {
   const box = Math.round(r * SPRITE_BOX);
+  const outfit = activeTheme().outfit;
   const img = sprite(
-    `c${color}:${state}${vip ? ':v' : ''}${dim ? ':d' : ''}`,
-    () => characterSvg(color, state, vip, dim),
+    `c${color}:${state}:${outfit}${vip ? ':v' : ''}${dim ? ':d' : ''}`,
+    () => characterSvg(color, state, vip, dim, outfit),
     box,
     box
   );

@@ -8,12 +8,14 @@
      v5  data gains volMusic, volSfx, volUi
      v6  data gains tutorial, colorblind, leftHanded, lang
      v7  data gains puzzleDays, rushBest, rushRuns, zenLevel, zenWins (the side modes); stats carry a mode
+     v8  data gains themesSeen and decorRewards (the restaurant journey)
 */
 
 import { hashStr } from '../engine/rng';
+import { THEMES } from '../data/themes';
 import type { MechKind, StatRecord } from '../engine/types';
 
-export const SAVE_VERSION = 7;
+export const SAVE_VERSION = 8;
 
 export interface Inventory {
   vip: number;
@@ -60,6 +62,9 @@ export interface SaveState {
   rushRuns: number;
   zenLevel: number;
   zenWins: number;
+  /** v8: restaurants whose reveal has played, and restaurants whose decor set reward was paid. */
+  themesSeen: string[];
+  decorRewards: string[];
 }
 
 export function defaultSave(): SaveState {
@@ -96,6 +101,8 @@ export function defaultSave(): SaveState {
     rushRuns: 0,
     zenLevel: 1,
     zenWins: 0,
+    themesSeen: [],
+    decorRewards: [],
   };
 }
 
@@ -201,6 +208,15 @@ export function migrateV6toV7(v6: Blob): Blob {
   };
 }
 
+/** v8 adds the restaurant journey. */
+export function migrateV7toV8(v7: Blob): Blob {
+  return {
+    ...v7,
+    themesSeen: Array.isArray(v7.themesSeen) ? v7.themesSeen : [],
+    decorRewards: Array.isArray(v7.decorRewards) ? v7.decorRewards : [],
+  };
+}
+
 /** Keyed by the version the migration starts from. */
 export const MIGRATIONS: Record<number, Migration> = {
   1: migrateV1toV2,
@@ -209,6 +225,7 @@ export const MIGRATIONS: Record<number, Migration> = {
   4: migrateV4toV5,
   5: migrateV5toV6,
   6: migrateV6toV7,
+  7: migrateV7toV8,
 };
 
 /** Which schema a parsed blob belongs to, or null if it is not a save at all. */
@@ -263,6 +280,11 @@ export function normalize(x: unknown): SaveState {
         mode: MODES.includes(s.mode as string) ? s.mode : ('level' as const),
       }))
     : [];
+  const THEME_IDS: string[] = THEMES.map((t) => t.id);
+  const themeList = (k: keyof SaveState) =>
+    Array.isArray(o[k])
+      ? (o[k] as unknown[]).filter((v): v is string => typeof v === 'string' && THEME_IDS.includes(v))
+      : [];
   const dayKeys = Array.isArray(o.puzzleDays)
     ? o.puzzleDays.filter((k): k is string => typeof k === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(k))
     : [];
@@ -299,6 +321,8 @@ export function normalize(x: unknown): SaveState {
     rushRuns: int('rushRuns', 0, d.rushRuns),
     zenLevel: int('zenLevel', 1, d.zenLevel),
     zenWins: int('zenWins', 0, d.zenWins),
+    themesSeen: themeList('themesSeen'),
+    decorRewards: themeList('decorRewards'),
   };
 }
 

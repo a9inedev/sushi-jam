@@ -2,7 +2,10 @@
 
 import { reducedMotion } from '../anim/motion';
 import { particles } from '../anim/particles';
-import { backgroundSvg, bonsaiSvg, lanternSvg, norenSvg, tankSvg } from '../art/background';
+import { backgroundSvg } from '../art/background';
+import { DECOR_ART, SLOT_BOX } from '../art/decor';
+import { activeTheme } from '../data/theme-state';
+import { decorOf } from '../data/themes';
 import { sprite } from '../art/svg';
 import { COLORS, DINER_R, H, KITCHEN, SEAT_Y, W } from '../data/constants';
 import { BELT } from '../engine/belt';
@@ -15,160 +18,75 @@ import { drawPlate } from './plate';
 import { coinIcon, glyph, rrect, textW, txt } from './primitives';
 
 export function drawBg(): void {
-  const img = sprite('bg', backgroundSvg, W, H);
+  const th = activeTheme(),
+    P = th.palette;
+  const img = sprite('bg:' + th.id, () => backgroundSvg(th), W, H);
   if (img) {
     ctx.drawImage(img, 0, 0, W, H);
     return;
   }
-  // Flat fallback until the layered background has decoded.
-  ctx.fillStyle = '#FBF3E4';
+  // Flat fallback in the restaurant's colours until the layered background has decoded.
+  ctx.fillStyle = P.paper;
   ctx.fillRect(0, 0, W, H);
-  ctx.fillStyle = '#2B2622';
+  ctx.fillStyle = P.headerDark;
   ctx.fillRect(0, 0, W, 76);
   const g = ctx.createLinearGradient(0, 424, 0, 566);
-  g.addColorStop(0, '#C9924F');
-  g.addColorStop(1, '#A86F35');
+  g.addColorStop(0, P.counterTop);
+  g.addColorStop(1, P.counterBottom);
   ctx.fillStyle = g;
   ctx.fillRect(0, 424, W, 142);
-  ctx.strokeStyle = 'rgba(80,40,10,.16)';
-  ctx.lineWidth = 1;
-  for (let y = 438; y < 566; y += 14) {
-    ctx.beginPath();
-    ctx.moveTo(0, y + 0.5);
-    ctx.lineTo(W, y + 0.5);
-    ctx.stroke();
-  }
-  ctx.fillStyle = '#EFE4C8';
+  ctx.fillStyle = P.floor;
   ctx.fillRect(0, 566, W, H - 566);
 }
 
-export function drawDecor(): void {
-  const gt = G.gt;
-  const has = (id: string) => S.decor.includes(id);
-  const lantern = has('lantern') ? sprite('lantern', lanternSvg, 48, 72) : null;
-  const noren = has('noren') ? sprite('noren', norenSvg, 320, 44) : null;
-  const bonsai = has('plant') ? sprite('bonsai', bonsaiSvg, 64, 64) : null;
-  const tank = has('tank') ? sprite('tank', tankSvg, 92, 52) : null;
-  if (lantern)
-    for (const x of [18, 462]) {
-      const sw = Math.sin(gt * 1.3 + x) * 3;
-      ctx.save();
-      ctx.translate(x + sw, 80);
-      ctx.rotate(sw * 0.025);
-      ctx.drawImage(lantern, -24, 0, 48, 72);
-      ctx.restore();
-    }
-  else if (has('lantern'))
-    for (const x of [18, 462]) {
-      ctx.save();
-      ctx.strokeStyle = '#5A4E45';
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.moveTo(x, 76);
-      ctx.lineTo(x, 96);
-      ctx.stroke();
-      const sw = Math.sin(gt * 1.3 + x) * 3;
-      ctx.translate(x + sw, 118);
-      ctx.fillStyle = '#E5484D';
-      ctx.beginPath();
-      ctx.ellipse(0, 0, 16, 22, 0, 0, 7);
-      ctx.fill();
-      ctx.strokeStyle = 'rgba(0,0,0,.18)';
-      ctx.lineWidth = 1.5;
-      for (let i = -1; i <= 1; i++) {
-        ctx.beginPath();
-        ctx.ellipse(0, 0, 16 * Math.abs(i ? 0.55 : 0.05) + 1, 22, 0, 0, 7);
-        ctx.stroke();
-      }
-      ctx.fillStyle = '#F2B705';
-      ctx.fillRect(-7, -26, 14, 5);
-      ctx.fillRect(-7, 21, 14, 5);
-      ctx.restore();
-    }
-  if (noren) {
-    ctx.save();
-    ctx.translate(80, 192);
-    ctx.transform(1, 0, Math.sin(gt * 1.6) * 0.03, 1, 0, 0);
-    ctx.drawImage(noren, 0, 0, 320, 44);
-    ctx.restore();
-  } else if (has('noren')) {
-    ctx.save();
-    const y0 = 196;
-    for (let i = 0; i < 6; i++) {
-      const x = 84 + i * 52,
-        wob = Math.sin(gt * 1.6 + i) * 2;
-      ctx.fillStyle = i % 2 ? '#26336B' : '#2E3F82';
-      rrect(x + wob, y0, 46, 34, 4);
-      ctx.fill();
-      ctx.strokeStyle = 'rgba(255,255,255,.7)';
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.moveTo(x + 6 + wob, y0 + 22);
-      ctx.quadraticCurveTo(x + 16 + wob, y0 + 12, x + 24 + wob, y0 + 22);
-      ctx.quadraticCurveTo(x + 32 + wob, y0 + 32, x + 40 + wob, y0 + 22);
-      ctx.stroke();
-    }
-    ctx.fillStyle = '#5A4E45';
-    ctx.fillRect(80, 192, 320, 4);
-    ctx.restore();
-  }
-  if (bonsai) ctx.drawImage(bonsai, 60, 314, 64, 64);
-  else if (has('plant')) {
-    ctx.save();
-    ctx.translate(92, 372);
-    ctx.fillStyle = '#7A4B22';
-    rrect(-18, -6, 36, 12, 3);
-    ctx.fill();
-    ctx.strokeStyle = '#5A3A1E';
-    ctx.lineWidth = 4;
+function drawFish(x: number, y: number, w: number, gt: number): void {
+  ctx.save();
+  for (let i = 0; i < 3; i++) {
+    const fx0 = x + 14 + ((gt * (18 + i * 7) + i * 40) % (w - 28)),
+      fy = y + 14 + i * 13 + Math.sin(gt * 3 + i) * 3,
+      dir = Math.floor((gt * (18 + i * 7) + i * 40) / (w - 28)) % 2 ? -1 : 1;
+    ctx.fillStyle = ['#F5843B', '#E5484D', '#F2B705'][i];
     ctx.beginPath();
-    ctx.moveTo(0, -6);
-    ctx.quadraticCurveTo(6, -24, -4, -36);
-    ctx.stroke();
-    ctx.fillStyle = '#2FB36B';
-    for (const [x, y, r] of [
-      [-10, -30, 11],
-      [6, -40, 10],
-      [-2, -48, 8],
-    ]) {
-      ctx.beginPath();
-      ctx.ellipse(x, y, r * 1.4, r * 0.8, 0, 0, 7);
-      ctx.fill();
-    }
-    ctx.restore();
+    ctx.ellipse(fx0, fy, 7, 4, 0, 0, 7);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(fx0 - 7 * dir, fy);
+    ctx.lineTo(fx0 - 12 * dir, fy - 4);
+    ctx.lineTo(fx0 - 12 * dir, fy + 4);
+    ctx.closePath();
+    ctx.fill();
   }
-  if (has('tank')) {
-    ctx.save();
-    const x = 322,
-      y = 328,
-      w = 92,
-      h = 52;
-    if (tank) ctx.drawImage(tank, x, y, w, h);
-    else {
-      ctx.fillStyle = 'rgba(93,182,240,.35)';
-      rrect(x, y, w, h, 6);
-      ctx.fill();
-      ctx.strokeStyle = '#5A4E45';
-      ctx.lineWidth = 3;
-      rrect(x, y, w, h, 6);
-      ctx.stroke();
-    }
-    for (let i = 0; i < 3; i++) {
-      const fx0 = x + 14 + ((gt * (18 + i * 7) + i * 40) % (w - 28)),
-        fy = y + 14 + i * 13 + Math.sin(gt * 3 + i) * 3,
-        dir = Math.floor((gt * (18 + i * 7) + i * 40) / (w - 28)) % 2 ? -1 : 1;
-      ctx.fillStyle = ['#F5843B', '#E5484D', '#F2B705'][i];
-      ctx.beginPath();
-      ctx.ellipse(fx0, fy, 7, 4, 0, 0, 7);
-      ctx.fill();
-      ctx.beginPath();
-      ctx.moveTo(fx0 - 7 * dir, fy);
-      ctx.lineTo(fx0 - 12 * dir, fy - 4);
-      ctx.lineTo(fx0 - 12 * dir, fy + 4);
-      ctx.closePath();
-      ctx.fill();
-    }
-    ctx.restore();
+  ctx.restore();
+}
+
+/** The active restaurant's owned decor, each piece in its slot: hanging pieces swing, the band sways. */
+export function drawDecor(): void {
+  const gt = G.gt,
+    th = activeTheme();
+  for (const d of decorOf(th.id)) {
+    if (!S.decor.includes(d.id) || d.slot === 'sign') continue;
+    const art = DECOR_ART[d.id];
+    if (!art) continue;
+    const img = sprite('decor:' + d.id, art.svg, art.w, art.h);
+    if (!img) continue;
+    const box = SLOT_BOX[d.slot];
+    if (d.slot === 'hang') {
+      for (const x of [18, 462]) {
+        const sw = Math.sin(gt * 1.3 + x) * 3;
+        ctx.save();
+        ctx.translate(x + sw, box.y);
+        ctx.rotate(sw * 0.025);
+        ctx.drawImage(img, -box.w / 2, 0, box.w, box.h);
+        ctx.restore();
+      }
+    } else if (d.slot === 'band') {
+      ctx.save();
+      ctx.translate(box.x, box.y);
+      ctx.transform(1, 0, Math.sin(gt * 1.6) * 0.03, 1, 0, 0);
+      ctx.drawImage(img, 0, 0, box.w, box.h);
+      ctx.restore();
+    } else ctx.drawImage(img, box.x, box.y, box.w, box.h);
+    if (d.id === 'tank') drawFish(box.x, box.y, box.w, gt);
   }
 }
 
@@ -186,23 +104,24 @@ export function drawBelt(): void {
   }
   ctx.save();
   ctx.lineWidth = 38;
-  ctx.strokeStyle = '#33373F';
+  const P = activeTheme().palette;
+  ctx.strokeStyle = P.beltRail;
   rrect(b.cx - b.w / 2, b.cy - b.h / 2, b.w, b.h, b.r);
   ctx.stroke();
   ctx.lineWidth = 30;
-  ctx.strokeStyle = '#4A4F5C';
+  ctx.strokeStyle = P.beltTrack;
   ctx.stroke();
   ctx.setLineDash([14, 18]);
   ctx.lineDashOffset = -L.beltPhase * b.total;
   ctx.lineWidth = 22;
-  ctx.strokeStyle = '#5B6170';
+  ctx.strokeStyle = P.beltDash;
   ctx.stroke();
   ctx.setLineDash([]);
   ctx.restore();
   txt(
     t('hud.belt', { a: L.belt.length, b: L.beltCap }),
     405,
-    S.decor.includes('noren') ? 248 : 212,
+    decorOf(activeTheme().id).some((d) => d.slot === 'band' && S.decor.includes(d.id)) ? 248 : 212,
     13,
     800,
     L.belt.length >= L.beltCap - 1 ? '#E5484D' : '#8A8378',
@@ -226,15 +145,20 @@ export function drawBelt(): void {
     );
     if (rush && L.reversed) txt(t('hud.reverse'), 240, 226, 13, 800, '#3E7BFA', 'center', 'middle');
     ctx.restore();
-  } else if (S.decor.includes('neon')) {
-    ctx.save();
-    ctx.shadowColor = '#FF3FA4';
-    ctx.shadowBlur = 18 + Math.sin(gt * 6) * 4;
-    txt(t('app.brand'), 240, 268, 30, 800, '#FF6BBE', 'center', 'middle');
-    ctx.shadowBlur = 0;
-    txt(t('app.brand'), 240, 268, 30, 800, 'rgba(255,255,255,.75)', 'center', 'middle');
-    ctx.restore();
-  } else txt(t('app.brand'), 240, 205, 15, 800, 'rgba(60,50,40,.28)', 'center', 'middle');
+  } else {
+    // The sign slot: a glowing house sign when the restaurant's sign piece is owned, else the plain brand.
+    const sign = decorOf(activeTheme().id).find((d) => d.slot === 'sign' && S.decor.includes(d.id));
+    if (sign) {
+      const glow = sign.id === 'neon' ? '#FF3FA4' : P.accent;
+      ctx.save();
+      ctx.shadowColor = glow;
+      ctx.shadowBlur = 18 + Math.sin(gt * 6) * 4;
+      txt(t('app.brand'), 240, 268, 30, 800, glow, 'center', 'middle');
+      ctx.shadowBlur = 0;
+      txt(t('app.brand'), 240, 268, 30, 800, 'rgba(255,255,255,.75)', 'center', 'middle');
+      ctx.restore();
+    } else txt(t('app.brand'), 240, 205, 15, 800, P.brand, 'center', 'middle');
+  }
 }
 
 export function drawPlatesOnBelt(): void {
@@ -369,10 +293,11 @@ export function drawGrid(): void {
   const gw = L.cols * L.cell,
     gh = L.rows * L.cell;
   ctx.save();
-  ctx.fillStyle = '#E4D6B4';
+  const P = activeTheme().palette;
+  ctx.fillStyle = P.gridMat;
   rrect(L.gx - 8, L.gy - 8, gw + 16, gh + 16, 14);
   ctx.fill();
-  ctx.strokeStyle = 'rgba(120,95,60,.18)';
+  ctx.strokeStyle = P.gridLine;
   ctx.lineWidth = 1;
   for (let c = 1; c < L.cols; c++) {
     ctx.beginPath();

@@ -3,6 +3,7 @@
    box of r*100/36 puts a body of radius r at the origin when the box top is at -0.56*box. */
 
 import { COLORS } from '../data/constants';
+import type { OutfitId } from '../data/themes';
 import { darken, INK, lighten } from './color';
 
 export type DinerSpriteState = 'idle' | 'blink' | 'happy' | 'chew' | 'grumpy' | 'walk';
@@ -136,8 +137,46 @@ const CROWN =
 
 const FEET = `<ellipse cx="38" cy="92" rx="8" ry="4.5" fill="${INK}" opacity=".75"/><ellipse cx="63" cy="93" rx="8" ry="4.5" fill="${INK}" opacity=".75"/>`;
 
+/** Restaurant outfits sit on the body below the face, so they never fight a character's prop. */
+export function outfitSvg(outfit: OutfitId): string {
+  switch (outfit) {
+    case 'bowtie':
+      return (
+        `<path d="M36 70 L50 76 L36 82 Z" fill="#E5484D" stroke="${INK}" stroke-width="2" stroke-linejoin="round"/>` +
+        `<path d="M64 70 L50 76 L64 82 Z" fill="#E5484D" stroke="${INK}" stroke-width="2" stroke-linejoin="round"/>` +
+        `<circle cx="50" cy="76" r="3.5" fill="#B3202A"/>`
+      );
+    case 'tuxedo':
+      return (
+        `<path d="M38 66 L50 80 L62 66 L58 66 L50 74 L42 66 Z" fill="#FFF7E8" stroke="${INK}" stroke-width="1.5"/>` +
+        `<path d="M40 72 L50 77 L40 82 Z" fill="${INK}"/><path d="M60 72 L50 77 L60 82 Z" fill="${INK}"/>` +
+        `<circle cx="50" cy="77" r="2.6" fill="#F2B705"/>`
+      );
+    case 'yukata':
+      return (
+        `<path d="M28 60 L50 84 L72 60" fill="none" stroke="#3A5FA8" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>` +
+        `<path d="M30 61 L50 83" fill="none" stroke="#FFF7E8" stroke-width="2.5"/>` +
+        `<rect x="33" y="84" width="34" height="6" rx="2" fill="#E5484D"/>`
+      );
+    case 'suit':
+      return (
+        `<path d="M26 72 Q50 94 74 72" fill="none" stroke="#C9D3E0" stroke-width="6" stroke-linecap="round"/>` +
+        `<path d="M26 72 Q50 94 74 72" fill="none" stroke="#8A97A8" stroke-width="2"/>` +
+        `<circle cx="40" cy="81" r="3" fill="#6EE7FF"/><circle cx="60" cy="81" r="3" fill="#2FB36B"/>`
+      );
+    default:
+      return '';
+  }
+}
+
 /** dim: the non-movable look, every colour scaled to 72 percent so the movable diners pop. */
-export function characterSvg(color: number, state: DinerSpriteState, vip = false, dim = false): string {
+export function characterSvg(
+  color: number,
+  state: DinerSpriteState,
+  vip = false,
+  dim = false,
+  outfit: OutfitId = 'none'
+): string {
   const c = CHARACTERS[color] || CHARACTERS[0];
   const base = COLORS[color].hex;
   const hi = lighten(base, 0.34),
@@ -152,6 +191,7 @@ export function characterSvg(color: number, state: DinerSpriteState, vip = false
     `<ellipse cx="34" cy="37" rx="12" ry="7.5" fill="#fff" opacity=".22" transform="rotate(-22 34 37)"/>` +
     `<ellipse cx="31" cy="62" rx="6" ry="3.8" fill="#fff" opacity=".2"/><ellipse cx="69" cy="62" rx="6" ry="3.8" fill="#fff" opacity=".2"/>` +
     face(state, base) +
+    outfitSvg(outfit) +
     (vip ? CROWN : prop(c, base)) +
     `</g></svg>`
   );

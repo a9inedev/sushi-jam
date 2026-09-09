@@ -3,6 +3,8 @@
 
 import type { InstrumentName } from './patches';
 
+import { THEMES, type MusicPalette } from '../data/themes';
+
 export const BPM = 84;
 export const BEATS_PER_BAR = 4;
 export const LOOP_BARS = 8;
@@ -87,26 +89,44 @@ const CHORDS: number[][] = [
 
 const BASS_ROOTS = [38, 38, 35, 35, 31, 31, 33, 38];
 
-export function buildLoop(): NoteEvent[] {
+export function buildLoop(p: MusicPalette = THEMES[0].music): NoteEvent[] {
   const ev: NoteEvent[] = [];
-  const bar = BEATS_PER_BAR * BEAT;
+  const beat = 60 / p.bpm,
+    bar = BEATS_PER_BAR * beat,
+    tr = p.transpose;
+  const lead = p.lead,
+    chord = p.lead === 'pad' ? 'pluck' : 'pad';
   for (let b = 0; b < LOOP_BARS; b++) {
     const t0 = b * bar;
-    for (const [beat, midi, vel] of MELODY[b])
-      ev.push({ t: t0 + beat * BEAT, inst: 'pluck', midi, vel, layer: 'calm' });
-    if (b % 2 === 0) for (const m of CHORDS[b]) ev.push({ t: t0, inst: 'pad', midi: m, vel: 0.5, layer: 'calm' });
-    ev.push({ t: t0, inst: 'bass', midi: BASS_ROOTS[b], vel: 0.7, layer: 'calm' });
-    if (b % 2 === 1) ev.push({ t: t0 + 2 * BEAT, inst: 'bass', midi: BASS_ROOTS[b], vel: 0.5, layer: 'calm' });
+    for (const [bt, midi, vel] of MELODY[b])
+      ev.push({ t: t0 + bt * beat, inst: lead, midi: midi + tr + p.octave, vel, layer: 'calm' });
+    if (b % 2 === 0)
+      for (const m of CHORDS[b])
+        ev.push({ t: t0, inst: chord, midi: m + tr, vel: chord === 'pluck' ? 0.35 : 0.5, layer: 'calm' });
+    ev.push({ t: t0, inst: 'bass', midi: BASS_ROOTS[b] + tr, vel: 0.7, layer: 'calm' });
+    if (b % 2 === 1) ev.push({ t: t0 + 2 * beat, inst: 'bass', midi: BASS_ROOTS[b] + tr, vel: 0.5, layer: 'calm' });
+    if (p.calmShaker)
+      for (let e = 0; e < 8; e++)
+        ev.push({ t: t0 + e * 0.5 * beat, inst: 'shaker', midi: 60, vel: e % 2 ? 0.2 : 0.35, layer: 'calm' });
+    if (p.calmDrone && b % 2 === 0)
+      ev.push({ t: t0, inst: 'drone', midi: BASS_ROOTS[b] + tr, vel: 0.45, layer: 'calm' });
     // Tension layer: taiko on 1 and 3 (and the "and" of 4 on even bars), shakers on eighths, a drone every two bars.
-    ev.push({ t: t0, inst: 'taiko', midi: 60, vel: 0.95, layer: 'tense' });
-    ev.push({ t: t0 + 2 * BEAT, inst: 'taiko', midi: 60, vel: 0.8, layer: 'tense' });
-    if (b % 2 === 0) ev.push({ t: t0 + 3.5 * BEAT, inst: 'taiko', midi: 62, vel: 0.6, layer: 'tense' });
+    if (p.tensePercussion) {
+      ev.push({ t: t0, inst: 'taiko', midi: 60, vel: 0.95, layer: 'tense' });
+      ev.push({ t: t0 + 2 * beat, inst: 'taiko', midi: 60, vel: 0.8, layer: 'tense' });
+      if (b % 2 === 0) ev.push({ t: t0 + 3.5 * beat, inst: 'taiko', midi: 62, vel: 0.6, layer: 'tense' });
+    }
     for (let e = 0; e < 8; e++)
-      ev.push({ t: t0 + e * 0.5 * BEAT, inst: 'shaker', midi: 60, vel: e % 2 ? 0.35 : 0.6, layer: 'tense' });
-    if (b % 2 === 0) ev.push({ t: t0, inst: 'drone', midi: BASS_ROOTS[b], vel: 0.7, layer: 'tense' });
+      ev.push({ t: t0 + e * 0.5 * beat, inst: 'shaker', midi: 60, vel: e % 2 ? 0.35 : 0.6, layer: 'tense' });
+    if (b % 2 === 0) ev.push({ t: t0, inst: 'drone', midi: BASS_ROOTS[b] + tr, vel: 0.7, layer: 'tense' });
   }
   ev.sort((a, b) => a.t - b.t);
   return ev;
+}
+
+/** Loop length for a palette (the tempo changes it). */
+export function loopSecondsFor(p: MusicPalette): number {
+  return LOOP_BARS * BEATS_PER_BAR * (60 / p.bpm);
 }
 
 export function midiToRate(midi: number, baseMidi: number): number {

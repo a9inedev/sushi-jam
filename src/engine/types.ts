@@ -1,5 +1,7 @@
 /* Shared types for level definitions (pure data) and the runtime level state. */
 
+import type { ThemeId } from '../data/themes';
+
 export type Tier = 'Easy' | 'Medium' | 'Hard' | 'Super Hard';
 export type MechKind =
   | 'wasabi'
@@ -17,7 +19,7 @@ export type MechKind =
 export type BoosterKind = 'vip' | 'takeout' | 'sendback';
 export type ExprType = 'idle' | 'happy' | 'chew' | 'grumpy';
 export type DinerState = 'grid' | 'walking' | 'seated' | 'paying' | 'leaving' | 'done';
-export type LevelStatus = 'intro' | 'mech' | 'play' | 'failing' | 'fail' | 'win';
+export type LevelStatus = 'intro' | 'reveal' | 'mech' | 'play' | 'failing' | 'fail' | 'win';
 export type FailReason = 'jam' | 'wasabi' | 'rush' | 'reserved' | 'chain' | 'reverse' | 'picky';
 export type SimResult = 'win' | 'fail';
 /** The level loop, or one of the side modes (docs/modes.md). */
@@ -288,5 +290,8 @@ export interface RuntimeLevel {
   score: number;
   spawnT: number;
   nextId: number;
+  /** A new restaurant opens with this level: its reveal plays after the intro. */
+  reveal: ThemeId | null;
+  revealT: number;
   stat: LevelStat;
 }

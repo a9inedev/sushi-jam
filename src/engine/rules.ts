@@ -7,6 +7,8 @@ import { particles } from '../anim/particles';
 import { tweens } from '../anim/tween';
 import { sfx } from '../audio/audio';
 import { COIN_POS, COLORS, GRID, KITCHEN, SEAT_Y, W } from '../data/constants';
+import { setActiveTheme } from '../data/theme-state';
+import { themeFor } from '../data/themes';
 import { COST } from '../data/products';
 import { t } from '../i18n';
 import { S, save } from '../meta/save';
@@ -92,6 +94,12 @@ export function newLevelDef(lv: LevelDef, mode: GameMode = modeOf(lv), modeKey =
   const n = lv.n,
     P = lv.P,
     rules = rulesOf(P);
+  // The restaurant follows the level; rush plays in the player's current one. The first level of a new
+  // restaurant opens with a reveal, once.
+  const th = mode === 'rush' ? themeFor(S.level) : themeFor(n);
+  setActiveTheme(th);
+  // The first restaurant needs no reveal: the tutorial opens it.
+  const reveal = mode === 'level' && th.index > 0 && n === th.from && !S.themesSeen.includes(th.id) ? th.id : null;
   const cell = Math.min(GRID.w / lv.cols, GRID.h / lv.rows);
   const gx = 240 - (lv.cols * cell) / 2,
     gy = GRID.y + (GRID.h - lv.rows * cell) / 2;
@@ -147,6 +155,8 @@ export function newLevelDef(lv: LevelDef, mode: GameMode = modeOf(lv), modeKey =
     score: 0,
     spawnT: RUSH_SPAWN_DELAY,
     nextId: lv.diners.length,
+    reveal,
+    revealT: 0,
     stat: {
       mode,
       score: 0,
@@ -1077,6 +1087,22 @@ export function updateMode(dt: number): void {
     L.kitchen.push({ color, vip: false, double: false, wasabi: false, covered: false });
   }
   L.totalPlates = L.kitchen.length + L.score;
+}
+
+/** The curtains have opened on a new restaurant. */
+export function revealOpened(): void {
+  sfx.chime();
+  haptic('success');
+  particles.emit('confetti', 0, 0, 40);
+}
+
+/** Close the reveal card: the restaurant is now seen, on with the level. */
+export function finishReveal(): void {
+  const L = cur();
+  if (L.status !== 'reveal') return;
+  if (L.reveal && !S.themesSeen.includes(L.reveal)) S.themesSeen.push(L.reveal);
+  save();
+  L.status = L.newMechs.length ? 'mech' : 'play';
 }
 
 export function nextMechCard(): void {

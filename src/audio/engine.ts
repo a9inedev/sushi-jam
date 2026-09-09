@@ -2,7 +2,8 @@
    and interruption handling. Sounds are rendered from patches into AudioBuffers on the first user gesture. */
 
 import { INSTRUMENTS, PATCHES, SOUNDS, type Bus, type InstrumentName, type SfxName } from './patches';
-import { buildLoop, LOOP_SECONDS, midiToRate, type MusicLayer, type NoteEvent } from './music';
+import type { MusicPalette } from '../data/themes';
+import { buildLoop, LOOP_SECONDS, loopSecondsFor, midiToRate, type MusicLayer, type NoteEvent } from './music';
 import { renderPatch } from './synth';
 
 export interface Volumes {
@@ -25,6 +26,7 @@ export class AudioEngine {
   private buffers = new Map<string, AudioBuffer>();
   private rendered = false;
   private loop: NoteEvent[] = buildLoop();
+  private loopLen = LOOP_SECONDS;
   private loopStart = 0;
   private nextIdx = 0;
   private timer: ReturnType<typeof setInterval> | null = null;
@@ -186,6 +188,14 @@ export class AudioEngine {
     this.timer = null;
   }
 
+  /** Retune the loop for a restaurant: key, tempo and layer mix. The clock restarts so the change is clean. */
+  setPalette(p: MusicPalette): void {
+    this.loop = buildLoop(p);
+    this.loopLen = loopSecondsFor(p);
+    if (this.musicOn) this.resync();
+    this.note('music:palette:' + p.bpm + ':' + p.transpose);
+  }
+
   /** Restart the loop clock from now, e.g. after an interruption, so no burst of missed notes plays. */
   resync(): void {
     if (!this.ctx) return;
@@ -202,7 +212,7 @@ export class AudioEngine {
     let guard = 0;
     while (guard++ < 64) {
       if (this.nextIdx >= this.loop.length) {
-        this.loopStart += LOOP_SECONDS;
+        this.loopStart += this.loopLen;
         this.nextIdx = 0;
       }
       const e = this.loop[this.nextIdx];
