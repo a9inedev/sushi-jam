@@ -153,15 +153,14 @@ export function drawHudEventBar(x: number, y: number, right: boolean): void {
   const season = seasonSummary();
   const w = 150;
   const x0 = right ? x - w : x;
-  let frac = 0,
-    color = GOLD,
-    label = '';
+  let frac: number, color: string, label: string;
   if (v && v.def && v.active) {
     color = v.def.type === 'boss' ? '#E5484D' : '#3E7BFA';
     frac = v.state.goal ? v.state.progress / v.state.goal : 0;
     label = title(v) + ' ' + v.state.progress + '/' + v.state.goal;
   } else if (season) {
     const per = season.def ? season.def.pointsPerTier : 1;
+    color = GOLD;
     frac = season.tier >= season.tiers ? 1 : (season.points % per) / per;
     label = t('events.hudSeason', { t: season.tier });
   } else return;
