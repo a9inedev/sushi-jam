@@ -107,6 +107,8 @@ Bump all three together for a release.
 
 ## Known follow-ups
 
+- Leaderboards: the Game Center and Play Games plugin (`GameServicesPlugin`) has not been built on a device from this machine; the board ids and the Play Games project id are placeholders (docs/leaderboards.md).
+
 - The Baloo 2 font is loaded from Google Fonts. Offline, the game falls back to Trebuchet MS. Bundle the font in the build during the art pass (Phase 1.1).
 - Release signing (Android keystore, iOS distribution profile) is not set up. Debug builds only.
 - `com.a9inedev.sushijam` is a placeholder id. Pick the final reverse-DNS id before creating the store listings; it appears in `capacitor.config.ts`, `android/app/build.gradle` and the Xcode project.

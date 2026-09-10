@@ -104,6 +104,16 @@ const settle = async () => {
     await sj('window.__SJ.mechCard()');
   }
 };
+// skipIntro only arms the intro to end on the next frame; wait until the board is really in play.
+const toPlay = async () => {
+  for (let i = 0; i < 60; i++) {
+    await sj('window.__SJ.skipIntro()');
+    await settle();
+    if ((await sj('window.__SJ.state().status')) === 'play') return;
+    await sleep(100);
+  }
+  throw new Error('level never reached play: ' + (await sj('window.__SJ.state().status')));
+};
 const autoplayUntil = async (want, maxMs) => {
   const t0 = Date.now();
   while (Date.now() - t0 < maxMs) {
@@ -502,7 +512,7 @@ await step('save is a versioned envelope with a valid checksum', async () => {
     const e = JSON.parse(localStorage.getItem('sushijam.save'));
     return { v: e.v, hasSum: typeof e.sum === 'number', level: e.data.level, src: window.__SJ.saveApi.info().source };
   })()`);
-  if (info.v !== 9 || !info.hasSum) throw new Error('bad envelope ' + JSON.stringify(info));
+  if (info.v !== 10 || !info.hasSum) throw new Error('bad envelope ' + JSON.stringify(info));
   return `v${info.v}, loaded from ${info.src}`;
 });
 await step('legacy v2 save migrates with level, coins, decor and stats intact', async () => {
@@ -830,16 +840,6 @@ await step(
   'events: a test event switched on by JSON alone, progress, claim, expiry with rewards kept, season pass',
   async () => {
     const testFile = path.join(DIR, 'events-test.json');
-    // skipIntro only arms the intro to end on the next frame; wait until the board is really in play.
-    const toPlay = async () => {
-      for (let i = 0; i < 60; i++) {
-        await sj('window.__SJ.skipIntro()');
-        await settle();
-        if ((await sj('window.__SJ.state().status')) === 'play') return;
-        await sleep(100);
-      }
-      throw new Error('level never reached play: ' + (await sj('window.__SJ.state().status')));
-    };
     try {
       const now = Date.now();
       const iso = (ms) => new Date(ms).toISOString();
@@ -985,6 +985,73 @@ await step(
     }
   }
 );
+await step('leaderboards: scores queue offline and post when they can, boards read, profile, share card', async () => {
+  // A backend that refuses every submit: the weekly score must queue, not vanish.
+  await sj(
+    "window.__SJ.leaderboards.mock({ fail: true, rivals: [{ name: 'Aiko', score: 9 }, { name: 'Marco', score: 2 }] })"
+  );
+  await sj('window.__SJ.jump(3)');
+  await toPlay();
+  await sj('window.__SJ.modes.forceWin()');
+  await sleep(400);
+  let st = await sj('window.__SJ.leaderboards.state()');
+  if (st.pending < 1 || st.lastFlush !== 'failed') throw new Error('weekly score did not queue: ' + JSON.stringify(st));
+  if (st.mock.submitted.length) throw new Error('posted while the backend refused');
+  // Offline: the flush is deferred and the queue is untouched.
+  await sj('window.__SJ.leaderboards.mock({ fail: false, offline: true })');
+  const r1 = await sj('window.__SJ.leaderboards.flush()');
+  if (r1 !== 'deferred') throw new Error('offline flush was ' + r1);
+  st = await sj('window.__SJ.leaderboards.state()');
+  if (st.pending < 1 || !st.offline) throw new Error('offline queue lost: ' + JSON.stringify(st));
+  // Back online: it posts, the queue empties and the board reads with the player's row.
+  await sj('window.__SJ.leaderboards.mock({ offline: false })');
+  const r2 = await sj('window.__SJ.leaderboards.flush()');
+  if (r2 !== 'posted') throw new Error('online flush was ' + r2);
+  st = await sj('window.__SJ.leaderboards.state()');
+  if (st.pending !== 0 || st.mock.submitted.length !== 1 || st.mock.submitted[0].board !== 'weekly')
+    throw new Error('queue did not post once: ' + JSON.stringify(st));
+  const weekly = await sj("window.__SJ.leaderboards.refresh('weekly')");
+  if (weekly.entries.length !== 3 || !weekly.entries.some((e) => e.me) || !weekly.me)
+    throw new Error('board read wrong: ' + JSON.stringify(weekly));
+  // A rush best posts to the rush board.
+  await sj("window.__SJ.modes.start('rush')");
+  await toPlay();
+  await sj('window.__SJ.state().score = 3');
+  await sj('window.__SJ.modes.forceWin()');
+  await sleep(400);
+  st = await sj('window.__SJ.leaderboards.state()');
+  if (!st.mock.submitted.some((x) => x.board === 'rush' && x.score === 3))
+    throw new Error('rush best not posted: ' + JSON.stringify(st.mock.submitted));
+  await page.screenshot({ path: path.join(OUT, 'smoke-share-rush.png') });
+  // Ranks tab and the profile: avatar, a name typed into the field, the bests.
+  await sj("window.__SJ.setScreen({ type: 'map', tab: 'weekly', t: 0 })");
+  await sleep(400);
+  await page.screenshot({ path: path.join(OUT, 'smoke-ranks.png') });
+  await sj("window.__SJ.setScreen({ type: 'profile', t: 0 })");
+  await sj('window.__SJ.profile.setAvatar(3)');
+  await sleep(200);
+  await tapCanvas(360, 300); // Edit
+  await sleep(200);
+  if (!(await sj('window.__SJ.textField.open()'))) throw new Error('name field did not open');
+  await page.keyboard.type('Chef Zed');
+  await page.keyboard.press('Enter');
+  await sleep(200);
+  const name = await sj('window.__SJ.S.profile.name');
+  if (name !== 'Chef Zed') throw new Error('name not saved: ' + name);
+  if ((await sj('window.__SJ.S.bestStreak')) < 1) throw new Error('best streak not kept');
+  await sleep(300);
+  await page.screenshot({ path: path.join(OUT, 'smoke-profile.png') });
+  // The share card renders a square PNG.
+  const img = await sj("window.__SJ.share.render({ type: 'level', n: 3 })");
+  if (img.w !== 1080 || img.h !== 1080 || img.bytes < 20000)
+    throw new Error('share card wrong: ' + JSON.stringify({ w: img.w, h: img.h, bytes: img.bytes }));
+  fs.writeFileSync(path.join(OUT, 'smoke-share-card.png'), Buffer.from(img.dataUrl.split(',')[1], 'base64'));
+  // Back to the real backend and the level loop.
+  await sj('window.__SJ.leaderboards.mock(null)');
+  await sj('window.__SJ.closeScreen()');
+  await sj('window.__SJ.modes.leave()');
+  return `weekly queued while refused, deferred offline, posted online; board 3 rows with me; rush 3 posted; name typed; card ${img.w}x${img.h} ${Math.round(img.bytes / 1024)} KB`;
+});
 await step('levels 1 to 140 are the authored files; 141 falls back to the generator', async () => {
   const r = await sj(`(() => { const a = window.__SJ.getLevel(137), b = window.__SJ.getLevel(141);
     return { a: !!a.authored, b: !!b.authored, rows: a.rows, cols: a.cols }; })()`);

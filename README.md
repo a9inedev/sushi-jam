@@ -39,7 +39,7 @@ Vite + TypeScript, Canvas 2D, Web Audio, no runtime dependencies. The production
 - Levels 1 to 3 carry a guided tutorial (see docs/tutorial.md). Settings cover sound, music, haptics, reduce motion, colour patterns, left-handed layout and language.
 - Art is layered SVG authored in code and rasterised into cached canvases at the exact device pixel size. See `docs/style-guide.md` and the sheets in `docs/art/`.
 - Boosters: VIP Seat (extra seat), Takeout (serve a seated diner instantly), Send Back (return a plate to the kitchen).
-- Map with a level path, decor shop, weekly leaderboard against seeded local rivals, daily bonus, streaks.
+- Map with a level path, decor shop, real leaderboards (Game Center and Play Games through an in-repo Capacitor plugin, a local board on the web) for weekly levels and the rush best with an offline submission queue, a player profile (name, diner avatar, best streak) and a share card PNG with the store link (docs/leaderboards.md), daily bonus, streaks.
 - Ads and purchases are demo placeholders. Nothing is loaded, tracked, or charged.
 
 ## Dev panel
@@ -72,7 +72,7 @@ src/ui/             buttons, HUD, in-level overlays, full screens, input
 src/art/            layered SVG builders: characters, sushi, room, decor (rasterised at runtime)
 src/audio/          authored sound set, adaptive music, mixer (see docs/audio.md)
 src/i18n/           t() helper, en.json source strings and ten draft locales (see docs/i18n.md)
-src/meta/           save + migration, daily bonus, weekly ghosts, economy, between-level flow, side modes
+src/meta/           save + migration, daily bonus, leaderboards + offline queue, share card, economy, between-level flow, side modes
 src/data/           constants, mechanics schedule, products, decor, curve.json + remote override, loader for levels/*.json
 levels/             the 100 authored levels as JSON (docs/editor.md describes the format)
 tests/              Vitest suites and the legacy level fixture
