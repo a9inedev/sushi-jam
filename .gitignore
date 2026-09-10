@@ -5,3 +5,5 @@ node_modules/
 dist/
 tools/out/
 assets/
+.env
+.env.local

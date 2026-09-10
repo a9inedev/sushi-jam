@@ -12,16 +12,19 @@
      v9  data gains events (per-event progress) and season (the pass)
      v10 data gains profile, bestStreak and lbQueue (leaderboards and the share card)
      v11 data gains notif (reminder opt-in and per-type switches)
+     v12 data gains purchases (granted transaction ids) and starter (offer state); starterShown is folded in
 */
 
 import { hashStr } from '../engine/rng';
 import { emptySeason, type EventProgress, type SeasonState } from '../data/events-schema';
 import { cleanQueue, type QueuedScore } from './leaderboards-core';
 import { cleanPrefs, defaultPrefs, type NotifyPrefs } from './notify-core';
+import { cleanStarter, defaultStarter, type StarterState } from './offers-core';
+import { cleanPurchases, defaultPurchases, type PurchaseRecord } from './purchases-core';
 import { THEMES } from '../data/themes';
 import type { MechKind, StatRecord } from '../engine/types';
 
-export const SAVE_VERSION = 11;
+export const SAVE_VERSION = 12;
 
 export interface Inventory {
   vip: number;
@@ -44,7 +47,6 @@ export interface SaveState {
   weekly: number;
   stats: StatRecord[];
   seenMech: MechKind[];
-  starterShown: boolean;
   levelsSinceAd: number;
   devAllMech: boolean;
   demoAds: boolean;
@@ -80,6 +82,9 @@ export interface SaveState {
   lbQueue: QueuedScore[];
   /** v11: reminders. Everything off until the player opts in. */
   notif: NotifyPrefs;
+  /** v12: store transactions already granted, and the starter offer's state. */
+  purchases: PurchaseRecord;
+  starter: StarterState;
 }
 
 export function defaultSave(): SaveState {
@@ -98,7 +103,6 @@ export function defaultSave(): SaveState {
     weekly: 0,
     stats: [],
     seenMech: [],
-    starterShown: false,
     levelsSinceAd: 0,
     devAllMech: false,
     demoAds: true,
@@ -124,6 +128,8 @@ export function defaultSave(): SaveState {
     bestStreak: 0,
     lbQueue: [],
     notif: defaultPrefs(),
+    purchases: defaultPurchases(),
+    starter: defaultStarter(),
   };
 }
 
@@ -262,6 +268,19 @@ export function migrateV10toV11(v10: Blob): Blob {
   return { ...v10, notif: v10.notif && typeof v10.notif === 'object' ? v10.notif : defaultPrefs() };
 }
 
+/** v12 folds the old starterShown flag into the starter offer state and adds the purchase record. */
+export function migrateV11toV12(v11: Blob, now = Date.now()): Blob {
+  const { starterShown, ...rest } = v11;
+  return {
+    ...rest,
+    purchases: rest.purchases && typeof rest.purchases === 'object' ? rest.purchases : defaultPurchases(),
+    starter:
+      rest.starter && typeof rest.starter === 'object'
+        ? rest.starter
+        : { shows: starterShown === true ? 1 : 0, lastAt: starterShown === true ? now : 0, bought: false },
+  };
+}
+
 /** Keyed by the version the migration starts from. */
 export const MIGRATIONS: Record<number, Migration> = {
   1: migrateV1toV2,
@@ -274,6 +293,7 @@ export const MIGRATIONS: Record<number, Migration> = {
   8: migrateV8toV9,
   9: migrateV9toV10,
   10: migrateV10toV11,
+  11: migrateV11toV12,
 };
 
 /** Which schema a parsed blob belongs to, or null if it is not a save at all. */
@@ -351,7 +371,6 @@ export function normalize(x: unknown): SaveState {
     weekly: int('weekly', 0, d.weekly),
     stats: stats.length > 500 ? stats.slice(stats.length - 500) : stats,
     seenMech: Array.isArray(o.seenMech) ? o.seenMech.filter((m): m is MechKind => MECHS.includes(m as MechKind)) : [],
-    starterShown: bool('starterShown', d.starterShown),
     levelsSinceAd: int('levelsSinceAd', 0, d.levelsSinceAd),
     devAllMech: bool('devAllMech', d.devAllMech),
     demoAds: bool('demoAds', d.demoAds),
@@ -377,6 +396,8 @@ export function normalize(x: unknown): SaveState {
     bestStreak: int('bestStreak', 0, d.bestStreak),
     lbQueue: cleanQueue(o.lbQueue),
     notif: cleanPrefs(o.notif),
+    purchases: cleanPurchases(o.purchases),
+    starter: cleanStarter(o.starter),
   };
 }
 

@@ -1,19 +1,15 @@
 import { sfx } from '../audio/audio';
 import { DECOR, setComplete, themeById } from '../data/themes';
-import { PRODUCTS } from '../data/products';
+import { productById, type ProductId } from '../data/products';
+import { buy } from './purchases';
 import { G, toast } from '../engine/state';
 import { t } from '../i18n';
 import { S, save } from './save';
 
-/** Demo purchase: grants the product instantly. Nothing is charged. */
+/** Buy through the store (RevenueCat, or the demo store without keys). The grant happens in meta/purchases. */
 export function buyProduct(id: string): void {
-  const p = PRODUCTS.find((p) => p.id === id);
-  if (!p) return;
-  p.grant(S);
-  G.coinPop = 1;
-  save();
-  sfx.cash();
-  toast(t('toast.purchased', { name: t('product.' + p.id + '.name') }), 2.6);
+  if (!productById(id)) return;
+  void buy(id as ProductId);
 }
 
 export function buyDecor(id: string): boolean {

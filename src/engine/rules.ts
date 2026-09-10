@@ -947,9 +947,11 @@ export function adRescue(): void {
   });
 }
 
+/** After Chef's Rescue is bought: the seat, the served diner and the cleared belt. The coins are the grant. */
 export function paidRescue(): void {
+  const L = cur();
+  if (L.status !== 'fail') return;
   rescueCore(true);
-  S.coins += 200;
   G.coinPop = 1;
   save();
   sfx.boost();
