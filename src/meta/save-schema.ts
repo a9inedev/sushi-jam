@@ -11,15 +11,17 @@
      v8  data gains themesSeen and decorRewards (the restaurant journey)
      v9  data gains events (per-event progress) and season (the pass)
      v10 data gains profile, bestStreak and lbQueue (leaderboards and the share card)
+     v11 data gains notif (reminder opt-in and per-type switches)
 */
 
 import { hashStr } from '../engine/rng';
 import { emptySeason, type EventProgress, type SeasonState } from '../data/events-schema';
 import { cleanQueue, type QueuedScore } from './leaderboards-core';
+import { cleanPrefs, defaultPrefs, type NotifyPrefs } from './notify-core';
 import { THEMES } from '../data/themes';
 import type { MechKind, StatRecord } from '../engine/types';
 
-export const SAVE_VERSION = 10;
+export const SAVE_VERSION = 11;
 
 export interface Inventory {
   vip: number;
@@ -76,6 +78,8 @@ export interface SaveState {
   profile: { name: string; avatar: number };
   bestStreak: number;
   lbQueue: QueuedScore[];
+  /** v11: reminders. Everything off until the player opts in. */
+  notif: NotifyPrefs;
 }
 
 export function defaultSave(): SaveState {
@@ -119,6 +123,7 @@ export function defaultSave(): SaveState {
     profile: { name: '', avatar: 0 },
     bestStreak: 0,
     lbQueue: [],
+    notif: defaultPrefs(),
   };
 }
 
@@ -252,6 +257,11 @@ export function migrateV9toV10(v9: Blob): Blob {
   };
 }
 
+/** v11 adds the reminder preferences, all off. */
+export function migrateV10toV11(v10: Blob): Blob {
+  return { ...v10, notif: v10.notif && typeof v10.notif === 'object' ? v10.notif : defaultPrefs() };
+}
+
 /** Keyed by the version the migration starts from. */
 export const MIGRATIONS: Record<number, Migration> = {
   1: migrateV1toV2,
@@ -263,6 +273,7 @@ export const MIGRATIONS: Record<number, Migration> = {
   7: migrateV7toV8,
   8: migrateV8toV9,
   9: migrateV9toV10,
+  10: migrateV10toV11,
 };
 
 /** Which schema a parsed blob belongs to, or null if it is not a save at all. */
@@ -365,6 +376,7 @@ export function normalize(x: unknown): SaveState {
     profile: cleanProfile(o.profile),
     bestStreak: int('bestStreak', 0, d.bestStreak),
     lbQueue: cleanQueue(o.lbQueue),
+    notif: cleanPrefs(o.notif),
   };
 }
 

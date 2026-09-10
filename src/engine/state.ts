@@ -32,8 +32,9 @@ export type ScreenType =
   | 'confirm'
   | 'editor'
   | 'events'
-  | 'profile';
-export type MapTab = 'path' | 'modes' | 'decor' | 'album' | 'weekly' | 'game' | 'account';
+  | 'profile'
+  | 'notify';
+export type MapTab = 'path' | 'modes' | 'decor' | 'album' | 'weekly' | 'game' | 'account' | 'reminders';
 
 export interface Screen {
   type: ScreenType;
