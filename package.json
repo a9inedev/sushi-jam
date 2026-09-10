@@ -15,6 +15,7 @@
     "test": "vitest run",
     "smoke": "node tools/smoke.mjs",
     "curve": "node tools/curve-report.mjs",
+    "economy": "node tools/economy.mjs",
     "check": "npm run lint && npm run typecheck && npm run test && npm run build && npm run smoke"
   },
   "devDependencies": {

@@ -1,0 +1,114 @@
+{
+  "v": 1,
+  "start": {
+    "coins": 300,
+    "inv": {
+      "vip": 0,
+      "takeout": 0,
+      "sendback": 0
+    }
+  },
+  "boosters": {
+    "vip": 180,
+    "takeout": 240,
+    "sendback": 100
+  },
+  "win": {
+    "base": 16,
+    "slope": 0.02,
+    "streakStep": 5,
+    "streakMax": 25
+  },
+  "daily": {
+    "base": 60,
+    "step": 15,
+    "maxDays": 7
+  },
+  "puzzle": {
+    "base": 60,
+    "perStreakDay": 8,
+    "maxStreak": 10
+  },
+  "rush": {
+    "perPlate": 3,
+    "cap": 300
+  },
+  "zen": {
+    "share": 0.4
+  },
+  "boss": {
+    "coins": 100
+  },
+  "rescue": {
+    "coins": 200
+  },
+  "decorRewards": [
+    300,
+    400,
+    500,
+    600,
+    700
+  ],
+  "products": [
+    {
+      "id": "starter",
+      "storeId": "sushijam.starter",
+      "name": "Starter Pack",
+      "price": "$1.99",
+      "desc": "600 coins + 1 of each booster",
+      "kind": "consumable",
+      "coins": 600,
+      "boosters": {
+        "vip": 1,
+        "takeout": 1,
+        "sendback": 1
+      }
+    },
+    {
+      "id": "coins1",
+      "storeId": "sushijam.coins.pouch",
+      "name": "Coin Pouch",
+      "price": "$1.99",
+      "desc": "500 coins",
+      "kind": "consumable",
+      "coins": 500
+    },
+    {
+      "id": "coins2",
+      "storeId": "sushijam.coins.chest",
+      "name": "Coin Chest",
+      "price": "$7.99",
+      "desc": "2,600 coins",
+      "kind": "consumable",
+      "coins": 2600
+    },
+    {
+      "id": "rescue",
+      "storeId": "sushijam.rescue",
+      "name": "Chef's Rescue",
+      "price": "$4.99",
+      "desc": "+1 seat, a diner served, belt cleared, +200 coins",
+      "kind": "consumable",
+      "coins": 200
+    },
+    {
+      "id": "noads",
+      "storeId": "sushijam.noads",
+      "name": "No Ads",
+      "price": "$6.99",
+      "desc": "Removes ad breaks between levels",
+      "kind": "entitlement",
+      "entitlement": "no_ads",
+      "flag": "noAds"
+    },
+    {
+      "id": "season",
+      "storeId": "sushijam.season",
+      "name": "Season Pass",
+      "price": "$9.99",
+      "desc": "Premium track for the current season",
+      "kind": "consumable",
+      "flag": "seasonPremium"
+    }
+  ]
+}
