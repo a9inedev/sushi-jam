@@ -82,6 +82,22 @@ import {
 } from './data/curve-remote';
 import { leaveMode, restartLevel, startMode, type SideMode } from './meta/modes';
 import { editorApi } from './ui/editor';
+import {
+  applyCachedEvents,
+  claimEvent,
+  claimTier,
+  clearEventsCache,
+  eventsNow,
+  eventsStatus,
+  eventsView,
+  fetchRemoteEvents,
+  seasonSummary,
+  setEventsClock,
+  setEventsUrl,
+  startBoss,
+  tickEvents,
+} from './meta/events';
+let base = Date.now();
 import { bindStatsBox, drawScreen } from './ui/screens';
 
 function update(dt: number): void {
@@ -141,6 +157,7 @@ function update(dt: number): void {
   setTension(playing ? L.tension : 0);
   keepAwake(playing);
   particles.update(G.screen ? 0 : dt);
+  tickEvents();
   for (let i = G.toasts.length - 1; i >= 0; i--) {
     const t = G.toasts[i];
     t.t += dt;
@@ -310,6 +327,7 @@ if (window.visualViewport) window.visualViewport.addEventListener('resize', onRe
 setCloudProvider(cloudProviderFor(platform));
 const loaded = load();
 applyCachedCurve(); // last validated remote tuning, before the first level is built
+applyCachedEvents();
 applyLanguage();
 initMotion();
 bindAudio();
@@ -326,6 +344,7 @@ checkDaily();
 bindInput();
 bindStatsBox();
 void fetchRemoteCurve(); // background; applies to the next level built
+void fetchRemoteEvents();
 const startLoop = () =>
   requestAnimationFrame((ts) => {
     frame(ts);
@@ -391,6 +410,16 @@ export interface DevApi {
   };
   editor: typeof editorApi;
   theme: () => string;
+  events: {
+    state: () => unknown;
+    claim: (id: string) => boolean;
+    claimTier: (tier: number, track: 'free' | 'premium') => boolean;
+    fetch: (url?: string) => Promise<string>;
+    setUrl: (url: string | null) => void;
+    setNow: (ms: number | null) => void;
+    boss: (id: string) => boolean;
+    reset: () => void;
+  };
   reveal: () => void;
   decor: { buy: (id: string) => boolean };
   modes: {
@@ -498,6 +527,33 @@ window.__SJ = {
   },
   editor: editorApi,
   theme: () => activeTheme().id,
+  events: {
+    state: () => ({
+      ...eventsStatus(),
+      now: eventsNow(),
+      visible: eventsView().map((v) => ({
+        id: v.id,
+        active: v.active,
+        claimable: v.claimable,
+        progress: v.state.progress,
+        goal: v.state.goal,
+        done: v.state.done,
+      })),
+      season: seasonSummary(),
+      saved: { events: S.events, season: S.season },
+    }),
+    claim: (id) => claimEvent(id),
+    claimTier: (tier, track) => claimTier(tier, track),
+    fetch: (url) => fetchRemoteEvents(url ? { url } : {}),
+    setUrl: (url) => setEventsUrl(url),
+    setNow: (ms) => {
+      setEventsClock(ms === null ? Date.now : () => ms + (Date.now() - base));
+      base = Date.now();
+      tickEvents();
+    },
+    boss: (id) => startBoss(id),
+    reset: () => clearEventsCache(),
+  },
   reveal: () => finishReveal(),
   decor: { buy: (id) => buyDecor(id) },
   modes: {

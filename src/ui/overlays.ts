@@ -4,6 +4,8 @@ import { sfx } from '../audio/audio';
 import { H, TIER_COLOR } from '../data/constants';
 import { THEME_SPAN, THEMES, themeById } from '../data/themes';
 import { easeOut } from '../engine/util';
+import { POINTS_PER_WIN } from '../data/events-schema';
+import { GOLD } from '../data/constants';
 import { isAuthored, schedTier } from '../engine/levels';
 import { adRescue, finishReveal, nextMechCard, paidRescue } from '../engine/rules';
 import { cur, G } from '../engine/state';
@@ -179,6 +181,7 @@ export function drawStatusOverlay(): void {
       'center',
       'middle'
     );
+    txt(t('win.season', { n: POINTS_PER_WIN.level }), 240, cy + 196, 12, 800, GOLD, 'center', 'middle');
     txt(
       t('win.total', { c: S.coins.toLocaleString(), w: S.weekly }),
       240,
@@ -248,6 +251,25 @@ function drawModeWin(cx: number, cy: number, cw: number, ch: number): void {
         restartLevel();
       },
     });
+    button(cx + 24, cy + 344, cw - 48, 40, t('mode.backLevels', { n: S.level }), null, {
+      tone: '#6A4C93',
+      onTap: toLevels,
+    });
+    return;
+  }
+  if (L.mode === 'boss') {
+    card(cx, cy, cw, ch, '#E5484D', t('mode.bossWin'));
+    coinIcon(196, cy + 108, 16);
+    txt('+' + L.earned, 220, cy + 109, 34, 800, '#2A2320', 'left', 'middle');
+    txt(t('mode.bossNote'), 240, cy + 152, 14, 700, '#5A4E45', 'center', 'middle');
+    button(cx + 24, cy + 224, cw - 48, 56, t('events.title'), null, {
+      primary: true,
+      onTap: () => {
+        sfx.ui();
+        G.screen = { type: 'events', t: 0, back: null };
+      },
+    });
+    button(cx + 24, cy + 292, cw - 48, 44, t('mode.backMap'), null, { tone: '#3B3F4A', onTap: toMap });
     button(cx + 24, cy + 344, cw - 48, 40, t('mode.backLevels', { n: S.level }), null, {
       tone: '#6A4C93',
       onTap: toLevels,

@@ -28,6 +28,7 @@ import { dateKey, puzzleStreak } from '../engine/modes-core';
 import { startMode } from '../meta/modes';
 import { locale } from '../i18n';
 import { drawEditor, importJson, openEditor } from './editor';
+import { drawEventBanner, drawEventsScreen } from './events';
 import { drawConfirm, drawPause, drawSettings } from './modals';
 import { resetTutorial } from './tutorial';
 
@@ -139,14 +140,14 @@ function drawShop(sc: Screen): void {
     ctx.stroke();
     txt(t('product.' + p.id + '.name'), 66, y + 26, 20, 800, '#2A2320', 'left', 'middle');
     txt(t('product.' + p.id + '.desc'), 66, y + 54, 13, 700, '#5A4E45', 'left', 'middle');
-    const owned = p.id === 'noads' && S.noAds;
+    const owned = (p.id === 'noads' && S.noAds) || (p.id === 'season' && S.season.premium);
     button(318, y + 20, 96, 44, owned ? t('shop.owned') : p.price, owned ? null : t('shop.buy'), {
       primary: !owned,
       disabled: owned,
       onTap: () => buyProduct(p.id),
     });
   });
-  txt(t('shop.footer'), 240, 690, 12, 700, '#8A8378', 'center', 'middle');
+  txt(t('shop.footer'), 240, 760, 12, 700, '#8A8378', 'center', 'middle');
 }
 
 function drawOffer(): void {
@@ -345,7 +346,8 @@ function drawMap(sc: Screen): void {
     const start = Math.max(1, home - 5);
     ctx.save();
     const pts: { lvl: number; x: number; y: number }[] = [];
-    for (let i = 0; i < 16; i++) pts.push({ lvl: start + i, x: 240 + Math.sin(i * 0.95) * 130, y: 780 - i * 38 });
+    drawEventBanner(50, 200, 380, 56);
+    for (let i = 0; i < 14; i++) pts.push({ lvl: start + i, x: 240 + Math.sin(i * 0.95) * 130, y: 780 - i * 38 });
     ctx.strokeStyle = '#D9CBB0';
     ctx.lineWidth = 10;
     ctx.lineCap = 'round';
@@ -415,6 +417,7 @@ export function drawScreen(): void {
   else if (sc.type === 'daily') drawDaily(sc);
   else if (sc.type === 'dev') drawDev();
   else if (sc.type === 'editor') drawEditor();
+  else if (sc.type === 'events') drawEventsScreen(sc);
   else if (sc.type === 'map') drawMap(sc);
   else if (sc.type === 'settings') drawSettings(sc);
   else if (sc.type === 'pause') drawPause(sc);

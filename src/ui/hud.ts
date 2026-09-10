@@ -8,6 +8,7 @@ import { S, save } from '../meta/save';
 import { ctx } from '../render/canvas';
 import { coinIcon, rrect, textW, txt } from '../render/primitives';
 import { badge, boosterButton, button, iconBtn } from './buttons';
+import { drawHudEventBar } from './events';
 
 const TIER_KEY: Record<Tier, string> = {
   Easy: 'tier.easy',
@@ -46,7 +47,9 @@ export function drawHud(): void {
         ? t('mode.hudZen', { n: L.n })
         : L.mode === 'daily'
           ? t('mode.hudDaily')
-          : t('mode.hudRush');
+          : L.mode === 'boss'
+            ? t('mode.hudBoss')
+            : t('mode.hudRush');
   const tw = textW(label, 28, 800);
   const tier =
     L.mode === 'rush' ? clock(L.timeLeft) : L.mode === 'zen' ? t('mode.zenBadge') : tierLabel(L.lv.tierLabel);
@@ -66,6 +69,7 @@ export function drawHud(): void {
   badge(tier, bx, 26, tierColor);
   if (L.mode === 'rush')
     txt(t('mode.rushScore', { n: L.score }), left ? 20 : W - 20, 74, 15, 800, GOLD, left ? 'left' : 'right', 'middle');
+  else drawHudEventBar(left ? 20 : W - 20, 68, !left);
   if (S.streak > 1 && L.mode === 'level') {
     const fx0 = left ? bx + bw + 12 : bx - 22;
     ctx.save();
