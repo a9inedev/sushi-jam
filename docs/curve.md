@@ -19,6 +19,12 @@ Plus `solver: { noise, runs, ciRuns }`: the solver's per-decision noise, the run
 
 The file holds levels 1 to 200. Past the last row the curve holds at its final values.
 
+## The reward column
+
+Each row also carries `reward`, the coins a win pays on that level. It is tuned by the economy model
+(`npm run economy`, docs/economy.md) rather than by hand; rows without it fall back to the old 50 + 2n so an
+older remote override still validates. Every other coin number lives in `src/data/products.json`.
+
 ## Who reads it
 
 - `paramsFor(n)` and `schedTier(n)` in `src/engine/levels.ts` return the row (tier = `tierFromDiff(fail)`), so the generator, the map badges and the runtime belt speed all follow it.
