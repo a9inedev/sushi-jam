@@ -52,7 +52,7 @@ page.on('pageerror', (e) => {
 });
 // The curve fetch is allowed to fail: a 404 (URL not deployed yet, or the deliberate one in the override step)
 // is the fallback path under test, not an error.
-const expectedFailure = (url) => /fonts\.g/.test(url) || /(curve|events)(-test)?\.json/.test(url);
+const expectedFailure = (url) => /fonts\.g/.test(url) || /(curve|events|flags)(-test)?\.json/.test(url);
 let stage = 'boot';
 if (process.env.SMOKE_TRACE) setInterval(() => console.log('       ~ alive at ' + stage), 5000).unref();
 let msgCount = 0,
@@ -514,7 +514,7 @@ await step('save is a versioned envelope with a valid checksum', async () => {
     const e = JSON.parse(localStorage.getItem('sushijam.save'));
     return { v: e.v, hasSum: typeof e.sum === 'number', level: e.data.level, src: window.__SJ.saveApi.info().source };
   })()`);
-  if (info.v !== 12 || !info.hasSum) throw new Error('bad envelope ' + JSON.stringify(info));
+  if (info.v !== 13 || !info.hasSum) throw new Error('bad envelope ' + JSON.stringify(info));
   return `v${info.v}, loaded from ${info.src}`;
 });
 await step('legacy v2 save migrates with level, coins, decor and stats intact', async () => {
@@ -886,7 +886,7 @@ await step(
       await reloadAndWait();
       await page.waitForFunction(() => window.__SJ.events.state().lastResult !== null, { timeout: 10000 });
       let st = await sj('window.__SJ.events.state()');
-      if (st.lastResult !== 'applied' || st.visible.length !== 3)
+      if (st.lastResult !== 'applied' || st.visible.filter((v) => v.id.startsWith('smoke-')).length !== 3)
         throw new Error('test events did not apply: ' + JSON.stringify(st));
       // Banner on the map, HUD strip in play.
       await sj("window.__SJ.setScreen({ type: 'map', tab: 'path', t: 0 })");
@@ -1297,6 +1297,127 @@ await step(
     await sj('window.__SJ.S.noAds = ' + JSON.stringify(noAds0));
     await sj('window.__SJ.modes.leave()');
     return 'pouch granted once per tx, cancel/failure granted nothing, rescue with a 1.5 s sheet held the timer and applied, starter after first fail / declined / 24 h re-show / bought, level-5 trigger, restore + launch check';
+  }
+);
+await step(
+  'lives: both arms from a flags.json served next to the build; B loses, refills, gates, rewards; analytics count per arm',
+  async () => {
+    const testFile = path.join(DIR, 'flags-test.json');
+    const writeFlags = (variant) =>
+      fs.writeFileSync(
+        testFile,
+        JSON.stringify({ v: 1, lives: { variant, split: 0, max: 5, refillMinutes: 30 }, analytics: { enabled: true } })
+      );
+    const failOnce = async (n) => {
+      await sj('window.__SJ.jump(' + n + ')');
+      await toPlay();
+      await sj('window.__SJ.forceFail()');
+      for (let i = 0; i < 40 && (await sj('window.__SJ.state().status')) !== 'fail'; i++) await sleep(100);
+    };
+    try {
+      await sj('window.__SJ.S.starter.bought = true; window.__SJ.S.demoAds = true');
+      // Arm B by flag alone.
+      writeFlags('B');
+      await sj("localStorage.setItem('sushijam.flagsUrl', './flags-test.json')");
+      await reloadAndWait();
+      await page.waitForFunction(() => window.__SJ.flags.state().lastResult !== null, { timeout: 10000 });
+      let fl = await sj('window.__SJ.flags.state()');
+      if (fl.lastResult !== 'applied' || fl.variant !== 'B')
+        throw new Error('flag did not switch to B: ' + JSON.stringify(fl));
+      await sj('window.__SJ.analytics.reset()');
+      await sj('window.__SJ.lives.set({ n: 5, max: 5, lastAt: 0, unlimitedUntil: 0 })');
+      await sj('window.__SJ.jump(3)');
+      await toPlay();
+      await sleep(200);
+      await page.screenshot({ path: path.join(OUT, 'smoke-lives-hud.png') });
+      // Five fails empty the stock; the sixth start is gated.
+      for (let i = 0; i < 5; i++) {
+        await failOnce(3);
+        const st = await sj('window.__SJ.lives.state()');
+        if (st.n !== 4 - i) throw new Error('life not lost on fail ' + (i + 1) + ': ' + JSON.stringify(st));
+        await sj('window.__SJ.modes.restart()');
+        await sleep(150);
+      }
+      if ((await screenType()) !== 'lives') throw new Error('no out-of-lives card at zero: ' + (await screenType()));
+      await page.screenshot({ path: path.join(OUT, 'smoke-lives-out.png') });
+      let st = await sj('window.__SJ.lives.state()');
+      if (st.canPlay || st.nextIn <= 0 || st.nextIn > 30 * 60000)
+        throw new Error('countdown wrong: ' + JSON.stringify(st));
+      // A refill interval passes: one life back, Play continues the gated start.
+      await sj('window.__SJ.lives.set({ lastAt: Date.now() - 31 * 60000 })');
+      st = await sj('window.__SJ.lives.state()');
+      if (st.n !== 1 || !st.canPlay) throw new Error('refill did not add a life: ' + JSON.stringify(st));
+      await sleep(150);
+      await tapCanvas(240, 466); // Play
+      await sleep(300);
+      if ((await screenType()) === 'lives') throw new Error('Play did not continue');
+      // Out again: the rewarded ad gives one life.
+      await failOnce(3);
+      await sj('window.__SJ.modes.restart()');
+      await sleep(150);
+      if ((await screenType()) !== 'lives') throw new Error('not gated after the last life');
+      await tapCanvas(240, 466); // Watch an ad
+      await sleep(300);
+      if ((await screenType()) !== 'ad') throw new Error('ad did not open: ' + (await screenType()));
+      await sleep(5400);
+      await tapCanvas(240, 664); // Claim
+      await sleep(300);
+      st = await sj('window.__SJ.lives.state()');
+      if ((await screenType()) === 'lives' || (await screenType()) === 'ad')
+        throw new Error('ad life did not continue: ' + (await screenType()));
+      // An unlimited window (event reward) plays at zero without losing anything.
+      await sj('window.__SJ.lives.set({ n: 0, lastAt: Date.now() })');
+      await sj('window.__SJ.lives.unlimited(30)');
+      st = await sj('window.__SJ.lives.state()');
+      if (!st.unlimited || !st.canPlay) throw new Error('unlimited window not honoured: ' + JSON.stringify(st));
+      await failOnce(3);
+      if ((await sj('window.__SJ.lives.state()')).n !== 0) throw new Error('unlimited fail changed the stock');
+      await sj('window.__SJ.modes.restart()');
+      await sleep(150);
+      if ((await screenType()) === 'lives') throw new Error('gated during an unlimited window');
+      await sj('window.__SJ.lives.set({ unlimitedUntil: 0, n: 5 })');
+      // The counters for arm B.
+      let rep = await sj('window.__SJ.analytics.report()');
+      if (rep.B.livesOut < 2 || rep.A.livesOut !== 0)
+        throw new Error('lives_out not counted for B: ' + JSON.stringify(rep));
+      const b = await sj('window.__SJ.S.metrics.B');
+      if (b.fails < 7 || b.retries < 7 || b.ads < 1 || b.levels < 7)
+        throw new Error('arm B counters wrong: ' + JSON.stringify(b));
+      await sj('window.__SJ.analytics.endSession()');
+      rep = await sj('window.__SJ.analytics.report()');
+      if (rep.B.sessions < 1 || rep.B.retriesPerFail <= 0)
+        throw new Error('session/retry metrics wrong: ' + JSON.stringify(rep.B));
+      const exp = JSON.parse(await sj('window.__SJ.analytics.export()'));
+      if (!exp.installId || exp.arm !== 'B' || !exp.metrics.B) throw new Error('export wrong');
+      // Arm A by flag alone: no hearts, fails cost nothing, never gated; counts go to A.
+      writeFlags('A');
+      await reloadAndWait();
+      await page.waitForFunction(() => window.__SJ.flags.state().lastResult !== null, { timeout: 10000 });
+      fl = await sj('window.__SJ.flags.state()');
+      if (fl.variant !== 'A') throw new Error('flag did not switch to A: ' + JSON.stringify(fl));
+      await sj('window.__SJ.lives.set({ n: 0, lastAt: Date.now() })');
+      if (!(await sj('window.__SJ.lives.canPlay()'))) throw new Error('arm A gated');
+      await failOnce(3);
+      await sj('window.__SJ.modes.restart()');
+      await sleep(150);
+      if ((await screenType()) === 'lives') throw new Error('arm A showed the lives card');
+      if ((await sj('window.__SJ.lives.state()')).n !== 0) throw new Error('arm A changed the stock');
+      rep = await sj('window.__SJ.analytics.report()');
+      if ((await sj('window.__SJ.S.metrics.A.fails')) < 1) throw new Error('arm A fail not counted');
+      await page.screenshot({ path: path.join(OUT, 'smoke-lives-armA.png') });
+      // Back to the bundled flags.
+      await sj(
+        "localStorage.removeItem('sushijam.flagsUrl'); window.__SJ.flags.reset(); window.__SJ.lives.set({ n: 5 })"
+      );
+      await sj('window.__SJ.modes.leave()');
+      return 'B: 5 fails emptied the stock, gate shown, refill + Play, rewarded ad + life, unlimited window; A: no gate, no loss; counters per arm; export ok';
+    } finally {
+      try {
+        fs.unlinkSync(testFile);
+      } catch {
+        /* already gone */
+      }
+    }
   }
 );
 await step('levels 1 to 140 are the authored files; 141 falls back to the generator', async () => {
