@@ -71,7 +71,7 @@ export function drawHud(): void {
   if (L.mode === 'rush')
     txt(t('mode.rushScore', { n: L.score }), left ? 20 : W - 20, 74, 15, 800, GOLD, left ? 'left' : 'right', 'middle');
   else drawHudEventBar(left ? 20 : W - 20, 68, !left);
-  drawHudLives(left ? W - 20 : 20, 74, left);
+  drawHudLives(left ? W - 20 : 20, 88, left);
   if (S.streak > 1 && L.mode === 'level') {
     const fx0 = left ? bx + bw + 12 : bx - 22;
     ctx.save();

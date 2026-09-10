@@ -42,13 +42,7 @@
   "rescue": {
     "coins": 200
   },
-  "decorRewards": [
-    300,
-    400,
-    500,
-    600,
-    700
-  ],
+  "decorRewards": [300, 400, 500, 600, 700],
   "products": [
     {
       "id": "starter",
