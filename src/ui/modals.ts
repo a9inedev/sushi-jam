@@ -7,7 +7,7 @@ import { logStat, newLevel } from '../engine/rules';
 import { closeScreen, cur, G, toast, type MapTab, type Screen } from '../engine/state';
 import { LANGUAGES, languageName, locale, matchLocale, setLocale, t } from '../i18n';
 import { restartLevel } from '../meta/modes';
-import { purchases } from '../meta/providers';
+import { isDemoStore, restorePurchases, store } from '../meta/purchases';
 import { backupInfo, clearSave, cloudProvider, restoreFromBackup, S, save } from '../meta/save';
 import { haptic, isNative, platform } from '../platform/native';
 import { ctx } from '../render/canvas';
@@ -233,17 +233,22 @@ function drawAccountTab(sc: Screen): void {
       };
     },
   });
-  button(100, 388, 280, 44, t('settings.restorePurchases'), t('settings.restorePurchasesSub'), {
-    tone: '#6A4C93',
-    onTap: () => {
-      sfx.ui();
-      void purchases.restore().then((ids) => {
-        if (ids.includes('noads')) S.noAds = true;
-        save();
-        toast(t('toast.restorePurchases'), 2.2);
-      });
-    },
-  });
+  button(
+    100,
+    388,
+    280,
+    44,
+    t('settings.restorePurchases'),
+    isDemoStore() ? t('settings.restorePurchasesSub') : t('settings.restorePurchasesReal'),
+    {
+      tone: '#6A4C93',
+      disabled: !!store.busy,
+      onTap: () => {
+        sfx.ui();
+        void restorePurchases();
+      },
+    }
+  );
   button(100, 444, 280, 44, t('settings.privacy'), null, { tone: '#4A4540', onTap: () => openLink(LINKS.privacy) });
   button(100, 500, 280, 44, t('settings.terms'), null, { tone: '#4A4540', onTap: () => openLink(LINKS.terms) });
   button(100, 556, 280, 44, t('settings.support'), null, { tone: '#4A4540', onTap: () => openLink(LINKS.support) });

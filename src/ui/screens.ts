@@ -11,6 +11,8 @@ import { DECOR, decorOf, themeById, themeUnlocked, THEMES } from '../data/themes
 import { drawCharacter } from '../render/diner';
 import { MECH_UNLOCK } from '../data/mechanics';
 import { PRODUCTS } from '../data/products';
+import { starterBought } from '../meta/offers';
+import { buy, isDemoStore, priceOf, store } from '../meta/purchases';
 import { schedTier, isAuthored } from '../engine/levels';
 import { rng } from '../engine/rng';
 import { addCoins, newLevel } from '../engine/rules';
@@ -117,7 +119,7 @@ function drawShop(sc: Screen): void {
   ctx.fillStyle = '#FFF0D6';
   rrect(50, 154, 380, 40, 10);
   ctx.fill();
-  txt(t('shop.demo'), 240, 174, 13, 800, '#8A5A00', 'center', 'middle');
+  txt(isDemoStore() ? t('shop.demo') : t('shop.real'), 240, 174, 13, 800, '#8A5A00', 'center', 'middle');
   coinIcon(70, 222, 11);
   txt(t('shop.coins', { n: S.coins.toLocaleString() }), 88, 223, 18, 800, '#2A2320', 'left', 'middle');
   txt(
@@ -131,24 +133,33 @@ function drawShop(sc: Screen): void {
     'middle'
   );
   PRODUCTS.forEach((p, i) => {
-    const y = 250 + i * 96;
+    const y = 250 + i * 86;
     ctx.fillStyle = '#FFFDF7';
-    rrect(50, y, 380, 84, 12);
+    rrect(50, y, 380, 76, 12);
     ctx.fill();
     ctx.strokeStyle = '#EADFC4';
     ctx.lineWidth = 1;
-    rrect(50, y, 380, 84, 12);
+    rrect(50, y, 380, 76, 12);
     ctx.stroke();
-    txt(t('product.' + p.id + '.name'), 66, y + 26, 20, 800, '#2A2320', 'left', 'middle');
-    txt(t('product.' + p.id + '.desc'), 66, y + 54, 13, 700, '#5A4E45', 'left', 'middle');
+    txt(t('product.' + p.id + '.name'), 66, y + 24, 18, 800, '#2A2320', 'left', 'middle');
+    txt(t('product.' + p.id + '.desc'), 66, y + 50, 12, 700, '#5A4E45', 'left', 'middle');
     const owned = (p.id === 'noads' && S.noAds) || (p.id === 'season' && S.season.premium);
-    button(318, y + 20, 96, 44, owned ? t('shop.owned') : p.price, owned ? null : t('shop.buy'), {
-      primary: !owned,
-      disabled: owned,
-      onTap: () => buyProduct(p.id),
-    });
+    const busy = store.busy === p.id;
+    button(
+      318,
+      y + 16,
+      96,
+      44,
+      owned ? t('shop.owned') : busy ? '…' : priceOf(p.id), // i18n-ignore
+      owned || busy ? null : isDemoStore() ? t('shop.buy') : t('shop.buyReal'),
+      {
+        primary: !owned,
+        disabled: owned || !!store.busy,
+        onTap: () => buyProduct(p.id),
+      }
+    );
   });
-  txt(t('shop.footer'), 240, 760, 12, 700, '#8A8378', 'center', 'middle');
+  txt(isDemoStore() ? t('shop.footer') : t('shop.restoreHint'), 240, 790, 12, 700, '#8A8378', 'center', 'middle');
 }
 
 function drawOffer(): void {
@@ -157,23 +168,35 @@ function drawOffer(): void {
   coinIcon(150, 350, 22);
   txt(t('offer.coins'), 182, 351, 24, 800, '#2A2320', 'left', 'middle');
   txt(t('offer.items'), 240, 396, 15, 700, '#5A4E45', 'center', 'middle');
-  txt(t('offer.demo'), 240, 424, 12, 700, '#8A8378', 'center', 'middle');
-  button(90, 466, 300, 54, t('offer.buy'), t('offer.demoTag'), {
-    primary: true,
-    onTap: () => {
-      buyProduct('starter');
-      S.starterShown = true;
-      save();
-      G.screen = null;
-      runPending();
-    },
-  });
+  txt(isDemoStore() ? t('offer.demo') : t('offer.real'), 240, 424, 12, 700, '#8A8378', 'center', 'middle');
+  const busy = store.busy === 'starter';
+  button(
+    90,
+    466,
+    300,
+    54,
+    busy ? '…' : t('offer.buy', { price: priceOf('starter') }),
+    isDemoStore() ? t('offer.demoTag') : null,
+    {
+      // i18n-ignore
+      primary: true,
+      disabled: !!store.busy,
+      onTap: () => {
+        sfx.ui();
+        void buy('starter').then((r) => {
+          if (r.status !== 'ok') return;
+          starterBought();
+          G.screen = null;
+          runPending();
+        });
+      },
+    }
+  );
   button(90, 532, 300, 44, t('offer.no'), null, {
     tone: '#3B3F4A',
+    disabled: busy,
     onTap: () => {
       sfx.ui();
-      S.starterShown = true;
-      save();
       G.screen = null;
       runPending();
     },

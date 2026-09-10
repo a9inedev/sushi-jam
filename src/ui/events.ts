@@ -18,6 +18,7 @@ import {
   startBoss,
 } from '../meta/events';
 import { buyProduct } from '../meta/economy';
+import { isDemoStore, priceOf } from '../meta/purchases';
 import { S } from '../meta/save';
 import { ctx } from '../render/canvas';
 import { card, coinIcon, rrect, txt } from '../render/primitives';
@@ -360,7 +361,7 @@ export function drawEventsScreen(sc: Screen): void {
     390,
     40,
     S.season.premium ? t('events.premiumOwned') : t('events.unlockPremium'),
-    S.season.premium ? null : t('events.demoPrice'),
+    S.season.premium ? null : isDemoStore() ? t('events.demoPrice', { price: priceOf('season') }) : priceOf('season'),
     {
       size: 13,
       tone: S.season.premium ? '#B9B2A5' : '#6A4C93',

@@ -127,6 +127,9 @@ import {
 } from './meta/notify';
 import { defaultPrefs, type NotifyType } from './meta/notify-core';
 import { notifyBackend, webNotify } from './platform/notifications';
+import type { ProductId } from './data/products';
+import type { StoreMockOptions } from './platform/store';
+import { buy, catalogue, initPurchases, installStoreMock, restorePurchases, store, storeMock } from './meta/purchases';
 import { closeTextField, textFieldOpen } from './ui/textfield';
 import { bindStatsBox, drawScreen } from './ui/screens';
 
@@ -181,7 +184,8 @@ function update(dt: number): void {
         L.failT = 10;
       }
     }
-    if (L.status === 'fail') L.failT = Math.max(0, L.failT - dt);
+    // The offer's timer holds while the store sheet is open.
+    if (L.status === 'fail' && !store.busy) L.failT = Math.max(0, L.failT - dt);
   }
   const playing = L.status === 'play' && !G.screen;
   setTension(playing ? L.tension : 0);
@@ -359,6 +363,7 @@ const loaded = load();
 applyCachedCurve(); // last validated remote tuning, before the first level is built
 applyCachedEvents();
 void initLeaderboards();
+void initPurchases();
 initNotifications();
 applyLanguage();
 initMotion();
@@ -442,6 +447,13 @@ export interface DevApi {
   };
   editor: typeof editorApi;
   theme: () => string;
+  store: {
+    state: () => unknown;
+    buy: (id: ProductId) => Promise<unknown>;
+    restore: () => Promise<number>;
+    mock: (o: StoreMockOptions | null) => Promise<unknown>;
+    init: () => Promise<void>;
+  };
   notify: {
     state: () => unknown;
     optIn: () => Promise<boolean>;
@@ -585,6 +597,21 @@ window.__SJ = {
   },
   editor: editorApi,
   theme: () => activeTheme().id,
+  store: {
+    state: () => ({
+      ...store,
+      catalogue: catalogue(),
+      calls: storeMock()?.calls || [],
+      purchases: S.purchases,
+      starter: S.starter,
+      noAds: S.noAds,
+      premium: S.season.premium,
+    }),
+    buy: (id) => buy(id),
+    restore: () => restorePurchases(),
+    mock: (o) => installStoreMock(o),
+    init: () => initPurchases(),
+  },
   notify: {
     state: () => ({
       prefs: S.notif,

@@ -8,7 +8,9 @@ import { POINTS_PER_WIN } from '../data/events-schema';
 import { GOLD } from '../data/constants';
 import { isAuthored, schedTier } from '../engine/levels';
 import { adRescue, finishReveal, nextMechCard, paidRescue } from '../engine/rules';
-import { cur, G } from '../engine/state';
+import { cur, G, runPending } from '../engine/state';
+import { queueStarter } from '../meta/offers';
+import { buy, priceOf, store } from '../meta/purchases';
 import { t } from '../i18n';
 import { afterWin } from '../meta/flow';
 import { leaveMode, restartLevel, startMode } from '../meta/modes';
@@ -146,11 +148,25 @@ export function drawStatusOverlay(): void {
     ctx.restore();
     txt(Math.ceil(L.failT), 240, cy + 184, 22, 800, '#2A2320', 'center', 'middle');
     const live = L.failT > 0;
-    button(cx + 24, cy + 224, cw - 48, 52, t('fail.rescue'), live ? t('fail.rescueSub') : t('fail.expired'), {
-      primary: true,
-      disabled: !live,
-      onTap: () => paidRescue(),
-    });
+    const buying = store.busy === 'rescue';
+    button(
+      cx + 24,
+      cy + 224,
+      cw - 48,
+      52,
+      buying ? t('fail.rescueWait') : t('fail.rescue', { price: priceOf('rescue') }),
+      live ? t('fail.rescueSub') : t('fail.expired'),
+      {
+        primary: true,
+        disabled: !live || !!store.busy,
+        onTap: () => {
+          sfx.ui();
+          void buy('rescue').then((r) => {
+            if (r.status === 'ok') paidRescue();
+          });
+        },
+      }
+    );
     button(cx + 24, cy + 286, cw - 48, 48, t('fail.ad'), S.demoAds ? t('fail.adSub') : t('fail.adOff'), {
       tone: '#148F82',
       disabled: !S.demoAds,
@@ -161,9 +177,14 @@ export function drawStatusOverlay(): void {
     });
     button(cx + 24, cy + 344, cw - 48, 40, t('fail.retry'), null, {
       tone: '#3B3F4A',
+      disabled: buying,
       onTap: () => {
         sfx.ui();
-        restartLevel();
+        G.pending = [];
+        if (L.mode === 'level' && queueStarter('fail', L.n)) {
+          G.pending.push(() => restartLevel());
+          runPending();
+        } else restartLevel();
       },
     });
   } else if (L.mode !== 'level') {
