@@ -52,7 +52,7 @@ page.on('pageerror', (e) => {
 });
 // The curve fetch is allowed to fail: a 404 (URL not deployed yet, or the deliberate one in the override step)
 // is the fallback path under test, not an error.
-const expectedFailure = (url) => /fonts\.g/.test(url) || /curve(-test)?\.json/.test(url);
+const expectedFailure = (url) => /fonts\.g/.test(url) || /(curve|events)(-test)?\.json/.test(url);
 let stage = 'boot';
 if (process.env.SMOKE_TRACE) setInterval(() => console.log('       ~ alive at ' + stage), 5000).unref();
 let msgCount = 0,
@@ -502,7 +502,7 @@ await step('save is a versioned envelope with a valid checksum', async () => {
     const e = JSON.parse(localStorage.getItem('sushijam.save'));
     return { v: e.v, hasSum: typeof e.sum === 'number', level: e.data.level, src: window.__SJ.saveApi.info().source };
   })()`);
-  if (info.v !== 8 || !info.hasSum) throw new Error('bad envelope ' + JSON.stringify(info));
+  if (info.v !== 9 || !info.hasSum) throw new Error('bad envelope ' + JSON.stringify(info));
   return `v${info.v}, loaded from ${info.src}`;
 });
 await step('legacy v2 save migrates with level, coins, decor and stats intact', async () => {
@@ -826,6 +826,165 @@ await step('side modes: daily, rush and zen from the map; own stats; level progr
     throw new Error('leave did not return to the level: ' + JSON.stringify(back));
   return `daily won (streak calendar), rush ${mid.score} plates in 4 s, zen cleared a jam; level stayed ${level0}`;
 });
+await step(
+  'events: a test event switched on by JSON alone, progress, claim, expiry with rewards kept, season pass',
+  async () => {
+    const testFile = path.join(DIR, 'events-test.json');
+    // skipIntro only arms the intro to end on the next frame; wait until the board is really in play.
+    const toPlay = async () => {
+      for (let i = 0; i < 60; i++) {
+        await sj('window.__SJ.skipIntro()');
+        await settle();
+        if ((await sj('window.__SJ.state().status')) === 'play') return;
+        await sleep(100);
+      }
+      throw new Error('level never reached play: ' + (await sj('window.__SJ.state().status')));
+    };
+    try {
+      const now = Date.now();
+      const iso = (ms) => new Date(ms).toISOString();
+      const cfg = JSON.parse(fs.readFileSync(path.join(DIR, 'events.json'), 'utf8'));
+      // A plate rush that is live now, a streak race that ends in 20 s, and a boss weekend on level 12.
+      cfg.events = [
+        {
+          id: 'smoke-plates',
+          type: 'plates',
+          name: 'Smoke plates',
+          color: 0,
+          start: iso(now - 60000),
+          end: iso(now + 3600000),
+          goal: 3,
+          rewards: { coins: 111 },
+        },
+        {
+          id: 'smoke-streak',
+          type: 'streak',
+          name: 'Smoke streak',
+          start: iso(now - 60000),
+          end: iso(now + 20000),
+          goal: 1,
+          rewards: { coins: 222, points: 50 },
+        },
+        {
+          id: 'smoke-boss',
+          type: 'boss',
+          name: 'Smoke boss',
+          level: 12,
+          start: iso(now - 60000),
+          end: iso(now + 3600000),
+          goal: 1,
+          rewards: { vip: 1 },
+        },
+      ];
+      cfg.season.id = 'smoke-season';
+      cfg.season.start = iso(now - 60000);
+      cfg.season.end = iso(now + 3600000);
+      fs.writeFileSync(testFile, JSON.stringify(cfg));
+      await sj("localStorage.setItem('sushijam.eventsUrl', './events-test.json')");
+      await reloadAndWait();
+      await page.waitForFunction(() => window.__SJ.events.state().lastResult !== null, { timeout: 10000 });
+      let st = await sj('window.__SJ.events.state()');
+      if (st.lastResult !== 'applied' || st.visible.length !== 3)
+        throw new Error('test events did not apply: ' + JSON.stringify(st));
+      // Banner on the map, HUD strip in play.
+      await sj("window.__SJ.setScreen({ type: 'map', tab: 'path', t: 0 })");
+      await sleep(150);
+      await page.screenshot({ path: path.join(OUT, 'smoke-events-banner.png') });
+      await tapCanvas(240, 228); // the banner opens the events screen
+      await sleep(150);
+      if ((await screenType()) !== 'events') throw new Error('banner did not open the events screen');
+      await page.screenshot({ path: path.join(OUT, 'smoke-events-screen.png') });
+      await sj('window.__SJ.closeScreen()');
+      // A level win advances the streak race to done, and the season pass gains points.
+      const coins0 = await sj('window.__SJ.S.coins');
+      await sj('window.__SJ.jump(2)');
+      await toPlay();
+      await sj('window.__SJ.modes.forceWin()');
+      await sleep(200);
+      st = await sj('window.__SJ.events.state()');
+      const streak = st.visible.find((v) => v.id === 'smoke-streak');
+      if (!streak || !streak.done || streak.progress < 1)
+        throw new Error('streak race not done after a win: ' + JSON.stringify(st.visible));
+      if (!st.season || st.season.points < 10)
+        throw new Error('season points not awarded: ' + JSON.stringify(st.season));
+      // Plates: three salmon plates served during play count toward the plate rush.
+      await sj('window.__SJ.jump(1)');
+      await toPlay();
+      const t0 = Date.now();
+      while (Date.now() - t0 < 20000) {
+        const p = (await sj('window.__SJ.events.state()')).visible.find((v) => v.id === 'smoke-plates');
+        if (p && p.done) break;
+        const L = await sj('(() => { const L = window.__SJ.state(); return L.status; })()');
+        if (L === 'win' || L === 'fail') break;
+        await sj('window.__SJ.auto()');
+        await sleep(150);
+      }
+      st = await sj('window.__SJ.events.state()');
+      const plates = st.visible.find((v) => v.id === 'smoke-plates');
+      if (!plates || plates.progress < 1) throw new Error('plate rush did not progress: ' + JSON.stringify(st.visible));
+      // The streak race expires; finished and unclaimed, it stays claimable and pays out.
+      await page.waitForFunction(
+        () => {
+          const v = window.__SJ.events.state().visible.find((e) => e.id === 'smoke-streak');
+          return v && !v.active && v.claimable;
+        },
+        { timeout: 30000 }
+      );
+      if (!(await sj("window.__SJ.events.claim('smoke-streak')"))) throw new Error('could not claim the ended event');
+      const coins1 = await sj('window.__SJ.S.coins');
+      st = await sj('window.__SJ.events.state()');
+      if (st.visible.some((v) => v.id === 'smoke-streak')) throw new Error('claimed event still listed');
+      if (coins1 < coins0 + 222) throw new Error(`claim did not pay: ${coins0} -> ${coins1}`);
+      // Season tier claim and the demo premium.
+      await sj('window.__SJ.S.season.points = 250');
+      await sj('window.__SJ.events.state()');
+      if (!(await sj("window.__SJ.events.claimTier(1, 'free')"))) throw new Error('tier 1 free not claimable');
+      if (await sj("window.__SJ.events.claimTier(1, 'premium')")) throw new Error('premium claimed without the pass');
+      await sj("window.__SJ.setScreen({ type: 'events', t: 0 })");
+      await sleep(150);
+      await page.screenshot({ path: path.join(OUT, 'smoke-events-pass.png') });
+      await sj('window.__SJ.closeScreen()');
+      // Boss board: same for everyone, no effect on the level counter.
+      const level0 = await sj('window.__SJ.S.level');
+      if (!(await sj("window.__SJ.events.boss('smoke-boss')"))) throw new Error('boss did not start');
+      await toPlay();
+      const boss = await sj(
+        '(() => { const L = window.__SJ.state(); return { mode: L.mode, key: L.modeKey, n: L.n }; })()'
+      );
+      if (boss.mode !== 'boss' || boss.key !== 'smoke-boss' || boss.n !== 12)
+        throw new Error('boss level wrong: ' + JSON.stringify(boss));
+      await sj('window.__SJ.modes.forceWin()');
+      await sleep(200);
+      st = await sj('window.__SJ.events.state()');
+      const b = st.visible.find((v) => v.id === 'smoke-boss');
+      if (!b || !b.done) throw new Error('boss win not recorded: ' + JSON.stringify(st.visible));
+      if ((await sj('window.__SJ.S.level')) !== level0) throw new Error('boss moved the level counter');
+      await page.screenshot({ path: path.join(OUT, 'smoke-events-boss-win.png') });
+      // An event removed from the JSON but finished and unclaimed keeps its reward.
+      cfg.events = cfg.events.filter((e) => e.id !== 'smoke-boss');
+      fs.writeFileSync(testFile, JSON.stringify(cfg));
+      await sj('window.__SJ.events.fetch()');
+      await sleep(300);
+      st = await sj('window.__SJ.events.state()');
+      const orphan = st.visible.find((v) => v.id === 'smoke-boss');
+      if (!orphan || !orphan.claimable)
+        throw new Error('reward lost when the definition vanished: ' + JSON.stringify(st.visible));
+      const vip0 = await sj('window.__SJ.S.inv.vip');
+      await sj("window.__SJ.events.claim('smoke-boss')");
+      if ((await sj('window.__SJ.S.inv.vip')) !== vip0 + 1) throw new Error('orphan claim did not pay');
+      // Back to the bundled file.
+      await sj("localStorage.removeItem('sushijam.eventsUrl'); window.__SJ.events.reset()");
+      await sj('window.__SJ.modes.leave()');
+      return 'applied from JSON, streak done + expired + claimed, plates progressed, tier 1 claimed, boss beaten, orphan reward kept';
+    } finally {
+      try {
+        fs.unlinkSync(testFile);
+      } catch {
+        /* already gone */
+      }
+    }
+  }
+);
 await step('levels 1 to 140 are the authored files; 141 falls back to the generator', async () => {
   const r = await sj(`(() => { const a = window.__SJ.getLevel(137), b = window.__SJ.getLevel(141);
     return { a: !!a.authored, b: !!b.authored, rows: a.rows, cols: a.cols }; })()`);
