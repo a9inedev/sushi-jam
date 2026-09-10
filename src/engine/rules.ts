@@ -12,6 +12,7 @@ import { themeFor } from '../data/themes';
 import { COST } from '../data/products';
 import { t } from '../i18n';
 import { eventsOnBoss, eventsOnPlate, eventsOnWin } from '../meta/events';
+import { recordRush, recordWeekly } from '../meta/leaderboards';
 import { S, save } from '../meta/save';
 import { haptic } from '../platform/native';
 import { BELT } from './belt';
@@ -794,12 +795,14 @@ export function win(): void {
   L.armed = null;
   if (L.mode === 'level') {
     S.streak++;
+    S.bestStreak = Math.max(S.bestStreak, S.streak);
     const sb = Math.min(50, (S.streak - 1) * 10);
     L.earned = 50 + L.n * 2 + sb;
     L.streakBonus = sb;
     S.level = Math.max(S.level, L.n + 1);
     S.best = Math.max(S.best, S.level);
     S.weekly = (S.weekly || 0) + 1;
+    recordWeekly(S.weekly);
   } else if (L.mode === 'daily') {
     // One entry per calendar day; replaying a won day pays nothing more.
     const fresh = !S.puzzleDays.includes(L.modeKey);
@@ -811,6 +814,7 @@ export function win(): void {
     L.earned = fresh ? 100 + Math.min(10, puzzleStreak(S.puzzleDays, L.modeKey)) * 10 : 0;
   } else if (L.mode === 'rush') {
     L.earned = Math.min(300, L.score * 3);
+    if (L.score > 0 && L.score >= S.rushBest) recordRush(L.score);
     S.rushBest = Math.max(S.rushBest, L.score);
     S.rushRuns++;
   } else if (L.mode === 'boss') {

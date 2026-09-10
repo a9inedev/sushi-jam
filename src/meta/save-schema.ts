@@ -10,14 +10,16 @@
      v7  data gains puzzleDays, rushBest, rushRuns, zenLevel, zenWins (the side modes); stats carry a mode
      v8  data gains themesSeen and decorRewards (the restaurant journey)
      v9  data gains events (per-event progress) and season (the pass)
+     v10 data gains profile, bestStreak and lbQueue (leaderboards and the share card)
 */
 
 import { hashStr } from '../engine/rng';
 import { emptySeason, type EventProgress, type SeasonState } from '../data/events-schema';
+import { cleanQueue, type QueuedScore } from './leaderboards-core';
 import { THEMES } from '../data/themes';
 import type { MechKind, StatRecord } from '../engine/types';
 
-export const SAVE_VERSION = 9;
+export const SAVE_VERSION = 10;
 
 export interface Inventory {
   vip: number;
@@ -70,6 +72,10 @@ export interface SaveState {
   /** v9: live event progress by event id, and the season pass. */
   events: Record<string, EventProgress>;
   season: SeasonState;
+  /** v10: the public name and diner avatar, the best level streak, scores waiting to post. */
+  profile: { name: string; avatar: number };
+  bestStreak: number;
+  lbQueue: QueuedScore[];
 }
 
 export function defaultSave(): SaveState {
@@ -110,6 +116,9 @@ export function defaultSave(): SaveState {
     decorRewards: [],
     events: {},
     season: emptySeason(),
+    profile: { name: '', avatar: 0 },
+    bestStreak: 0,
+    lbQueue: [],
   };
 }
 
@@ -233,6 +242,16 @@ export function migrateV8toV9(v8: Blob): Blob {
   };
 }
 
+/** v10 adds the profile, the best streak (seeded from the current one) and the score queue. */
+export function migrateV9toV10(v9: Blob): Blob {
+  return {
+    ...v9,
+    profile: { name: '', avatar: 0 },
+    bestStreak: typeof v9.streak === 'number' && v9.streak > 0 ? Math.floor(v9.streak) : 0,
+    lbQueue: [],
+  };
+}
+
 /** Keyed by the version the migration starts from. */
 export const MIGRATIONS: Record<number, Migration> = {
   1: migrateV1toV2,
@@ -243,6 +262,7 @@ export const MIGRATIONS: Record<number, Migration> = {
   6: migrateV6toV7,
   7: migrateV7toV8,
   8: migrateV8toV9,
+  9: migrateV9toV10,
 };
 
 /** Which schema a parsed blob belongs to, or null if it is not a save at all. */
@@ -342,6 +362,20 @@ export function normalize(x: unknown): SaveState {
     decorRewards: themeList('decorRewards'),
     events: cleanEvents(o.events),
     season: cleanSeason(o.season),
+    profile: cleanProfile(o.profile),
+    bestStreak: int('bestStreak', 0, d.bestStreak),
+    lbQueue: cleanQueue(o.lbQueue),
+  };
+}
+
+function cleanProfile(x: unknown): { name: string; avatar: number } {
+  const d = { name: '', avatar: 0 };
+  if (!x || typeof x !== 'object') return d;
+  const p = x as Record<string, unknown>;
+  return {
+    name: typeof p.name === 'string' ? p.name.trim().slice(0, 16) : d.name,
+    avatar:
+      typeof p.avatar === 'number' && Number.isInteger(p.avatar) && p.avatar >= 0 && p.avatar < 7 ? p.avatar : d.avatar,
   };
 }
 

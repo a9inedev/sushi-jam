@@ -38,20 +38,5 @@ export const COIN_POS = { x: 364, y: 38 };
 export const BOOST_Y = 514;
 export const BOOST_H = 42;
 
-export const GHOST_NAMES = [
-  'Aiko',
-  'Marco',
-  'Priya',
-  'Tomas',
-  'Yuki',
-  'Lena',
-  'Omar',
-  'Sofia',
-  'Kenji',
-  'Nadia',
-  'Felix',
-  'Hana',
-];
-
 export const SAVE_KEY = 'sushijam.v2';
 export const LEGACY_SAVE_KEY = 'sushijam.v1';

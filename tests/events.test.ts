@@ -174,7 +174,7 @@ describe('season pass', () => {
 
 describe('save v9', () => {
   it('adds events progress and the season with defaults and keeps them through normalize', () => {
-    expect(SAVE_VERSION).toBe(9);
+    expect(SAVE_VERSION).toBeGreaterThanOrEqual(9);
     const v8 = { ...(defaultSave() as unknown as Record<string, unknown>) };
     delete v8.events;
     delete v8.season;
