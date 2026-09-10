@@ -20,6 +20,8 @@ export interface CurveLevel {
   visibleNext: number;
   /** Appetite range, inclusive. */
   app: [number, number];
+  /** Coins for winning the level. Rows without it get the legacy 50 + 2n. */
+  reward: number;
   /** Fraction of the grid the generator tries to fill. */
   fill: number;
   /** Belt speed in laps per second. */
@@ -91,9 +93,13 @@ export function validateCurve(x: unknown): { curve: Curve | null; error: string 
     if (!isPair(e.band, 0, 1, false)) return bad(`${at}: band must be [lo, hi] in 0..1`);
     const fail = e.fail as number;
     if (fail < e.band[0] || fail > e.band[1]) return bad(`${at}: fail target ${fail} is outside its band`);
+    if (e.reward !== undefined && (!isNum(e.reward, 0, 5000) || !Number.isInteger(e.reward)))
+      return bad(`${at}: reward must be an integer in 0..5000`);
+    const reward = e.reward === undefined ? 50 + (i + 1) * 2 : (e.reward as number);
     levels.push({
       n: i + 1,
       fail,
+      reward,
       band: [e.band[0], e.band[1]],
       rows: e.rows as number,
       cols: e.cols as number,

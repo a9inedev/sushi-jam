@@ -9,7 +9,8 @@ import { sfx } from '../audio/audio';
 import { COIN_POS, COLORS, GRID, KITCHEN, SEAT_Y, W } from '../data/constants';
 import { setActiveTheme } from '../data/theme-state';
 import { themeFor } from '../data/themes';
-import { COST } from '../data/products';
+import { COST, ECON, puzzleReward, rushReward, streakBonus } from '../data/products';
+import { curveFor } from '../data/curve';
 import { t } from '../i18n';
 import { eventsOnBoss, eventsOnPlate, eventsOnWin } from '../meta/events';
 import { recordRush, recordWeekly } from '../meta/leaderboards';
@@ -36,7 +37,6 @@ import {
   RUSH_SPAWN_DELAY,
   rushDiner,
   rushPlateColor,
-  ZEN_COIN_SHARE,
 } from './modes-core';
 import { G, cur, setExpr, showAd, toast } from './state';
 import type {
@@ -796,8 +796,8 @@ export function win(): void {
   if (L.mode === 'level') {
     S.streak++;
     S.bestStreak = Math.max(S.bestStreak, S.streak);
-    const sb = Math.min(50, (S.streak - 1) * 10);
-    L.earned = 50 + L.n * 2 + sb;
+    const sb = streakBonus(S.streak);
+    L.earned = curveFor(L.n).reward + sb;
     L.streakBonus = sb;
     S.level = Math.max(S.level, L.n + 1);
     S.best = Math.max(S.best, S.level);
@@ -811,17 +811,17 @@ export function win(): void {
       S.puzzleDays.sort();
       if (S.puzzleDays.length > 400) S.puzzleDays.splice(0, S.puzzleDays.length - 400);
     }
-    L.earned = fresh ? 100 + Math.min(10, puzzleStreak(S.puzzleDays, L.modeKey)) * 10 : 0;
+    L.earned = fresh ? puzzleReward(puzzleStreak(S.puzzleDays, L.modeKey)) : 0;
   } else if (L.mode === 'rush') {
-    L.earned = Math.min(300, L.score * 3);
+    L.earned = rushReward(L.score);
     if (L.score > 0 && L.score >= S.rushBest) recordRush(L.score);
     S.rushBest = Math.max(S.rushBest, L.score);
     S.rushRuns++;
   } else if (L.mode === 'boss') {
-    L.earned = 100;
+    L.earned = ECON.boss.coins;
     eventsOnBoss(L.modeKey);
   } else {
-    L.earned = Math.round((50 + L.n * 2) * ZEN_COIN_SHARE);
+    L.earned = Math.round(curveFor(L.n).reward * ECON.zen.share);
     S.zenLevel = Math.max(S.zenLevel, L.n + 1);
     S.zenWins++;
   }

@@ -1,10 +1,11 @@
 import { G } from '../engine/state';
 import { todayKey, weekKey, yesterdayKey } from '../engine/util';
+import { dailyReward as dailyCoins } from '../data/products';
 import { S, save } from './save';
 
-/** Daily bonus: 100 coins on day one, +25 per consecutive day up to day seven. */
+/** Daily bonus: products.json daily.base on day one, rising by daily.step per consecutive day. */
 export function dailyReward(streak: number): number {
-  return 100 + Math.min(6, streak - 1) * 25;
+  return dailyCoins(streak);
 }
 
 export function checkDaily(): void {

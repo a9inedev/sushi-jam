@@ -37,6 +37,7 @@ export function legacyLevel(n: number): CurveLevel {
   return {
     n,
     fail: TARGET[tier],
+    reward: 50 + n * 2,
     band: BAND[tier],
     rows,
     cols,

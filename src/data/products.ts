@@ -1,10 +1,43 @@
+/* The catalogue and every coin number the game uses, read from products.json so the economy model
+   (tools/economy.mjs) and the game share one source. Nothing here decides when coins move; rules.ts and the
+   meta modules do, using these numbers. */
+
 import type { BoosterKind } from '../engine/types';
 import type { SaveState } from '../meta/save';
-
-/** Coin price of each booster when the player has none in inventory. */
-export const COST: Record<BoosterKind, number> = { vip: 150, takeout: 200, sendback: 80 };
+import data from './products.json';
 
 export type ProductId = 'starter' | 'coins1' | 'coins2' | 'rescue' | 'noads' | 'season';
+
+export interface Economy {
+  start: { coins: number; inv: Record<BoosterKind, number> };
+  boosters: Record<BoosterKind, number>;
+  win: { base: number; slope: number; streakStep: number; streakMax: number };
+  daily: { base: number; step: number; maxDays: number };
+  puzzle: { base: number; perStreakDay: number; maxStreak: number };
+  rush: { perPlate: number; cap: number };
+  zen: { share: number };
+  boss: { coins: number };
+  rescue: { coins: number };
+}
+
+interface ProductJson {
+  id: string;
+  storeId: string;
+  name: string;
+  price: string;
+  desc: string;
+  kind: 'consumable' | 'entitlement';
+  entitlement?: string;
+  coins?: number;
+  boosters?: Partial<Record<BoosterKind, number>>;
+  flag?: 'noAds' | 'seasonPremium';
+}
+
+/** Every tunable coin number. */
+export const ECON: Economy = data as unknown as Economy;
+
+/** Coin price of each booster when the player has none in inventory. */
+export const COST: Record<BoosterKind, number> = ECON.boosters;
 
 export interface Product {
   id: ProductId;
@@ -20,72 +53,26 @@ export interface Product {
   grant: (s: SaveState) => void;
 }
 
-/** The catalogue. Order is the shop order. */
-export const PRODUCTS: Product[] = [
-  {
-    id: 'starter',
-    storeId: 'sushijam.starter',
-    name: 'Starter Pack',
-    price: '$1.99',
-    desc: '600 coins + 1 of each booster',
-    kind: 'consumable',
-    grant: (s) => {
-      s.coins += 600;
-      s.inv.vip++;
-      s.inv.takeout++;
-      s.inv.sendback++;
-    },
-  },
-  {
-    id: 'coins1',
-    storeId: 'sushijam.coins.pouch',
-    name: 'Coin Pouch',
-    price: '$1.99',
-    desc: '500 coins',
-    kind: 'consumable',
-    grant: (s) => void (s.coins += 500),
-  },
-  {
-    id: 'coins2',
-    storeId: 'sushijam.coins.chest',
-    name: 'Coin Chest',
-    price: '$7.99',
-    desc: '2,600 coins',
-    kind: 'consumable',
-    grant: (s) => void (s.coins += 2600),
-  },
-  {
-    id: 'rescue',
-    storeId: 'sushijam.rescue',
-    name: "Chef's Rescue",
-    price: '$4.99',
-    desc: '+1 seat, a diner served, belt cleared, +200 coins',
-    kind: 'consumable',
-    // The seat, the served diner and the cleared belt are applied by the fail card; the coins are the grant.
-    grant: (s) => void (s.coins += 200),
-  },
-  {
-    id: 'noads',
-    storeId: 'sushijam.noads',
-    name: 'No Ads',
-    price: '$6.99',
-    desc: 'Removes ad breaks between levels',
-    kind: 'entitlement',
-    entitlement: 'no_ads',
-    grant: (s) => void (s.noAds = true),
-  },
-  {
-    id: 'season',
-    storeId: 'sushijam.season',
-    name: 'Season Pass',
-    price: '$9.99',
-    desc: 'Premium track for the current season',
-    // A consumable per season: the premium flag lives with the season and is re-granted on restore from a
-    // transaction dated inside the season's window.
-    kind: 'consumable',
-    grant: (s) => void (s.season.premium = true),
-  },
-];
+function grantOf(p: ProductJson): (s: SaveState) => void {
+  return (s) => {
+    if (p.coins) s.coins += p.coins;
+    if (p.boosters) for (const [k, n] of Object.entries(p.boosters)) s.inv[k as BoosterKind] += n || 0;
+    if (p.flag === 'noAds') s.noAds = true;
+    if (p.flag === 'seasonPremium') s.season.premium = true;
+  };
+}
+
+/** The catalogue, in shop order. */
+export const PRODUCTS: Product[] = (data.products as ProductJson[]).map((p) => ({
+  id: p.id as ProductId,
+  storeId: p.storeId,
+  name: p.name,
+  price: p.price,
+  desc: p.desc,
+  kind: p.kind,
+  entitlement: p.entitlement as 'no_ads' | undefined,
+  grant: grantOf(p),
+}));
 
 export function productById(id: string): Product | undefined {
   return PRODUCTS.find((p) => p.id === id);
@@ -93,4 +80,22 @@ export function productById(id: string): Product | undefined {
 
 export function productByStoreId(storeId: string): Product | undefined {
   return PRODUCTS.find((p) => p.storeId === storeId);
+}
+
+/* ---------- reward formulas, one place ---------- */
+
+export function streakBonus(streak: number): number {
+  return Math.min(ECON.win.streakMax, Math.max(0, streak - 1) * ECON.win.streakStep);
+}
+
+export function dailyReward(dayStreak: number): number {
+  return ECON.daily.base + Math.min(ECON.daily.maxDays - 1, Math.max(0, dayStreak - 1)) * ECON.daily.step;
+}
+
+export function puzzleReward(puzzleStreak: number): number {
+  return ECON.puzzle.base + Math.min(ECON.puzzle.maxStreak, puzzleStreak) * ECON.puzzle.perStreakDay;
+}
+
+export function rushReward(score: number): number {
+  return Math.min(ECON.rush.cap, score * ECON.rush.perPlate);
 }
