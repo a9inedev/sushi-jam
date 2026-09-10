@@ -106,7 +106,7 @@ describe('themes', () => {
 
 describe('save v8', () => {
   it('adds the journey fields and keeps them through normalize', () => {
-    expect(SAVE_VERSION).toBe(8);
+    expect(SAVE_VERSION).toBeGreaterThanOrEqual(8);
     const v7 = { ...(defaultSave() as unknown as Record<string, unknown>) };
     delete v7.themesSeen;
     delete v7.decorRewards;

@@ -29,6 +29,13 @@ export const PRODUCTS: Product[] = [
   { id: 'coins1', name: 'Coin Pouch', price: '$1.99', desc: '500 coins', grant: (s) => void (s.coins += 500) },
   { id: 'coins2', name: 'Coin Chest', price: '$7.99', desc: '2,600 coins', grant: (s) => void (s.coins += 2600) },
   {
+    id: 'season',
+    name: 'Season Pass',
+    price: '$4.99',
+    desc: 'Premium track for the current season',
+    grant: (s) => void (s.season.premium = true),
+  },
+  {
     id: 'noads',
     name: 'No Ads',
     price: '$6.99',

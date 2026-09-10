@@ -11,6 +11,7 @@ import { setActiveTheme } from '../data/theme-state';
 import { themeFor } from '../data/themes';
 import { COST } from '../data/products';
 import { t } from '../i18n';
+import { eventsOnBoss, eventsOnPlate, eventsOnWin } from '../meta/events';
 import { S, save } from '../meta/save';
 import { haptic } from '../platform/native';
 import { BELT } from './belt';
@@ -96,7 +97,7 @@ export function newLevelDef(lv: LevelDef, mode: GameMode = modeOf(lv), modeKey =
     rules = rulesOf(P);
   // The restaurant follows the level; rush plays in the player's current one. The first level of a new
   // restaurant opens with a reveal, once.
-  const th = mode === 'rush' ? themeFor(S.level) : themeFor(n);
+  const th = mode === 'rush' || mode === 'boss' ? themeFor(S.level) : themeFor(n);
   setActiveTheme(th);
   // The first restaurant needs no reveal: the tutorial opens it.
   const reveal = mode === 'level' && th.index > 0 && n === th.from && !S.themesSeen.includes(th.id) ? th.id : null;
@@ -625,6 +626,7 @@ export function grab(p: Plate, d: Diner): void {
         L.score++;
         L.stat.score = L.score;
       }
+      eventsOnPlate(p.color);
       if (p.special) markSurplus();
       d.bump = 1;
       d.bubblePop = 1;
@@ -811,6 +813,9 @@ export function win(): void {
     L.earned = Math.min(300, L.score * 3);
     S.rushBest = Math.max(S.rushBest, L.score);
     S.rushRuns++;
+  } else if (L.mode === 'boss') {
+    L.earned = 100;
+    eventsOnBoss(L.modeKey);
   } else {
     L.earned = Math.round((50 + L.n * 2) * ZEN_COIN_SHARE);
     S.zenLevel = Math.max(S.zenLevel, L.n + 1);
@@ -818,6 +823,7 @@ export function win(): void {
   }
   S.coins += L.earned;
   G.coinPop = 1;
+  eventsOnWin(L.mode);
   logStat('win');
   save();
   sfx.win();

@@ -4,6 +4,7 @@
 import { dateKey, makeDaily, makeRush, makeZen } from '../engine/modes-core';
 import { newLevel, newLevelDef } from '../engine/rules';
 import { cur, G } from '../engine/state';
+import { startBoss } from './events';
 import { S } from './save';
 
 export type SideMode = 'daily' | 'rush' | 'zen';
@@ -23,6 +24,7 @@ export function restartLevel(): void {
   if (L.mode === 'level') newLevel(L.n);
   else if (L.mode === 'daily') startMode('daily', L.modeKey);
   else if (L.mode === 'rush') startMode('rush');
+  else if (L.mode === 'boss') startBoss(L.modeKey);
   else newLevelDef(makeZen(L.n), 'zen');
 }
 

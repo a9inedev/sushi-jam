@@ -23,7 +23,7 @@ export type LevelStatus = 'intro' | 'reveal' | 'mech' | 'play' | 'failing' | 'fa
 export type FailReason = 'jam' | 'wasabi' | 'rush' | 'reserved' | 'chain' | 'reverse' | 'picky';
 export type SimResult = 'win' | 'fail';
 /** The level loop, or one of the side modes (docs/modes.md). */
-export type GameMode = 'level' | 'daily' | 'rush' | 'zen';
+export type GameMode = 'level' | 'daily' | 'rush' | 'zen' | 'boss';
 export type Rng = () => number;
 
 /** Level-wide rules. chain: seats 1 and 2 share one queue (the back seat waits). rush: the plate index at
