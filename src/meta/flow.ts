@@ -3,6 +3,7 @@
 import { newLevel } from '../engine/rules';
 import { maybeQueuePrompt } from './notify';
 import { queueStarter } from './offers';
+import { withLife } from './lives';
 import { G, cur, runPending, showAd } from '../engine/state';
 import { S, save } from './save';
 
@@ -19,9 +20,11 @@ export function afterWin(): void {
       G.pending.push(() => showAd('inter', runPending));
     }
   }
-  G.pending.push(() => {
-    newLevel(nn);
-    save();
-  });
+  G.pending.push(() =>
+    withLife(() => {
+      newLevel(nn);
+      save();
+    })
+  );
   runPending();
 }

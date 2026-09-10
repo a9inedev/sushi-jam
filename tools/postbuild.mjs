@@ -16,9 +16,10 @@ if (local.length) {
 // The curve is published next to the page so installed apps can fetch tuning changes (docs/curve.md).
 fs.copyFileSync(path.resolve('src/data/curve.json'), path.join(path.dirname(out), 'curve.json'));
 fs.copyFileSync(path.resolve('src/data/events.json'), path.join(path.dirname(out), 'events.json'));
+fs.copyFileSync(path.resolve('src/data/flags.json'), path.join(path.dirname(out), 'flags.json'));
 const extra = fs
   .readdirSync(path.dirname(out))
-  .filter((f) => f !== 'index.html' && f !== 'curve.json' && f !== 'events.json');
+  .filter((f) => f !== 'index.html' && f !== 'curve.json' && f !== 'events.json' && f !== 'flags.json');
 if (extra.length) console.warn('postbuild: extra files in dist (not needed by the page): ' + extra.join(', '));
 const bytes = Buffer.byteLength(html);
 console.log(`postbuild: dist/index.html is ${(bytes / 1024).toFixed(1)} KB, single file`);

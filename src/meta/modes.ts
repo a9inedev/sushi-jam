@@ -4,7 +4,9 @@
 import { dateKey, makeDaily, makeRush, makeZen } from '../engine/modes-core';
 import { newLevel, newLevelDef } from '../engine/rules';
 import { cur, G } from '../engine/state';
+import { track } from './analytics';
 import { startBoss } from './events';
+import { withLife } from './lives';
 import { S } from './save';
 
 export type SideMode = 'daily' | 'rush' | 'zen';
@@ -21,8 +23,10 @@ export function startMode(mode: SideMode, key = dateKey()): void {
 export function restartLevel(): void {
   const L = cur();
   G.screen = null;
-  if (L.mode === 'level') newLevel(L.n);
-  else if (L.mode === 'daily') startMode('daily', L.modeKey);
+  if (L.mode === 'level') {
+    track('retry', { n: L.n });
+    withLife(() => newLevel(L.n));
+  } else if (L.mode === 'daily') startMode('daily', L.modeKey);
   else if (L.mode === 'rush') startMode('rush');
   else if (L.mode === 'boss') startBoss(L.modeKey);
   else newLevelDef(makeZen(L.n), 'zen');
@@ -32,5 +36,5 @@ export function restartLevel(): void {
 export function leaveMode(): void {
   G.screen = null;
   G.pending = [];
-  newLevel(S.level);
+  withLife(() => newLevel(S.level));
 }

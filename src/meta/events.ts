@@ -27,6 +27,7 @@ import { newLevelDef } from '../engine/rules';
 import { G, toast } from '../engine/state';
 import type { GameMode } from '../engine/types';
 import { t } from '../i18n';
+import { grantUnlimitedLives } from './lives';
 import { S, save } from './save';
 
 export const EVENTS_CACHE_KEY = 'sushijam.events';
@@ -248,6 +249,7 @@ function grant(r: Reward): void {
   if (r.takeout) S.inv.takeout += r.takeout;
   if (r.sendback) S.inv.sendback += r.sendback;
   if (r.points) addSeasonPoints(r.points, true);
+  if (r.livesMinutes) grantUnlimitedLives(r.livesMinutes);
 }
 
 export function rewardText(r: Reward): string {
@@ -257,6 +259,7 @@ export function rewardText(r: Reward): string {
   if (r.vip) parts.push(t('events.reward.booster', { n: r.vip, kind: t('booster.vip') }));
   if (r.takeout) parts.push(t('events.reward.booster', { n: r.takeout, kind: t('booster.takeout') }));
   if (r.sendback) parts.push(t('events.reward.booster', { n: r.sendback, kind: t('booster.sendback') }));
+  if (r.livesMinutes) parts.push(t('events.reward.lives', { n: r.livesMinutes }));
   return parts.join(' · ');
 }
 

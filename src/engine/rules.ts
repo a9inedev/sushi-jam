@@ -14,6 +14,8 @@ import { curveFor } from '../data/curve';
 import { t } from '../i18n';
 import { eventsOnBoss, eventsOnPlate, eventsOnWin } from '../meta/events';
 import { recordRush, recordWeekly } from '../meta/leaderboards';
+import { loseLife } from '../meta/lives';
+import { track } from '../meta/analytics';
 import { S, save } from '../meta/save';
 import { haptic } from '../platform/native';
 import { BELT } from './belt';
@@ -185,6 +187,7 @@ export function newLevelDef(lv: LevelDef, mode: GameMode = modeOf(lv), modeKey =
     }
   }
   if (n === 4) toast(t('toast.jamRule'), 3.6, 1.5);
+  track('level_start', { n, mode });
 }
 
 export function layoutSeats(): void {
@@ -781,6 +784,8 @@ export function fail(reason: FailReason): void {
   L.shake = reducedMotion() ? 0 : 1;
   L.armed = null;
   S.streak = 0;
+  if (L.mode === 'level') loseLife();
+  track('fail', { n: L.n, mode: L.mode });
   sfx.fail();
   haptic('heavy');
   L.stat.fails = (L.stat.fails || 0) + 1;
@@ -827,6 +832,7 @@ export function win(): void {
   }
   S.coins += L.earned;
   G.coinPop = 1;
+  track('win', { n: L.n, mode: L.mode });
   eventsOnWin(L.mode);
   logStat('win');
   save();

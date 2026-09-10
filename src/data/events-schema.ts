@@ -11,6 +11,8 @@ export interface Reward {
   vip?: number;
   takeout?: number;
   sendback?: number;
+  /** Minutes of unlimited lives (variant B; a no-op in A). */
+  livesMinutes?: number;
 }
 
 export interface EventDef {
@@ -71,7 +73,7 @@ export interface SeasonState {
 export const EVENTS_VERSION = 1;
 export const POINTS_PER_WIN: Record<string, number> = { level: 10, daily: 15, zen: 4, rush: 5, boss: 0 };
 
-const REWARD_KEYS: (keyof Reward)[] = ['coins', 'points', 'vip', 'takeout', 'sendback'];
+const REWARD_KEYS: (keyof Reward)[] = ['coins', 'points', 'vip', 'takeout', 'sendback', 'livesMinutes'];
 
 function parseDate(v: unknown): number | null {
   if (typeof v === 'number' && Number.isFinite(v)) return v;

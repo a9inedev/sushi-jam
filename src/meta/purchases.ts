@@ -15,6 +15,7 @@ import {
   type StoreMockOptions,
   type StoreProvider,
 } from '../platform/store';
+import { track } from './analytics';
 import { eventsConfig } from './events';
 import { flagsFromStore, grantOnce } from './purchases-core';
 import { S, save } from './save';
@@ -106,6 +107,7 @@ export async function buy(id: ProductId): Promise<PurchaseResult & { granted: bo
       const granted = grant(id, r.txId || `${p.storeId}:${Date.now()}`);
       if (r.info) applyStoreInfo(r.info);
       if (granted) {
+        track('purchase', { id });
         G.coinPop = 1;
         sfx.cash();
         toast(

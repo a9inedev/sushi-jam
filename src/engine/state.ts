@@ -33,7 +33,8 @@ export type ScreenType =
   | 'editor'
   | 'events'
   | 'profile'
-  | 'notify';
+  | 'notify'
+  | 'lives';
 export type MapTab = 'path' | 'modes' | 'decor' | 'album' | 'weekly' | 'game' | 'account' | 'reminders';
 
 export interface Screen {

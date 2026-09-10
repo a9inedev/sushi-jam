@@ -1,0 +1,5 @@
+{
+  "v": 1,
+  "lives": { "variant": "split", "split": 50, "max": 5, "refillMinutes": 30 },
+  "analytics": { "enabled": true }
+}

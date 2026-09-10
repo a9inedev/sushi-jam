@@ -13,6 +13,7 @@
      v10 data gains profile, bestStreak and lbQueue (leaderboards and the share card)
      v11 data gains notif (reminder opt-in and per-type switches)
      v12 data gains purchases (granted transaction ids) and starter (offer state); starterShown is folded in
+     v13 data gains installId (anonymous, for experiment arms), lives and metrics
 */
 
 import { hashStr } from '../engine/rng';
@@ -21,10 +22,12 @@ import { cleanQueue, type QueuedScore } from './leaderboards-core';
 import { cleanPrefs, defaultPrefs, type NotifyPrefs } from './notify-core';
 import { cleanStarter, defaultStarter, type StarterState } from './offers-core';
 import { cleanPurchases, defaultPurchases, type PurchaseRecord } from './purchases-core';
+import { cleanLives, defaultLives, type LivesState } from './lives-core';
+import { cleanMetrics, emptyMetrics, type Metrics } from './analytics-core';
 import { THEMES } from '../data/themes';
 import type { MechKind, StatRecord } from '../engine/types';
 
-export const SAVE_VERSION = 12;
+export const SAVE_VERSION = 13;
 
 export interface Inventory {
   vip: number;
@@ -85,6 +88,10 @@ export interface SaveState {
   /** v12: store transactions already granted, and the starter offer's state. */
   purchases: PurchaseRecord;
   starter: StarterState;
+  /** v13: an anonymous id for experiment arms, the lives stock, the analytics counters. */
+  installId: string;
+  lives: LivesState;
+  metrics: Metrics;
 }
 
 export function defaultSave(): SaveState {
@@ -130,7 +137,23 @@ export function defaultSave(): SaveState {
     notif: defaultPrefs(),
     purchases: defaultPurchases(),
     starter: defaultStarter(),
+    installId: newInstallId(),
+    lives: defaultLives(),
+    metrics: emptyMetrics(),
   };
+}
+
+/** 24 hex characters, random, never sent with anything that names the player. */
+export function newInstallId(): string {
+  let s = '';
+  const c = (globalThis as { crypto?: { getRandomValues?: (a: Uint8Array) => Uint8Array } }).crypto;
+  if (c && typeof c.getRandomValues === 'function') {
+    const a = c.getRandomValues(new Uint8Array(12));
+    for (const b of a) s += b.toString(16).padStart(2, '0');
+    return s;
+  }
+  while (s.length < 24) s += Math.floor(Math.random() * 16).toString(16);
+  return s;
 }
 
 export interface SaveEnvelope {
@@ -281,6 +304,16 @@ export function migrateV11toV12(v11: Blob, now = Date.now()): Blob {
   };
 }
 
+/** v13 adds the anonymous install id, the lives stock and the analytics counters. */
+export function migrateV12toV13(v12: Blob): Blob {
+  return {
+    ...v12,
+    installId: typeof v12.installId === 'string' && v12.installId ? v12.installId : newInstallId(),
+    lives: v12.lives && typeof v12.lives === 'object' ? v12.lives : defaultLives(),
+    metrics: v12.metrics && typeof v12.metrics === 'object' ? v12.metrics : emptyMetrics(),
+  };
+}
+
 /** Keyed by the version the migration starts from. */
 export const MIGRATIONS: Record<number, Migration> = {
   1: migrateV1toV2,
@@ -294,6 +327,7 @@ export const MIGRATIONS: Record<number, Migration> = {
   9: migrateV9toV10,
   10: migrateV10toV11,
   11: migrateV11toV12,
+  12: migrateV12toV13,
 };
 
 /** Which schema a parsed blob belongs to, or null if it is not a save at all. */
@@ -398,6 +432,9 @@ export function normalize(x: unknown): SaveState {
     notif: cleanPrefs(o.notif),
     purchases: cleanPurchases(o.purchases),
     starter: cleanStarter(o.starter),
+    installId: typeof o.installId === 'string' && o.installId.length >= 16 ? o.installId : newInstallId(),
+    lives: cleanLives(o.lives),
+    metrics: cleanMetrics(o.metrics),
   };
 }
 
