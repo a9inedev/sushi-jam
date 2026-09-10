@@ -447,5 +447,16 @@
   "toast.bought": "{name} aggiunto",
   "product.rescue.name": "Salvataggio dello chef",
   "product.rescue.desc": "+1 posto, un cliente servito, nastro svuotato, +200 monete",
-  "settings.restorePurchasesReal": "Accedi con l'account dello store usato per l'acquisto"
+  "settings.restorePurchasesReal": "Accedi con l'account dello store usato per l'acquisto",
+  "lives.title": "Vite finite",
+  "lives.next": "Prossima vita tra {t}",
+  "lives.ready": "Una vita è pronta",
+  "lives.rule": "Hai {n} vite. Un fallimento ne costa una; una torna ogni 30 minuti.",
+  "lives.play": "Gioca",
+  "lives.ad": "Guarda un annuncio · +1 vita",
+  "lives.wait": "Aspetta sulla mappa",
+  "lives.events": "Gli eventi possono dare vite illimitate per un po'.",
+  "lives.unlimitedShort": "Illimitate",
+  "lives.unlimitedGranted": "Vite illimitate per {n} minuti",
+  "events.reward.lives": "{n} min di vite illimitate"
 }

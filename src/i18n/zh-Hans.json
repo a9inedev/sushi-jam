@@ -442,5 +442,16 @@
   "toast.bought": "已添加 {name}",
   "product.rescue.name": "主厨救援",
   "product.rescue.desc": "+1 座位、上一位食客、清空传送带、+200 金币",
-  "settings.restorePurchasesReal": "请用购买时的商店账户登录"
+  "settings.restorePurchasesReal": "请用购买时的商店账户登录",
+  "lives.title": "生命用完了",
+  "lives.next": "下一条生命：{t}",
+  "lives.ready": "生命已恢复",
+  "lives.rule": "你有 {n} 条生命。失败扣一条，每 30 分钟恢复一条。",
+  "lives.play": "开始",
+  "lives.ad": "看广告 · +1 生命",
+  "lives.wait": "在地图上等待",
+  "lives.events": "活动可临时提供无限生命。",
+  "lives.unlimitedShort": "无限",
+  "lives.unlimitedGranted": "无限生命 {n} 分钟",
+  "events.reward.lives": "{n} 分钟无限生命"
 }

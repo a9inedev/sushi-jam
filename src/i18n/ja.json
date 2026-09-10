@@ -442,5 +442,16 @@
   "toast.bought": "{name}を追加しました",
   "product.rescue.name": "シェフの救援",
   "product.rescue.desc": "席+1、お客1人を提供、ベルトをクリア、+200コイン",
-  "settings.restorePurchasesReal": "購入時のストアアカウントでサインインしてください"
+  "settings.restorePurchasesReal": "購入時のストアアカウントでサインインしてください",
+  "lives.title": "ライフがありません",
+  "lives.next": "次のライフまで {t}",
+  "lives.ready": "ライフが回復しました",
+  "lives.rule": "ライフは{n}つ。失敗で1つ減り、30分ごとに1つ回復します。",
+  "lives.play": "プレイ",
+  "lives.ad": "広告を見る · ライフ+1",
+  "lives.wait": "マップで待つ",
+  "lives.events": "イベントで一定時間ライフ無制限になることがあります。",
+  "lives.unlimitedShort": "無制限",
+  "lives.unlimitedGranted": "{n}分間ライフ無制限",
+  "events.reward.lives": "ライフ無制限 {n}分"
 }

@@ -16,7 +16,7 @@ import { buy, isDemoStore, priceOf, store } from '../meta/purchases';
 import { schedTier, isAuthored } from '../engine/levels';
 import { rng } from '../engine/rng';
 import { addCoins, newLevel } from '../engine/rules';
-import { cur, G, runPending, type MapTab, type Screen } from '../engine/state';
+import { cur, G, runPending, type MapTab, type Screen, toast } from '../engine/state';
 import { todayKey } from '../engine/util';
 import { t } from '../i18n';
 import { buyDecor, buyProduct } from '../meta/economy';
@@ -31,6 +31,10 @@ import { locale } from '../i18n';
 import { drawEditor, importJson, openEditor } from './editor';
 import { drawEventBanner, drawEventsScreen } from './events';
 import { drawNotifyPrompt } from './notify';
+import { drawLivesScreen } from './lives';
+import { analyticsReport, exportAnalytics, track } from '../meta/analytics';
+import { flagsStatus, livesOverride, livesVariant, setLivesOverride } from '../meta/flags';
+import { lives } from '../meta/lives';
 import { drawProfileScreen, drawRanksTab } from './ranks';
 import { drawConfirm, drawPause, drawSettings } from './modals';
 import { resetTutorial } from './tutorial';
@@ -94,6 +98,7 @@ function drawAd(sc: Screen): void {
       primary: true,
       onTap: () => {
         const f = sc.onDone;
+        track('ad', { kind: sc.kind || 'inter' });
         G.screen = null;
         if (f) f();
       },
@@ -255,6 +260,21 @@ function drawDev(): void {
   );
   line(t('dev.mechs', { list: lv.mechs.length ? lv.mechs.join(', ') : t('dev.none') }));
   line(t('dev.stats', { n: S.stats.length, w: S.weekly, s: S.streak, fps: Math.round(G.fps) }), '#5A4E45');
+  const lv13 = lives();
+  line(
+    t('dev.lives', {
+      v: livesVariant(),
+      src: livesOverride() ? 'override' : flagsStatus().source,
+      n: lv13.n,
+      max: lv13.max,
+    }),
+    '#5A4E45'
+  );
+  const rep = analyticsReport()[livesVariant()];
+  line(
+    t('dev.analytics', { s: rep.sessions, m: rep.avgSessionMin, r: rep.retriesPerFail, a: rep.adsPerSession }),
+    '#5A4E45'
+  );
   const bx = 50,
     bw = 184;
   const go = (n: number) => () => {
@@ -329,6 +349,24 @@ function drawDev(): void {
       sfx.ui();
       clearSave();
       location.reload();
+    },
+  });
+  button(bx, 634, bw, 44, t('dev.livesToggle', { v: livesOverride() || 'auto' }), null, {
+    tone: '#6A4C93',
+    onTap: () => {
+      sfx.ui();
+      const cur13 = livesOverride();
+      setLivesOverride(cur13 === null ? 'B' : cur13 === 'B' ? 'A' : null);
+    },
+  });
+  button(bx + 196, 634, bw, 44, t('dev.exportAnalytics'), null, {
+    tone: '#6A4C93',
+    onTap: () => {
+      sfx.ui();
+      const json = exportAnalytics();
+      const nav = navigator as Navigator & { clipboard?: { writeText: (s: string) => Promise<void> } };
+      if (nav.clipboard) void nav.clipboard.writeText(json).then(() => toast(t('dev.analyticsCopied'), 2));
+      else toast(t('dev.analyticsCopied'), 2);
     },
   });
   button(bx, 580, bw * 2 + 16, 44, t('dev.editor'), null, {
@@ -433,6 +471,7 @@ export function drawScreen(): void {
   else if (sc.type === 'events') drawEventsScreen(sc);
   else if (sc.type === 'profile') drawProfileScreen(sc);
   else if (sc.type === 'notify') drawNotifyPrompt(sc);
+  else if (sc.type === 'lives') drawLivesScreen(sc);
   else if (sc.type === 'map') drawMap(sc);
   else if (sc.type === 'settings') drawSettings(sc);
   else if (sc.type === 'pause') drawPause(sc);

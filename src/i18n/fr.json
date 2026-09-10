@@ -447,5 +447,16 @@
   "toast.bought": "{name} ajouté",
   "product.rescue.name": "Sauvetage du chef",
   "product.rescue.desc": "+1 place, un client servi, tapis vidé, +200 pièces",
-  "settings.restorePurchasesReal": "Connectez-vous avec le compte de la boutique utilisé pour l'achat"
+  "settings.restorePurchasesReal": "Connectez-vous avec le compte de la boutique utilisé pour l'achat",
+  "lives.title": "Plus de vies",
+  "lives.next": "Prochaine vie dans {t}",
+  "lives.ready": "Une vie est prête",
+  "lives.rule": "Vous avez {n} vies. Un échec en coûte une ; une revient toutes les 30 minutes.",
+  "lives.play": "Jouer",
+  "lives.ad": "Regarder une pub · +1 vie",
+  "lives.wait": "Attendre sur la carte",
+  "lives.events": "Les événements peuvent offrir des vies illimitées un moment.",
+  "lives.unlimitedShort": "Illimitées",
+  "lives.unlimitedGranted": "Vies illimitées pendant {n} minutes",
+  "events.reward.lives": "{n} min de vies illimitées"
 }

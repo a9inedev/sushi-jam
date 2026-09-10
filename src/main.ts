@@ -129,6 +129,37 @@ import { defaultPrefs, type NotifyType } from './meta/notify-core';
 import { notifyBackend, webNotify } from './platform/notifications';
 import type { ProductId } from './data/products';
 import type { StoreMockOptions } from './platform/store';
+import type { LivesState } from './meta/lives-core';
+import {
+  applyCachedFlags,
+  clearFlagsCache,
+  fetchRemoteFlags,
+  flags,
+  flagsStatus,
+  livesOverride,
+  livesVariant,
+  setFlagsUrl,
+  setLivesOverride,
+} from './meta/flags';
+import {
+  grantUnlimitedLives,
+  initLives,
+  lives,
+  livesCanPlay,
+  livesEnabled,
+  livesNextIn,
+  livesUnlimited,
+  setLives,
+} from './meta/lives';
+import {
+  analyticsReport,
+  endSession,
+  exportAnalytics,
+  heartbeat,
+  initAnalytics,
+  resetAnalytics,
+  track,
+} from './meta/analytics';
 import { buy, catalogue, initPurchases, installStoreMock, restorePurchases, store, storeMock } from './meta/purchases';
 import { closeTextField, textFieldOpen } from './ui/textfield';
 import { bindStatsBox, drawScreen } from './ui/screens';
@@ -192,6 +223,7 @@ function update(dt: number): void {
   keepAwake(playing);
   particles.update(G.screen ? 0 : dt);
   tickEvents();
+  heartbeat();
   for (let i = G.toasts.length - 1; i >= 0; i--) {
     const t = G.toasts[i];
     t.t += dt;
@@ -362,8 +394,11 @@ setCloudProvider(cloudProviderFor(platform));
 const loaded = load();
 applyCachedCurve(); // last validated remote tuning, before the first level is built
 applyCachedEvents();
+applyCachedFlags();
 void initLeaderboards();
 void initPurchases();
+initLives();
+initAnalytics();
 initNotifications();
 applyLanguage();
 initMotion();
@@ -382,6 +417,7 @@ bindInput();
 bindStatsBox();
 void fetchRemoteCurve(); // background; applies to the next level built
 void fetchRemoteEvents();
+void fetchRemoteFlags();
 const startLoop = () =>
   requestAnimationFrame((ts) => {
     frame(ts);
@@ -447,6 +483,26 @@ export interface DevApi {
   };
   editor: typeof editorApi;
   theme: () => string;
+  flags: {
+    state: () => unknown;
+    fetch: (url?: string) => Promise<string>;
+    setUrl: (url: string | null) => void;
+    reset: () => void;
+    setLives: (v: 'A' | 'B' | null) => void;
+  };
+  lives: {
+    state: () => unknown;
+    set: (patch: Partial<LivesState>) => unknown;
+    unlimited: (minutes: number) => void;
+    canPlay: () => boolean;
+  };
+  analytics: {
+    report: () => unknown;
+    export: () => string;
+    reset: () => void;
+    endSession: () => void;
+    track: (name: string) => void;
+  };
   store: {
     state: () => unknown;
     buy: (id: ProductId) => Promise<unknown>;
@@ -597,6 +653,32 @@ window.__SJ = {
   },
   editor: editorApi,
   theme: () => activeTheme().id,
+  flags: {
+    state: () => ({ ...flagsStatus(), flags: flags(), variant: livesVariant(), override: livesOverride() }),
+    fetch: (url) => fetchRemoteFlags(url ? { url } : {}),
+    setUrl: (url) => setFlagsUrl(url),
+    reset: () => clearFlagsCache(),
+    setLives: (v) => setLivesOverride(v),
+  },
+  lives: {
+    state: () => ({
+      ...lives(),
+      enabled: livesEnabled(),
+      unlimited: livesUnlimited(),
+      nextIn: livesNextIn(),
+      canPlay: livesCanPlay(),
+    }),
+    set: (patch) => setLives(patch),
+    unlimited: (minutes) => grantUnlimitedLives(minutes),
+    canPlay: () => livesCanPlay(),
+  },
+  analytics: {
+    report: () => analyticsReport(),
+    export: () => exportAnalytics(),
+    reset: () => resetAnalytics(),
+    endSession: () => endSession(),
+    track: (name) => track(name),
+  },
   store: {
     state: () => ({
       ...store,

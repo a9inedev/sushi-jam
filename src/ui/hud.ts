@@ -9,6 +9,7 @@ import { ctx } from '../render/canvas';
 import { coinIcon, rrect, textW, txt } from '../render/primitives';
 import { badge, boosterButton, button, iconBtn } from './buttons';
 import { drawHudEventBar } from './events';
+import { drawHudLives } from './lives';
 
 const TIER_KEY: Record<Tier, string> = {
   Easy: 'tier.easy',
@@ -70,6 +71,7 @@ export function drawHud(): void {
   if (L.mode === 'rush')
     txt(t('mode.rushScore', { n: L.score }), left ? 20 : W - 20, 74, 15, 800, GOLD, left ? 'left' : 'right', 'middle');
   else drawHudEventBar(left ? 20 : W - 20, 68, !left);
+  drawHudLives(left ? W - 20 : 20, 74, left);
   if (S.streak > 1 && L.mode === 'level') {
     const fx0 = left ? bx + bw + 12 : bx - 22;
     ctx.save();

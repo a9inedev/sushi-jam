@@ -452,5 +452,16 @@
   "toast.bought": "تمت إضافة {name}",
   "product.rescue.name": "إنقاذ الشيف",
   "product.rescue.desc": "مقعد +1، تقديم زبون، تفريغ السير، +200 عملة",
-  "settings.restorePurchasesReal": "سجّل الدخول بحساب المتجر الذي اشتريت به"
+  "settings.restorePurchasesReal": "سجّل الدخول بحساب المتجر الذي اشتريت به",
+  "lives.title": "نفدت الأرواح",
+  "lives.next": "الروح التالية خلال {t}",
+  "lives.ready": "روح جاهزة",
+  "lives.rule": "لديك {n} أرواح. الفشل يكلّف روحًا؛ وتعود واحدة كل 30 دقيقة.",
+  "lives.play": "العب",
+  "lives.ad": "شاهد إعلانًا · روح +1",
+  "lives.wait": "انتظر على الخريطة",
+  "lives.events": "قد تمنح الفعاليات أرواحًا غير محدودة لفترة.",
+  "lives.unlimitedShort": "غير محدودة",
+  "lives.unlimitedGranted": "أرواح غير محدودة لمدة {n} دقيقة",
+  "events.reward.lives": "{n} دقيقة أرواح غير محدودة"
 }

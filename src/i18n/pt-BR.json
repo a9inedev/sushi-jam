@@ -447,5 +447,16 @@
   "toast.bought": "{name} adicionado",
   "product.rescue.name": "Resgate do chef",
   "product.rescue.desc": "+1 assento, um cliente servido, esteira limpa, +200 moedas",
-  "settings.restorePurchasesReal": "Entre com a conta da loja usada na compra"
+  "settings.restorePurchasesReal": "Entre com a conta da loja usada na compra",
+  "lives.title": "Sem vidas",
+  "lives.next": "Próxima vida em {t}",
+  "lives.ready": "Uma vida está pronta",
+  "lives.rule": "Você tem {n} vidas. Falhar custa uma; uma volta a cada 30 minutos.",
+  "lives.play": "Jogar",
+  "lives.ad": "Ver um anúncio · +1 vida",
+  "lives.wait": "Esperar no mapa",
+  "lives.events": "Eventos podem dar vidas ilimitadas por um tempo.",
+  "lives.unlimitedShort": "Ilimitadas",
+  "lives.unlimitedGranted": "Vidas ilimitadas por {n} minutos",
+  "events.reward.lives": "{n} min de vidas ilimitadas"
 }

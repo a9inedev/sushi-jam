@@ -447,5 +447,16 @@
   "toast.bought": "{name} eklendi",
   "product.rescue.name": "Şefin kurtarması",
   "product.rescue.desc": "+1 koltuk, bir müşteri servis edilir, bant temizlenir, +200 altın",
-  "settings.restorePurchasesReal": "Satın aldığın mağaza hesabıyla giriş yap"
+  "settings.restorePurchasesReal": "Satın aldığın mağaza hesabıyla giriş yap",
+  "lives.title": "Can kalmadı",
+  "lives.next": "Sonraki can {t} sonra",
+  "lives.ready": "Bir can hazır",
+  "lives.rule": "{n} canın var. Başarısızlık bir can götürür; her 30 dakikada bir can gelir.",
+  "lives.play": "Oyna",
+  "lives.ad": "Reklam izle · +1 can",
+  "lives.wait": "Haritada bekle",
+  "lives.events": "Etkinlikler bir süreliğine sınırsız can verebilir.",
+  "lives.unlimitedShort": "Sınırsız",
+  "lives.unlimitedGranted": "{n} dakika sınırsız can",
+  "events.reward.lives": "{n} dk sınırsız can"
 }

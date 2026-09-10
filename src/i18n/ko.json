@@ -442,5 +442,16 @@
   "toast.bought": "{name} 추가됨",
   "product.rescue.name": "셰프의 구조",
   "product.rescue.desc": "자리 +1, 손님 1명 서빙, 벨트 비우기, +200 코인",
-  "settings.restorePurchasesReal": "구매할 때 쓴 스토어 계정으로 로그인하세요"
+  "settings.restorePurchasesReal": "구매할 때 쓴 스토어 계정으로 로그인하세요",
+  "lives.title": "라이프가 없어요",
+  "lives.next": "다음 라이프까지 {t}",
+  "lives.ready": "라이프가 준비됐어요",
+  "lives.rule": "라이프는 {n}개예요. 실패하면 하나 줄고, 30분마다 하나 돌아와요.",
+  "lives.play": "플레이",
+  "lives.ad": "광고 보기 · 라이프 +1",
+  "lives.wait": "지도에서 기다리기",
+  "lives.events": "이벤트에서 잠시 무제한 라이프를 받을 수 있어요.",
+  "lives.unlimitedShort": "무제한",
+  "lives.unlimitedGranted": "{n}분 동안 무제한 라이프",
+  "events.reward.lives": "무제한 라이프 {n}분"
 }

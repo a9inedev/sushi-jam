@@ -447,5 +447,16 @@
   "toast.bought": "{name} hinzugefügt",
   "product.rescue.name": "Chef-Rettung",
   "product.rescue.desc": "+1 Platz, ein Gast bedient, Band geleert, +200 Münzen",
-  "settings.restorePurchasesReal": "Mit dem Store-Konto anmelden, mit dem gekauft wurde"
+  "settings.restorePurchasesReal": "Mit dem Store-Konto anmelden, mit dem gekauft wurde",
+  "lives.title": "Keine Leben mehr",
+  "lives.next": "Nächstes Leben in {t}",
+  "lives.ready": "Ein Leben ist bereit",
+  "lives.rule": "Du hast {n} Leben. Ein Fehlschlag kostet eins; alle 30 Minuten kommt eins zurück.",
+  "lives.play": "Spielen",
+  "lives.ad": "Werbung ansehen · +1 Leben",
+  "lives.wait": "Auf der Karte warten",
+  "lives.events": "Events können eine Weile unbegrenzte Leben geben.",
+  "lives.unlimitedShort": "Unbegrenzt",
+  "lives.unlimitedGranted": "Unbegrenzte Leben für {n} Minuten",
+  "events.reward.lives": "{n} Min. unbegrenzte Leben"
 }

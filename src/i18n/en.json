@@ -517,5 +517,21 @@
   "toast.bought": "{name} added",
   "product.rescue.name": "Chef's Rescue",
   "product.rescue.desc": "+1 seat, a diner served, belt cleared, +200 coins",
-  "settings.restorePurchasesReal": "Sign in with the store account you bought with"
+  "settings.restorePurchasesReal": "Sign in with the store account you bought with",
+  "lives.title": "Out of lives",
+  "lives.next": "Next life in {t}",
+  "lives.ready": "A life is ready",
+  "lives.rule": "You have {n} lives. A fail costs one; one comes back every 30 minutes.",
+  "lives.play": "Play",
+  "lives.ad": "Watch an ad · +1 life",
+  "lives.wait": "Wait on the map",
+  "lives.events": "Events can give unlimited lives for a while.",
+  "lives.unlimitedShort": "Unlimited",
+  "lives.unlimitedGranted": "Unlimited lives for {n} minutes",
+  "events.reward.lives": "{n} min unlimited lives",
+  "dev.lives": "Lives: {v} ({src}) · {n}/{max}",
+  "dev.analytics": "This arm: {s} sessions · {m} min avg · {r} retries/fail · {a} ads/session",
+  "dev.livesToggle": "Lives arm: {v}",
+  "dev.exportAnalytics": "Copy analytics",
+  "dev.analyticsCopied": "Analytics JSON copied"
 }
