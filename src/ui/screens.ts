@@ -15,11 +15,10 @@ import { schedTier, isAuthored } from '../engine/levels';
 import { rng } from '../engine/rng';
 import { addCoins, newLevel } from '../engine/rules';
 import { cur, G, runPending, type MapTab, type Screen } from '../engine/state';
-import { todayKey, weekKey } from '../engine/util';
+import { todayKey } from '../engine/util';
 import { t } from '../i18n';
 import { buyDecor, buyProduct } from '../meta/economy';
 import { clearSave, S, save } from '../meta/save';
-import { weeklyBoard } from '../meta/weekly';
 import { ctx } from '../render/canvas';
 import { drawPlate } from '../render/plate';
 import { card, coinIcon, dim, rrect, txt } from '../render/primitives';
@@ -29,6 +28,7 @@ import { startMode } from '../meta/modes';
 import { locale } from '../i18n';
 import { drawEditor, importJson, openEditor } from './editor';
 import { drawEventBanner, drawEventsScreen } from './events';
+import { drawProfileScreen, drawRanksTab } from './ranks';
 import { drawConfirm, drawPause, drawSettings } from './modals';
 import { resetTutorial } from './tutorial';
 
@@ -328,7 +328,7 @@ function drawMap(sc: Screen): void {
     ['modes', t('map.modes')],
     ['decor', t('map.decor')],
     ['album', t('map.album')],
-    ['weekly', t('map.weekly')],
+    ['weekly', t('map.ranks')],
   ];
   tabs.forEach(([id, label], i) =>
     button(50 + i * 80, 160, 76, 38, label, null, {
@@ -389,18 +389,7 @@ function drawMap(sc: Screen): void {
   } else if (sc.tab === 'album') {
     drawAlbum();
   } else {
-    const rows = weeklyBoard();
-    txt(t('map.week', { wk: S.weekKey || weekKey() }), 240, 226, 13, 700, '#5A4E45', 'center', 'middle');
-    rows.forEach((r, i) => {
-      const y = 248 + i * 46;
-      ctx.fillStyle = r.me ? '#FFF0D6' : i % 2 ? '#FFFDF7' : '#F7F0E0';
-      rrect(50, y, 380, 40, 10);
-      ctx.fill();
-      txt('#' + (i + 1), 66, y + 21, 15, 800, i < 3 ? GOLD : '#8A8378', 'left', 'middle');
-      txt(r.me ? t('map.you') : r.name, 110, y + 21, 17, 800, '#2A2320', 'left', 'middle');
-      txt(r.score, 414, y + 21, 17, 800, r.me ? '#E5484D' : '#2A2320', 'right', 'middle');
-    });
-    txt(t('map.rivals'), 240, 720, 12, 700, '#8A8378', 'center', 'middle');
+    drawRanksTab(sc);
   }
 }
 
@@ -418,6 +407,7 @@ export function drawScreen(): void {
   else if (sc.type === 'dev') drawDev();
   else if (sc.type === 'editor') drawEditor();
   else if (sc.type === 'events') drawEventsScreen(sc);
+  else if (sc.type === 'profile') drawProfileScreen(sc);
   else if (sc.type === 'map') drawMap(sc);
   else if (sc.type === 'settings') drawSettings(sc);
   else if (sc.type === 'pause') drawPause(sc);

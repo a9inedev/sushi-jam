@@ -20,6 +20,7 @@ import { card, coinIcon, dim, rrect, textW, txt, wrapText } from '../render/prim
 import { drawConfetti } from '../render/scene';
 import { button } from './buttons';
 import { tierLabel } from './hud';
+import { drawShareBtn } from './ranks';
 
 export function getLevelLabelQuick(n: number): string {
   return (isAuthored(n) ? t('tier.authored') : '') + tierLabel(schedTier(n));
@@ -169,6 +170,7 @@ export function drawStatusOverlay(): void {
     drawModeWin(cx, cy, cw, ch);
   } else {
     card(cx, cy, cw, ch, '#2FB36B', t('win.title'));
+    drawShareBtn(cx + cw - 34, cy + 22, { type: 'level', n: L.n });
     coinIcon(196, cy + 108, 16);
     txt('+' + L.earned, 220, cy + 109, 34, 800, '#2A2320', 'left', 'middle');
     txt(
@@ -278,6 +280,7 @@ function drawModeWin(cx: number, cy: number, cw: number, ch: number): void {
   }
   if (L.mode === 'rush') {
     card(cx, cy, cw, ch, '#E25E12', t('mode.rushOver'));
+    if (L.score > 0) drawShareBtn(cx + cw - 34, cy + 22, { type: 'rush', score: L.score });
     txt(t('mode.rushScore', { n: L.score }), 240, cy + 100, 26, 800, '#2A2320', 'center', 'middle');
     const best = L.score > 0 && L.score >= S.rushBest;
     txt(

@@ -98,6 +98,23 @@ import {
   tickEvents,
 } from './meta/events';
 let base = Date.now();
+import type { BoardId } from './data/leaderboards';
+import {
+  backendInfo,
+  flushQueue,
+  initLeaderboards,
+  installMock,
+  isOffline,
+  lb,
+  mockState,
+  pendingCount,
+  refresh,
+  showNative,
+  signIn,
+  type MockOptions,
+} from './meta/leaderboards';
+import { renderShareCard, shareCard, type ShareKind } from './meta/share';
+import { closeTextField, textFieldOpen } from './ui/textfield';
 import { bindStatsBox, drawScreen } from './ui/screens';
 
 function update(dt: number): void {
@@ -328,6 +345,7 @@ setCloudProvider(cloudProviderFor(platform));
 const loaded = load();
 applyCachedCurve(); // last validated remote tuning, before the first level is built
 applyCachedEvents();
+void initLeaderboards();
 applyLanguage();
 initMotion();
 bindAudio();
@@ -410,6 +428,20 @@ export interface DevApi {
   };
   editor: typeof editorApi;
   theme: () => string;
+  leaderboards: {
+    state: () => unknown;
+    signIn: () => Promise<boolean>;
+    flush: () => Promise<string>;
+    refresh: (b: BoardId) => Promise<unknown>;
+    mock: (o: MockOptions | null) => unknown;
+    show: (b: BoardId) => void;
+  };
+  profile: { setName: (n: string) => void; setAvatar: (i: number) => void };
+  share: {
+    render: (kind: ShareKind) => Promise<{ w: number; h: number; bytes: number; dataUrl: string }>;
+    share: (kind: ShareKind) => Promise<string>;
+  };
+  textField: { open: () => boolean; close: (v: string | null) => void };
   events: {
     state: () => unknown;
     claim: (id: string) => boolean;
@@ -527,6 +559,44 @@ window.__SJ = {
   },
   editor: editorApi,
   theme: () => activeTheme().id,
+  leaderboards: {
+    state: () => ({
+      signedIn: lb.signedIn,
+      player: lb.player,
+      lastFlush: lb.lastFlush,
+      lastError: lb.lastError,
+      pending: pendingCount(),
+      queue: S.lbQueue,
+      backend: backendInfo(),
+      offline: isOffline(),
+      boards: lb.boards,
+      mock: mockState(),
+    }),
+    signIn: () => signIn(),
+    flush: () => flushQueue(),
+    refresh: (b) => refresh(b),
+    mock: (o) => installMock(o),
+    show: (b) => showNative(b),
+  },
+  profile: {
+    setName: (n) => {
+      S.profile.name = String(n).trim().slice(0, 16);
+      save();
+    },
+    setAvatar: (i) => {
+      S.profile.avatar = Math.max(0, Math.min(6, Math.floor(i)));
+      save();
+    },
+  },
+  share: {
+    render: async (kind) => {
+      const cv = await renderShareCard(kind);
+      const dataUrl = cv.toDataURL('image/png');
+      return { w: cv.width, h: cv.height, bytes: Math.round((dataUrl.length * 3) / 4), dataUrl };
+    },
+    share: (kind) => shareCard(kind),
+  },
+  textField: { open: () => textFieldOpen(), close: (v) => closeTextField(v) },
   events: {
     state: () => ({
       ...eventsStatus(),

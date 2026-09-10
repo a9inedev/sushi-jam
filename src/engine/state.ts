@@ -1,6 +1,7 @@
 /* Mutable runtime store shared by rules, rendering and UI, plus the small helpers that only touch it.
    Tweens live in anim/tween and particles in anim/particles. */
 
+import type { BoardId } from '../data/leaderboards';
 import type { Diner, ExprType, RuntimeLevel } from './types';
 
 export interface Button {
@@ -20,7 +21,18 @@ export interface Toast {
 }
 
 export type ScreenType =
-  'ad' | 'shop' | 'offer' | 'daily' | 'dev' | 'map' | 'settings' | 'pause' | 'confirm' | 'editor' | 'events';
+  | 'ad'
+  | 'shop'
+  | 'offer'
+  | 'daily'
+  | 'dev'
+  | 'map'
+  | 'settings'
+  | 'pause'
+  | 'confirm'
+  | 'editor'
+  | 'events'
+  | 'profile';
 export type MapTab = 'path' | 'modes' | 'decor' | 'album' | 'weekly' | 'game' | 'account';
 
 export interface Screen {
@@ -35,6 +47,8 @@ export interface Screen {
   tab?: MapTab;
   /** Decor tab: the restaurant being browsed. */
   theme?: string;
+  /** Ranks tab: which board is open. */
+  board?: BoardId;
   /* confirm dialogs */
   title?: string;
   text?: string;
