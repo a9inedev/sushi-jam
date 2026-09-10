@@ -7,6 +7,7 @@ Sushi Jam stores your progress (level, coins, decor, settings and a per-level st
 - No account is required.
 - No analytics, advertising or crash-reporting services are connected in this build. The "ads" and "purchases" in the game are demo placeholders that only move in-game coins.
 - Leaderboards: on iOS and Android, if you sign in to Game Center or Play Games, your weekly levels-cleared count and rush best are sent to that service under its own privacy policy, and the board you see comes from it. Nothing is sent until you sign in. The web build keeps its scores on the device.
+- Reminders: local notifications are scheduled on the device only, and only after you opt in; no server is involved. Each type can be switched off in Settings.
 - Share card: the image is generated on the device and only leaves it through the share sheet you choose.
 - The Settings screen can delete all stored data ("Reset progress").
 

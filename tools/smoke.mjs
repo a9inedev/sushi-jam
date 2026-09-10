@@ -512,7 +512,7 @@ await step('save is a versioned envelope with a valid checksum', async () => {
     const e = JSON.parse(localStorage.getItem('sushijam.save'));
     return { v: e.v, hasSum: typeof e.sum === 'number', level: e.data.level, src: window.__SJ.saveApi.info().source };
   })()`);
-  if (info.v !== 10 || !info.hasSum) throw new Error('bad envelope ' + JSON.stringify(info));
+  if (info.v !== 11 || !info.hasSum) throw new Error('bad envelope ' + JSON.stringify(info));
   return `v${info.v}, loaded from ${info.src}`;
 });
 await step('legacy v2 save migrates with level, coins, decor and stats intact', async () => {
@@ -559,7 +559,7 @@ await step('settings: restore progress from backup with confirmation', async () 
   await sj("window.__SJ.setScreen({ type: 'settings', t: 0 })");
   await sleep(150);
   await page.screenshot({ path: path.join(OUT, 'smoke-settings-save.png') });
-  await tapCanvas(320, 207); // Account tab
+  await tapCanvas(244, 207); // Account tab
   await sleep(120);
   await tapCanvas(240, 298); // Restore progress
   await sleep(150);
@@ -580,7 +580,7 @@ await step('settings: restore progress from backup with confirmation', async () 
 await step('settings: reset progress wipes the save and reloads', async () => {
   await sj("window.__SJ.setScreen({ type: 'settings', t: 0 })");
   await sleep(150);
-  await tapCanvas(320, 207); // Account tab
+  await tapCanvas(244, 207); // Account tab
   await sleep(120);
   await tapCanvas(240, 354); // Reset progress
   await sleep(150);
@@ -1051,6 +1051,111 @@ await step('leaderboards: scores queue offline and post when they can, boards re
   await sj('window.__SJ.closeScreen()');
   await sj('window.__SJ.modes.leave()');
   return `weekly queued while refused, deferred offline, posted online; board 3 rows with me; rush 3 posted; name typed; card ${img.w}x${img.h} ${Math.round(img.bytes / 1024)} KB`;
+});
+await step('reminders: nothing before opt-in, prompt after level 10 only, per-type switches, deep links', async () => {
+  await sj('window.__SJ.notify.reset()');
+  await sj('window.__SJ.S.starterShown = true; window.__SJ.S.demoAds = false');
+  let st = await sj('window.__SJ.notify.state()');
+  if (st.firstLaunch) throw new Error('this session should not count as a first launch');
+  // Clearing level 9 asks nothing.
+  await sj('window.__SJ.jump(9)');
+  await toPlay();
+  await sj('window.__SJ.modes.forceWin()');
+  await sleep(200);
+  await sj('window.__SJ.afterWin()');
+  await sleep(200);
+  if ((await screenType()) === 'notify') throw new Error('prompted before level 10');
+  // Clearing level 10 asks once; nothing is scheduled while the answer is pending.
+  await sj('window.__SJ.jump(10)');
+  await toPlay();
+  await sj('window.__SJ.modes.forceWin()');
+  await sleep(200);
+  await sj('window.__SJ.afterWin()');
+  await sleep(300);
+  if ((await screenType()) !== 'notify') throw new Error('no prompt after level 10: ' + (await screenType()));
+  await page.screenshot({ path: path.join(OUT, 'smoke-notify-prompt.png') });
+  let pending = await sj('window.__SJ.notify.pending()');
+  if (pending.length) throw new Error('scheduled before opting in');
+  // "Not now": asked, still off, still nothing scheduled, and the win flow continues.
+  await tapCanvas(240, 618);
+  await sleep(300);
+  st = await sj('window.__SJ.notify.state()');
+  if (!st.prefs.asked || st.prefs.enabled) throw new Error('decline did not stick: ' + JSON.stringify(st.prefs));
+  if ((await screenType()) === 'notify') throw new Error('prompt did not close');
+  pending = await sj('window.__SJ.notify.pending()');
+  if (pending.length) throw new Error('scheduled after declining');
+  // A second win never asks again.
+  await sj('window.__SJ.jump(11)');
+  await toPlay();
+  await sj('window.__SJ.modes.forceWin()');
+  await sleep(200);
+  await sj('window.__SJ.afterWin()');
+  await sleep(200);
+  if ((await screenType()) === 'notify') throw new Error('asked twice');
+  // Opt in (with a streak worth protecting): every type on, all scheduled in the future, one id per type.
+  await sj(
+    "window.__SJ.S.dailyStreak = 3; window.__SJ.S.lastDaily = (() => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); })()"
+  );
+  const ok = await sj('window.__SJ.notify.optIn()');
+  if (!ok) throw new Error('opt-in failed');
+  st = await sj('window.__SJ.notify.state()');
+  if (!st.prefs.enabled || !st.prefs.daily || !st.prefs.streak || !st.prefs.events || st.permission !== 'granted')
+    throw new Error('opt-in state wrong: ' + JSON.stringify(st));
+  const types = st.scheduled.map((p) => p.type);
+  if (!types.includes('daily') || !types.includes('streak'))
+    throw new Error('daily/streak not scheduled: ' + JSON.stringify(st.scheduled));
+  const now = Date.now();
+  if (st.scheduled.some((p) => p.at <= now + 14 * 60000))
+    throw new Error('a reminder is too soon: ' + JSON.stringify(st.scheduled));
+  pending = await sj('window.__SJ.notify.pending()');
+  if (pending.length !== st.scheduled.length) throw new Error('platform pending differs from the plan');
+  // One switch off removes just that reminder.
+  await sj("window.__SJ.notify.setType('daily', false)");
+  st = await sj('window.__SJ.notify.state()');
+  if (st.scheduled.some((p) => p.type === 'daily') || !st.scheduled.some((p) => p.type === 'streak'))
+    throw new Error('daily switch did not work');
+  await sj("window.__SJ.notify.setType('daily', true)");
+  // Deep links: streak and daily land on the Modes tab (today's bonus is collected), an event on Events.
+  await sj('window.__SJ.closeScreen()');
+  if (!(await sj("window.__SJ.notify.tap('streak')"))) throw new Error('streak tap not delivered');
+  await sleep(100);
+  let scr = await sj('window.__SJ.screen()');
+  if (!scr || scr.type !== 'map' || scr.tab !== 'modes') throw new Error('streak tap opened ' + JSON.stringify(scr));
+  await sj('window.__SJ.closeScreen(); window.__SJ.notify.reschedule()');
+  await sleep(200);
+  if (!(await sj("window.__SJ.notify.tap('daily')"))) throw new Error('daily tap not delivered');
+  await sleep(100);
+  scr = await sj('window.__SJ.screen()');
+  if (!scr || scr.type !== 'map' || scr.tab !== 'modes') throw new Error('daily tap opened ' + JSON.stringify(scr));
+  await sj('window.__SJ.closeScreen(); window.__SJ.notify.reschedule()');
+  await sleep(200);
+  st = await sj('window.__SJ.notify.state()');
+  let eventNote = 'no active event with progress, event tap skipped';
+  if (st.scheduled.some((p) => p.type === 'event')) {
+    if (!(await sj("window.__SJ.notify.tap('event')"))) throw new Error('event tap not delivered');
+    await sleep(100);
+    scr = await sj('window.__SJ.screen()');
+    if (!scr || scr.type !== 'events') throw new Error('event tap opened ' + JSON.stringify(scr));
+    eventNote = 'event tap opened Events';
+    await sj('window.__SJ.closeScreen()');
+  }
+  // The event deep link itself, whatever is scheduled today.
+  if ((await sj("window.__SJ.notify.open('event')")) !== 'events')
+    throw new Error('event deep link did not open Events');
+  scr = await sj('window.__SJ.screen()');
+  if (!scr || scr.type !== 'events') throw new Error('event deep link screen: ' + JSON.stringify(scr));
+  await sj('window.__SJ.closeScreen()');
+  // Settings shows the rows; the master switch off cancels everything.
+  await sj("window.__SJ.setScreen({ type: 'settings', tab: 'reminders', t: 0 })");
+  await sleep(300);
+  await page.screenshot({ path: path.join(OUT, 'smoke-notify-settings.png') });
+  await sj('window.__SJ.notify.setEnabled(false)');
+  pending = await sj('window.__SJ.notify.pending()');
+  if (pending.length) throw new Error('master off left reminders scheduled');
+  await sj('window.__SJ.closeScreen()');
+  await sj('window.__SJ.notify.reset()');
+  await sj('window.__SJ.S.demoAds = true');
+  return `no prompt at 9, prompt at 10, decline kept it off, never asked twice; opt-in scheduled ${types.join('+')} all > 15 min out; daily switch; streak/daily taps opened Modes; ${eventNote}; master off cancelled`;
 });
 await step('levels 1 to 140 are the authored files; 141 falls back to the generator', async () => {
   const r = await sj(`(() => { const a = window.__SJ.getLevel(137), b = window.__SJ.getLevel(141);

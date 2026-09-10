@@ -107,6 +107,8 @@ Bump all three together for a release.
 
 ## Known follow-ups
 
+- Reminders: `@capacitor/local-notifications` is wired with inexact Android alarms; the native path has not been run on a device from this machine (docs/notifications.md).
+
 - Leaderboards: the Game Center and Play Games plugin (`GameServicesPlugin`) has not been built on a device from this machine; the board ids and the Play Games project id are placeholders (docs/leaderboards.md).
 
 - The Baloo 2 font is loaded from Google Fonts. Offline, the game falls back to Trebuchet MS. Bundle the font in the build during the art pass (Phase 1.1).
