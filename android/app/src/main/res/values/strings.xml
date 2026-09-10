@@ -4,4 +4,6 @@
     <string name="title_activity_main">Sushi Jam</string>
     <string name="package_name">com.a9inedev.sushijam</string>
     <string name="custom_url_scheme">com.a9inedev.sushijam</string>
+    <!-- Placeholder: the Play Games Services project id from the Play Console (docs/leaderboards.md). -->
+    <string name="game_services_project_id">000000000000</string>
 </resources>
