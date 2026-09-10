@@ -107,6 +107,8 @@ Bump all three together for a release.
 
 ## Known follow-ups
 
+- Purchases: RevenueCat is wired but no sandbox purchase has been made from this machine; keys, store products and testers are still to be created (docs/purchases.md has the plan).
+
 - Reminders: `@capacitor/local-notifications` is wired with inexact Android alarms; the native path has not been run on a device from this machine (docs/notifications.md).
 
 - Leaderboards: the Game Center and Play Games plugin (`GameServicesPlugin`) has not been built on a device from this machine; the board ids and the Play Games project id are placeholders (docs/leaderboards.md).

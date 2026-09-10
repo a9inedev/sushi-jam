@@ -240,6 +240,7 @@ await step('level 2 autoplays to a win', async () => {
   return ms + ' ms';
 });
 await step('force fail and retry', async () => {
+  await sj('window.__SJ.S.starter.bought = true'); // the starter offer has its own step
   await sj('window.__SJ.jump(3)');
   await sj('window.__SJ.skipIntro()');
   await sleep(100);
@@ -255,6 +256,7 @@ await step('force fail and retry', async () => {
   if (st2 !== 'intro' && st2 !== 'play') throw new Error('expected intro/play after retry, got ' + st2);
 });
 await step('rewarded ad rescue restores play', async () => {
+  await sj('window.__SJ.S.starter.bought = true');
   await sj('window.__SJ.skipIntro()');
   await sleep(100);
   await sj('window.__SJ.forceFail()');
@@ -512,7 +514,7 @@ await step('save is a versioned envelope with a valid checksum', async () => {
     const e = JSON.parse(localStorage.getItem('sushijam.save'));
     return { v: e.v, hasSum: typeof e.sum === 'number', level: e.data.level, src: window.__SJ.saveApi.info().source };
   })()`);
-  if (info.v !== 11 || !info.hasSum) throw new Error('bad envelope ' + JSON.stringify(info));
+  if (info.v !== 12 || !info.hasSum) throw new Error('bad envelope ' + JSON.stringify(info));
   return `v${info.v}, loaded from ${info.src}`;
 });
 await step('legacy v2 save migrates with level, coins, decor and stats intact', async () => {
@@ -1054,7 +1056,7 @@ await step('leaderboards: scores queue offline and post when they can, boards re
 });
 await step('reminders: nothing before opt-in, prompt after level 10 only, per-type switches, deep links', async () => {
   await sj('window.__SJ.notify.reset()');
-  await sj('window.__SJ.S.starterShown = true; window.__SJ.S.demoAds = false');
+  await sj('window.__SJ.S.starter.bought = true; window.__SJ.S.demoAds = false');
   let st = await sj('window.__SJ.notify.state()');
   if (st.firstLaunch) throw new Error('this session should not count as a first launch');
   // Clearing level 9 asks nothing.
@@ -1157,6 +1159,146 @@ await step('reminders: nothing before opt-in, prompt after level 10 only, per-ty
   await sj('window.__SJ.S.demoAds = true');
   return `no prompt at 9, prompt at 10, decline kept it off, never asked twice; opt-in scheduled ${types.join('+')} all > 15 min out; daily switch; streak/daily taps opened Modes; ${eventNote}; master off cancelled`;
 });
+await step(
+  'purchases: grant once per transaction, cancel and failure, the fail offer with a held timer, the starter pack triggers and 24 h re-show, restore and the launch check',
+  async () => {
+    const noAds0 = await sj('window.__SJ.S.noAds');
+    const waitFail = async () => {
+      for (let i = 0; i < 40; i++) {
+        if ((await sj('window.__SJ.state().status')) === 'fail') return;
+        await sleep(100);
+      }
+      throw new Error('fail card never appeared');
+    };
+    // A store that answers yes, with a localised price.
+    await sj("window.__SJ.store.mock({ result: 'ok', prices: { coins1: '€1,99' } })");
+    let st = await sj('window.__SJ.store.state()');
+    if (st.kind !== 'mock' || st.prices.coins1 !== '€1,99')
+      throw new Error('mock store not installed: ' + JSON.stringify(st));
+    const c0 = await sj('window.__SJ.S.coins');
+    let r = await sj("window.__SJ.store.buy('coins1')");
+    if (r.status !== 'ok' || !r.granted) throw new Error('buy failed: ' + JSON.stringify(r));
+    if ((await sj('window.__SJ.S.coins')) !== c0 + 500) throw new Error('coin pouch not granted');
+    // The same transaction reported twice grants once.
+    await sj("window.__SJ.store.mock({ txId: 'dup-1' })");
+    const c1 = await sj('window.__SJ.S.coins');
+    r = await sj("window.__SJ.store.buy('coins1')");
+    if (!r.granted) throw new Error('first dup-1 not granted');
+    r = await sj("window.__SJ.store.buy('coins1')");
+    if (r.status !== 'ok' || r.granted) throw new Error('dup-1 granted twice: ' + JSON.stringify(r));
+    if ((await sj('window.__SJ.S.coins')) !== c1 + 500) throw new Error('duplicate transaction changed the coins');
+    // Cancel and failure grant nothing.
+    await sj("window.__SJ.store.mock({ result: 'cancelled', txId: undefined })");
+    const c2 = await sj('window.__SJ.S.coins');
+    r = await sj("window.__SJ.store.buy('coins2')");
+    if (r.status !== 'cancelled' || (await sj('window.__SJ.S.coins')) !== c2)
+      throw new Error('cancel granted: ' + JSON.stringify(r));
+    await sj("window.__SJ.store.mock({ result: 'failed' })");
+    r = await sj("window.__SJ.store.buy('coins2')");
+    if (r.status !== 'failed' || (await sj('window.__SJ.S.coins')) !== c2)
+      throw new Error('failure granted: ' + JSON.stringify(r));
+    // Shop with the mock prices.
+    await sj("window.__SJ.setScreen({ type: 'shop', t: 0 })");
+    await sleep(200);
+    await page.screenshot({ path: path.join(OUT, 'smoke-shop.png') });
+    await sj('window.__SJ.closeScreen()');
+    // Fail offer: a slow store sheet holds the 10 s timer; the rescue applies when it resolves.
+    await sj("window.__SJ.store.mock({ result: 'ok', delayMs: 1500 })");
+    await sj('window.__SJ.S.starter.bought = true');
+    await sj('window.__SJ.jump(3)');
+    await toPlay();
+    await sj('window.__SJ.forceFail()');
+    await waitFail();
+    await sleep(300);
+    const t0 = await sj('window.__SJ.state().failT');
+    const c3 = await sj('window.__SJ.S.coins');
+    await tapCanvas(240, 500); // Chef's Rescue
+    await sleep(700);
+    const mid = await sj(
+      '(() => { const L = window.__SJ.state(); return { status: L.status, failT: L.failT, busy: window.__SJ.store.state().busy }; })()'
+    );
+    if (mid.status !== 'fail' || mid.busy !== 'rescue')
+      throw new Error('rescue purchase not in flight: ' + JSON.stringify(mid));
+    if (t0 - mid.failT > 0.5) throw new Error(`timer ran while the sheet was open: ${t0} -> ${mid.failT}`);
+    await sleep(1300);
+    const after = await sj(
+      '(() => { const L = window.__SJ.state(); return { status: L.status, coins: window.__SJ.S.coins }; })()'
+    );
+    if (after.status !== 'play') throw new Error('rescue did not apply: ' + JSON.stringify(after));
+    if (after.coins !== c3 + 200) throw new Error('rescue coins wrong: ' + c3 + ' -> ' + after.coins);
+    // Starter pack: the first fail shows it once, a decline waits 24 h, a purchase ends it.
+    await sj('window.__SJ.store.mock({ delayMs: 0 })');
+    await sj('window.__SJ.S.starter = { shows: 0, lastAt: 0, bought: false }');
+    await sj('window.__SJ.jump(2)');
+    await toPlay();
+    await sj('window.__SJ.forceFail()');
+    await waitFail();
+    await tapCanvas(240, 614); // Retry
+    await sleep(300);
+    if ((await screenType()) !== 'offer')
+      throw new Error('starter not offered after the first fail: ' + (await screenType()));
+    await page.screenshot({ path: path.join(OUT, 'smoke-starter.png') });
+    await tapCanvas(240, 554); // No thanks
+    await sleep(300);
+    st = await sj('window.__SJ.store.state()');
+    if (st.starter.shows !== 1 || st.starter.bought)
+      throw new Error('decline not recorded: ' + JSON.stringify(st.starter));
+    if ((await screenType()) === 'offer') throw new Error('offer did not close');
+    await toPlay();
+    await sj('window.__SJ.forceFail()');
+    await waitFail();
+    await tapCanvas(240, 614);
+    await sleep(300);
+    if ((await screenType()) === 'offer') throw new Error('starter re-offered inside 24 h');
+    await toPlay();
+    await sj('window.__SJ.S.starter.lastAt = Date.now() - 25 * 3600000');
+    await sj('window.__SJ.forceFail()');
+    await waitFail();
+    await tapCanvas(240, 614);
+    await sleep(300);
+    if ((await screenType()) !== 'offer') throw new Error('starter not re-offered after 24 h');
+    const c4 = await sj('window.__SJ.S.coins');
+    await tapCanvas(240, 493); // Buy
+    await sleep(400);
+    st = await sj('window.__SJ.store.state()');
+    if (!st.starter.bought || (await sj('window.__SJ.S.coins')) !== c4 + 600)
+      throw new Error('starter purchase not applied: ' + JSON.stringify(st.starter));
+    if ((await screenType()) === 'offer') throw new Error('offer stayed open after buying');
+    await toPlay();
+    await sj('window.__SJ.forceFail()');
+    await waitFail();
+    await tapCanvas(240, 614);
+    await sleep(300);
+    if ((await screenType()) === 'offer') throw new Error('starter offered after buying');
+    // Level 5 trigger.
+    await sj('window.__SJ.S.starter = { shows: 0, lastAt: 0, bought: false }; window.__SJ.S.demoAds = false');
+    await sj('window.__SJ.jump(5)');
+    await toPlay();
+    await sj('window.__SJ.modes.forceWin()');
+    await sleep(200);
+    await sj('window.__SJ.afterWin()');
+    await sleep(300);
+    if ((await screenType()) !== 'offer') throw new Error('starter not offered after level 5');
+    await tapCanvas(240, 554);
+    await sleep(300);
+    await sj('window.__SJ.S.starter.bought = true; window.__SJ.S.demoAds = true');
+    // Restore brings No Ads back from the account, and the launch check applies it too.
+    await sj("window.__SJ.S.noAds = false; window.__SJ.store.mock({ entitlements: ['no_ads'] })");
+    const n = await sj('window.__SJ.store.restore()');
+    if (n !== 1 || !(await sj('window.__SJ.S.noAds'))) throw new Error('restore did not bring No Ads back: ' + n);
+    await sj('window.__SJ.S.noAds = false');
+    await sj('window.__SJ.store.init()');
+    if (!(await sj('window.__SJ.S.noAds'))) throw new Error('launch check did not apply No Ads');
+    // And an account without it takes it away (a real store is authoritative).
+    await sj('window.__SJ.store.mock({ entitlements: [] })');
+    await sj('window.__SJ.store.init()');
+    if (await sj('window.__SJ.S.noAds')) throw new Error('launch check kept No Ads without the entitlement');
+    await sj('window.__SJ.store.mock(null)');
+    await sj('window.__SJ.S.noAds = ' + JSON.stringify(noAds0));
+    await sj('window.__SJ.modes.leave()');
+    return 'pouch granted once per tx, cancel/failure granted nothing, rescue with a 1.5 s sheet held the timer and applied, starter after first fail / declined / 24 h re-show / bought, level-5 trigger, restore + launch check';
+  }
+);
 await step('levels 1 to 140 are the authored files; 141 falls back to the generator', async () => {
   const r = await sj(`(() => { const a = window.__SJ.getLevel(137), b = window.__SJ.getLevel(141);
     return { a: !!a.authored, b: !!b.authored, rows: a.rows, cols: a.cols }; })()`);
