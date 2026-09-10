@@ -28,6 +28,7 @@ import { startMode } from '../meta/modes';
 import { locale } from '../i18n';
 import { drawEditor, importJson, openEditor } from './editor';
 import { drawEventBanner, drawEventsScreen } from './events';
+import { drawNotifyPrompt } from './notify';
 import { drawProfileScreen, drawRanksTab } from './ranks';
 import { drawConfirm, drawPause, drawSettings } from './modals';
 import { resetTutorial } from './tutorial';
@@ -408,6 +409,7 @@ export function drawScreen(): void {
   else if (sc.type === 'editor') drawEditor();
   else if (sc.type === 'events') drawEventsScreen(sc);
   else if (sc.type === 'profile') drawProfileScreen(sc);
+  else if (sc.type === 'notify') drawNotifyPrompt(sc);
   else if (sc.type === 'map') drawMap(sc);
   else if (sc.type === 'settings') drawSettings(sc);
   else if (sc.type === 'pause') drawPause(sc);

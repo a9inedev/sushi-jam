@@ -114,6 +114,19 @@ import {
   type MockOptions,
 } from './meta/leaderboards';
 import { renderShareCard, shareCard, type ShareKind } from './meta/share';
+import { afterWin } from './meta/flow';
+import {
+  initNotifications,
+  notify,
+  openDeepLink,
+  optIn,
+  reschedule,
+  setEnabled,
+  setType,
+  simulateTap,
+} from './meta/notify';
+import { defaultPrefs, type NotifyType } from './meta/notify-core';
+import { notifyBackend, webNotify } from './platform/notifications';
 import { closeTextField, textFieldOpen } from './ui/textfield';
 import { bindStatsBox, drawScreen } from './ui/screens';
 
@@ -346,6 +359,7 @@ const loaded = load();
 applyCachedCurve(); // last validated remote tuning, before the first level is built
 applyCachedEvents();
 void initLeaderboards();
+initNotifications();
 applyLanguage();
 initMotion();
 bindAudio();
@@ -428,6 +442,18 @@ export interface DevApi {
   };
   editor: typeof editorApi;
   theme: () => string;
+  notify: {
+    state: () => unknown;
+    optIn: () => Promise<boolean>;
+    setEnabled: (on: boolean) => Promise<void>;
+    setType: (type: NotifyType, on: boolean) => Promise<void>;
+    pending: () => Promise<unknown>;
+    tap: (type: NotifyType) => boolean;
+    open: (type: NotifyType) => string;
+    reschedule: () => Promise<unknown>;
+    reset: () => void;
+  };
+  afterWin: () => void;
   leaderboards: {
     state: () => unknown;
     signIn: () => Promise<boolean>;
@@ -559,6 +585,31 @@ window.__SJ = {
   },
   editor: editorApi,
   theme: () => activeTheme().id,
+  notify: {
+    state: () => ({
+      prefs: S.notif,
+      permission: notify.permission,
+      scheduled: notify.scheduled,
+      firstLaunch: notify.firstLaunch,
+      lastError: notify.lastError,
+      backend: notifyBackend.kind,
+    }),
+    optIn: () => optIn(),
+    setEnabled: (on) => setEnabled(on),
+    setType: (type, on) => setType(type, on),
+    pending: () => notifyBackend.pending(),
+    tap: (type) => simulateTap(type),
+    open: (type) => openDeepLink(type),
+    reschedule: () => reschedule(),
+    reset: () => {
+      S.notif = defaultPrefs();
+      webNotify.permission = 'prompt';
+      notify.permission = 'prompt';
+      save();
+      void reschedule();
+    },
+  },
+  afterWin: () => afterWin(),
   leaderboards: {
     state: () => ({
       signedIn: lb.signedIn,

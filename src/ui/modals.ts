@@ -4,7 +4,7 @@ import { applyMotion, systemReducedMotion } from '../anim/motion';
 import { applyVolumes, sfx } from '../audio/audio';
 import { LINKS, openLink } from '../data/links';
 import { logStat, newLevel } from '../engine/rules';
-import { closeScreen, cur, G, toast, type Screen } from '../engine/state';
+import { closeScreen, cur, G, toast, type MapTab, type Screen } from '../engine/state';
 import { LANGUAGES, languageName, locale, matchLocale, setLocale, t } from '../i18n';
 import { restartLevel } from '../meta/modes';
 import { purchases } from '../meta/providers';
@@ -13,6 +13,7 @@ import { haptic, isNative, platform } from '../platform/native';
 import { ctx } from '../render/canvas';
 import { card, rrect, txt, wrapText } from '../render/primitives';
 import { button } from './buttons';
+import { drawReminderRows } from './notify';
 
 function toggleRow(y: number, label: string, sub: string | null, on: boolean, onTap: () => void): void {
   G.buttons.push({ x: 80, y: y - 28, w: 320, h: 56, onTap });
@@ -250,24 +251,24 @@ function drawAccountTab(sc: Screen): void {
 
 export function drawSettings(sc: Screen): void {
   card(60, 120, 360, 740, '#3B3F4A', t('settings.title'));
-  const tab = sc.tab === 'account' ? 'account' : 'game';
-  button(90, 190, 140, 36, t('settings.tabGame'), null, {
-    tone: tab === 'game' ? '#3B3F4A' : '#B9B2A5',
-    size: 14,
-    onTap: () => {
-      sfx.ui();
-      sc.tab = 'game';
-    },
-  });
-  button(250, 190, 140, 36, t('settings.tabAccount'), null, {
-    tone: tab === 'account' ? '#3B3F4A' : '#B9B2A5',
-    size: 14,
-    onTap: () => {
-      sfx.ui();
-      sc.tab = 'account';
-    },
-  });
+  const tab = sc.tab === 'account' ? 'account' : sc.tab === 'reminders' ? 'reminders' : 'game';
+  const tabs: [MapTab, string][] = [
+    ['game', t('settings.tabGame')],
+    ['account', t('settings.tabAccount')],
+    ['reminders', t('settings.tabReminders')],
+  ];
+  tabs.forEach(([id, label], i) =>
+    button(70 + i * 118, 190, 112, 36, label, null, {
+      tone: tab === id ? '#3B3F4A' : '#B9B2A5',
+      size: 13,
+      onTap: () => {
+        sfx.ui();
+        sc.tab = id;
+      },
+    })
+  );
   if (tab === 'game') drawGameTab();
+  else if (tab === 'reminders') drawReminderRows(268);
   else drawAccountTab(sc);
   txt(
     t('settings.version', { v: __APP_VERSION__, platform: isNative ? platform : 'web' }),
