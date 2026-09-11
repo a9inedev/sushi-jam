@@ -1,5 +1,5 @@
 import { reducedMotion } from '../anim/motion';
-import { characterSvg, type DinerSpriteState } from '../art/characters';
+import { characterSvg, type DinerSpriteState, type SpriteView } from '../art/characters';
 import { sprite } from '../art/svg';
 import { COLORS, GOLD } from '../data/constants';
 import { activeTheme } from '../data/theme-state';
@@ -29,12 +29,19 @@ function spriteState(d: Diner, expr: ExprType, blink: boolean): DinerSpriteState
 }
 
 /** Draw a character sprite centred on the origin with body radius r. Returns false if not decoded yet. */
-export function drawCharacter(color: number, state: DinerSpriteState, vip: boolean, r: number, dim = false): boolean {
+export function drawCharacter(
+  color: number,
+  state: DinerSpriteState,
+  vip: boolean,
+  r: number,
+  dim = false,
+  view: SpriteView = 'front'
+): boolean {
   const box = Math.round(r * SPRITE_BOX);
   const outfit = activeTheme().outfit;
   const img = sprite(
-    `c${color}:${state}:${outfit}${vip ? ':v' : ''}${dim ? ':d' : ''}`,
-    () => characterSvg(color, state, vip, dim, outfit),
+    `c${color}:${state}:${outfit}:${view}${vip ? ':v' : ''}${dim ? ':d' : ''}`,
+    () => characterSvg(color, state, vip, dim, outfit, view),
     box,
     box
   );
@@ -92,7 +99,17 @@ export function drawDiner(d: Diner, r: number, mode: DinerMode): void {
     ctx.scale(d.sx, d.sy);
     ctx.translate(0, -r);
   }
-  if (!drawCharacter(d.color, state, d.vip, r, dimmed)) drawDinerProcedural(d.color, r, expr, blink, dimmed);
+  // Seated guests face the belt: the three-quarter back view. Walking guests stretch their shadow.
+  if (mode === 'free' && d.state === 'walking' && !reduced) {
+    ctx.save();
+    ctx.fillStyle = 'rgba(42,31,26,.2)';
+    ctx.beginPath();
+    ctx.ellipse(r * 0.25, r * 1.05, r * 1.15, r * 0.24, 0, 0, 7);
+    ctx.fill();
+    ctx.restore();
+  }
+  if (!drawCharacter(d.color, state, d.vip, r, dimmed, mode === 'seat' ? 'back' : 'front'))
+    drawDinerProcedural(d.color, r, expr, blink, dimmed);
   if (S.colorblind) fillPattern(ctx, d.color, () => ctx.arc(0, 0, r * 0.92, 0, 7));
   ctx.restore();
   // Colour badge with the shape glyph: the accessibility cue, always drawn.

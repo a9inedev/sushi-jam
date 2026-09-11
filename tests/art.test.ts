@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 import {
   CHARACTERS,
   SPRITE_STATES,
+  SPRITE_VIEWS,
   SUSHI,
   backgroundSvg,
   bonsaiSvg,
@@ -179,5 +180,28 @@ describe('size budgets', () => {
     expect(kb(clocheSvg())).toBeLessThan(5);
     for (const [id, a] of Object.entries(DECOR_ART)) expect(kb(a.svg()), id).toBeLessThan(5);
     for (const th of THEMES) expect(kb(backgroundSvg(th)), th.id).toBeLessThan(40);
+  });
+});
+
+describe('back view', () => {
+  it('every character has a seated back view that rasterises and differs from the front', async () => {
+    expect(SPRITE_VIEWS).toEqual(['front', 'back']);
+    for (const c of CHARACTERS) {
+      const front = await alphaMask(characterSvg(c.color, 'idle'), 48);
+      const back = await alphaMask(characterSvg(c.color, 'idle', false, false, 'none', 'back'), 48);
+      expect(coverage(back), c.id + ' back').toBeGreaterThan(0.3);
+      const a = await sharp(Buffer.from(characterSvg(c.color, 'chew')), { density: 46 })
+        .resize(64, 64)
+        .raw()
+        .toBuffer();
+      const b = await sharp(Buffer.from(characterSvg(c.color, 'chew', false, false, 'none', 'back')), { density: 46 })
+        .resize(64, 64)
+        .raw()
+        .toBuffer();
+      let diff = 0;
+      for (let i = 0; i < a.length; i++) if (Math.abs(a[i] - b[i]) > 24) diff++;
+      expect(diff / a.length, c.id + ' back vs front').toBeGreaterThan(0.02);
+      expect(front.length).toBe(back.length);
+    }
   });
 });
