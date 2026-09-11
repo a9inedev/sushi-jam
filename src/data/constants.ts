@@ -21,7 +21,7 @@ export const COLORS: ColorDef[] = [
   { name: 'Wasabi', hex: '#1FB7D8', glyph: 'heart' },
 ];
 
-export const GOLD = '#F2B705';
+export const GOLD = '#E9B949';
 
 export const TIER_COLOR: Record<Tier, string> = {
   Easy: '#2FB36B',

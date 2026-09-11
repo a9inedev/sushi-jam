@@ -133,6 +133,8 @@ await step('boot', async () => {
   const t0 = Date.now();
   await page.goto(url, { waitUntil: 'load', timeout: 30000 });
   await page.waitForFunction(() => window.__SJ && window.__SJ.state(), { timeout: 10000 });
+  // Every step but the lives step runs in arm A: the split by install id would otherwise gate retries at random.
+  await sj("localStorage.setItem('sushijam.livesVariant', 'A')");
   return `${Date.now() - t0} ms to interactive`;
 });
 await step('daily bonus shows and collects', async () => {
@@ -1318,7 +1320,9 @@ await step(
       await sj('window.__SJ.S.starter.bought = true; window.__SJ.S.demoAds = true');
       // Arm B by flag alone.
       writeFlags('B');
-      await sj("localStorage.setItem('sushijam.flagsUrl', './flags-test.json')");
+      await sj(
+        "localStorage.removeItem('sushijam.livesVariant'); localStorage.setItem('sushijam.flagsUrl', './flags-test.json')"
+      );
       await reloadAndWait();
       await page.waitForFunction(() => window.__SJ.flags.state().lastResult !== null, { timeout: 10000 });
       let fl = await sj('window.__SJ.flags.state()');
@@ -1407,7 +1411,7 @@ await step(
       await page.screenshot({ path: path.join(OUT, 'smoke-lives-armA.png') });
       // Back to the bundled flags.
       await sj(
-        "localStorage.removeItem('sushijam.flagsUrl'); window.__SJ.flags.reset(); window.__SJ.lives.set({ n: 5 })"
+        "localStorage.removeItem('sushijam.flagsUrl'); localStorage.setItem('sushijam.livesVariant', 'A'); window.__SJ.flags.reset(); window.__SJ.lives.set({ n: 5 })"
       );
       await sj('window.__SJ.modes.leave()');
       return 'B: 5 fails emptied the stock, gate shown, refill + Play, rewarded ad + life, unlimited window; A: no gate, no loss; counters per arm; export ok';
@@ -1506,6 +1510,45 @@ await step('remote curve override: fetched, applied on the next launch, cached, 
       /* already gone */
     }
   }
+});
+await step('art captures: level 1, a level with every rule, the fail card, the map, the shop', async () => {
+  // Written to docs/art/captures/<prefix>-*.png; CAPTURE_PREFIX=before snapshots the look before an art pass.
+  const prefix = process.env.CAPTURE_PREFIX || 'after';
+  const dir = path.resolve('docs/art/captures');
+  fs.mkdirSync(dir, { recursive: true });
+  const shot = (name) => page.screenshot({ path: path.join(dir, prefix + '-' + name + '.png') });
+  await sj('window.__SJ.S.starter.bought = true; window.__SJ.S.devAllMech = false');
+  await sj('window.__SJ.closeScreen()');
+  await sj('window.__SJ.jump(1)');
+  await toPlay();
+  await sleep(400);
+  await shot('level1');
+  await sj('window.__SJ.S.devAllMech = true');
+  await sj('window.__SJ.jump(75)');
+  await toPlay();
+  for (let i = 0; i < 4; i++) {
+    await sj('window.__SJ.auto()');
+    await sleep(350);
+  }
+  await sleep(600);
+  await shot('all-rules');
+  await sj('window.__SJ.S.devAllMech = false');
+  await sj('window.__SJ.jump(3)');
+  await toPlay();
+  await sj('window.__SJ.forceFail()');
+  for (let i = 0; i < 40 && (await sj('window.__SJ.state().status')) !== 'fail'; i++) await sleep(100);
+  await sleep(700);
+  await shot('fail');
+  await sj('window.__SJ.modes.restart()');
+  await sleep(200);
+  await sj("window.__SJ.setScreen({ type: 'map', tab: 'path', t: 1 })");
+  await sleep(400);
+  await shot('map');
+  await sj("window.__SJ.setScreen({ type: 'shop', t: 1 })");
+  await sleep(400);
+  await shot('shop');
+  await sj('window.__SJ.closeScreen()');
+  return prefix + '-{level1,all-rules,fail,map,shop}.png';
 });
 await step('no console errors', async () => {
   if (errors.length) throw new Error(errors.join(' | '));

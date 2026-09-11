@@ -1,5 +1,6 @@
-/* Sushi per plate colour, as SVG in a 100x100 box centred on (50,52). The plate disc, rim, glyph badge and
-   mechanic overlays stay canvas-drawn on top and underneath; this is only the food. */
+/* Sushi per plate colour, as SVG in a 100x100 box centred on (50,52), drawn to be recognisable at 30 px and
+   delicious at 90 px. Every piece: a chocolate outline, a wet highlight top-left, a translucent lighter edge
+   along the top, and a small occlusion shadow so it sits in the dish. The plate itself is plate-base.ts. */
 
 import { COLORS } from '../data/constants';
 import { INK } from './color';
@@ -22,59 +23,103 @@ export const SUSHI: SushiDef[] = [
   { id: 'wasabi', name: 'Wasabi mound', color: 6 },
 ];
 
-const RICE =
-  `<ellipse cx="50" cy="63" rx="31" ry="17" fill="#FFFBF0" stroke="#E3D8BC" stroke-width="2.5"/>` +
-  `<g fill="#EFE5CC"><circle cx="32" cy="66" r="2"/><circle cx="42" cy="73" r="2"/><circle cx="58" cy="74" r="2"/><circle cx="70" cy="66" r="2"/><circle cx="50" cy="69" r="1.6"/></g>`;
+const O = `stroke="${INK}" stroke-width="6" stroke-linejoin="round" stroke-linecap="round"`;
+const SHADOW = `<ellipse cx="52" cy="78" rx="30" ry="6" fill="${INK}" opacity=".18"/>`;
 
-function nigiri(topping: string): string {
-  return RICE + topping;
+/** The rice: a cream oval with grain, lit top-left, outlined. */
+const RICE =
+  `<ellipse cx="50" cy="64" rx="31" ry="16" fill="#FFF8EA" ${O}/>` +
+  `<ellipse cx="50" cy="64" rx="27" ry="12" fill="#F5E9D2" opacity=".6"/>` +
+  `<g fill="#FFFFFF" opacity=".9"><ellipse cx="34" cy="66" rx="3" ry="1.8" transform="rotate(-20 34 66)"/><ellipse cx="44" cy="72" rx="3" ry="1.8" transform="rotate(15 44 72)"/><ellipse cx="58" cy="73" rx="3" ry="1.8" transform="rotate(-10 58 73)"/><ellipse cx="68" cy="66" rx="3" ry="1.8" transform="rotate(25 68 66)"/><ellipse cx="52" cy="66" rx="2.6" ry="1.6"/></g>` +
+  `<path d="M24 60 Q34 52 48 52" fill="none" stroke="#fff" stroke-opacity=".5" stroke-width="3" stroke-linecap="round"/>`;
+
+/** The slab of fish over the rice: outline, body, translucent top edge, wet highlight. */
+function slab(fill: string, edge: string, extra = ''): string {
+  return (
+    `<path d="M14 54 Q17 33 50 32 Q83 33 87 54 Q85 65 50 64 Q15 65 14 54 Z" fill="${fill}" ${O}/>` +
+    `<path d="M20 44 Q34 36 50 36 Q66 36 80 44" fill="none" stroke="${edge}" stroke-opacity=".7" stroke-width="4" stroke-linecap="round"/>` +
+    extra +
+    `<ellipse cx="34" cy="42" rx="9" ry="4" fill="#fff" opacity=".6" transform="rotate(-12 34 42)"/>`
+  );
 }
 
 function food(color: number): string {
   switch (color) {
-    case 0: // salmon
-      return nigiri(
-        `<path d="M15 54 Q18 34 50 33 Q82 34 86 54 Q84 66 50 64 Q16 66 15 54 Z" fill="#FF7A55" stroke="#D9503A" stroke-width="2.5" stroke-linejoin="round"/>` +
-          `<path d="M28 42 L36 60 M44 38 L50 60 M60 38 L66 58" stroke="#FFD6C4" stroke-width="3.5" stroke-linecap="round" opacity=".85"/>`
-      );
-    case 1: // tuna
-      return nigiri(
-        `<path d="M15 54 Q18 34 50 33 Q82 34 86 54 Q84 66 50 64 Q16 66 15 54 Z" fill="#C6394B" stroke="#8E1F30" stroke-width="2.5" stroke-linejoin="round"/>` +
-          `<path d="M26 44 Q50 38 74 44" fill="none" stroke="#F08A96" stroke-width="3" stroke-linecap="round" opacity=".7"/>` +
-          `<path d="M30 54 Q50 49 70 54" fill="none" stroke="#F08A96" stroke-width="2.5" stroke-linecap="round" opacity=".5"/>`
-      );
-    case 2: // tamago
-      return nigiri(
-        `<rect x="17" y="34" width="66" height="30" rx="7" fill="#FFD447" stroke="#D9A000" stroke-width="2.5"/>` +
-          `<path d="M22 42 L78 42 M22 50 L78 50" stroke="#F2B705" stroke-width="2" opacity=".8"/>` +
-          `<rect x="43" y="30" width="14" height="40" rx="2" fill="${INK}" opacity=".9"/>`
-      );
-    case 3: // cucumber maki, cross-section
+    case 0: // salmon: orange-pink with white fat stripes
       return (
-        `<circle cx="50" cy="54" r="32" fill="#1E2A22" stroke="#111" stroke-width="2"/>` +
-        `<circle cx="50" cy="54" r="25" fill="#FFFBF0"/>` +
-        `<g fill="#EFE5CC"><circle cx="36" cy="46" r="2.2"/><circle cx="62" cy="44" r="2.2"/><circle cx="34" cy="62" r="2.2"/><circle cx="66" cy="63" r="2.2"/><circle cx="50" cy="34" r="2"/><circle cx="50" cy="74" r="2"/></g>` +
-        `<circle cx="50" cy="54" r="10.5" fill="#7BCB4B" stroke="#4E9E2F" stroke-width="3"/>` +
-        `<g fill="#CFEFB2"><circle cx="46" cy="52" r="1.8"/><circle cx="54" cy="52" r="1.8"/><circle cx="50" cy="58" r="1.8"/></g>`
+        SHADOW +
+        RICE +
+        slab(
+          '#FF7A55',
+          '#FFC2A8',
+          `<path d="M28 40 L36 60 M45 37 L50 61 M62 37 L67 59" stroke="#FFE3D6" stroke-width="4" stroke-linecap="round" opacity=".9"/>`
+        )
       );
-    case 4: // eggplant
-      return nigiri(
-        `<path d="M16 54 Q18 36 50 35 Q82 36 85 54 Q83 65 50 63 Q17 65 16 54 Z" fill="#8E5BE0" stroke="#5B33A8" stroke-width="2.5" stroke-linejoin="round"/>` +
-          `<path d="M24 46 Q50 40 76 46" fill="none" stroke="#C9A9FF" stroke-width="3.5" stroke-linecap="round" opacity=".8"/>` +
-          `<path d="M14 52 L8 44 L18 46 Z" fill="#3F8F3A"/>`
-      );
-    case 5: // shrimp
-      return nigiri(
-        `<path d="M14 58 Q14 36 34 34 Q56 32 76 38 Q92 44 90 56 Q88 64 78 62 Q60 60 50 62 Q32 66 14 58 Z" fill="#FF9A5C" stroke="#D96A2E" stroke-width="2.5" stroke-linejoin="round"/>` +
-          `<path d="M30 38 L26 60 M44 35 L40 62 M58 35 L54 62" stroke="#FFE1CF" stroke-width="4" stroke-linecap="round" opacity=".9"/>` +
-          `<path d="M76 38 Q96 30 98 44 Q96 52 90 56" fill="#F5843B" stroke="#D96A2E" stroke-width="2"/>`
-      );
-    case 6: // wasabi
+    case 1: // tuna: deep red with a lighter grain
       return (
-        `<ellipse cx="50" cy="76" rx="30" ry="6" fill="#000" opacity=".12"/>` +
-        `<path d="M22 70 Q20 44 40 46 Q46 30 58 38 Q80 30 78 54 Q88 68 66 74 Q44 80 22 70 Z" fill="#7BC142" stroke="#4E9E2F" stroke-width="2.5" stroke-linejoin="round"/>` +
-        `<path d="M34 58 Q40 46 52 48" fill="none" stroke="#B7E28A" stroke-width="3.5" stroke-linecap="round" opacity=".8"/>` +
-        `<ellipse cx="66" cy="36" rx="9" ry="4.5" fill="#5DBB57" stroke="#2F7A2B" stroke-width="2" transform="rotate(-35 66 36)"/>`
+        SHADOW +
+        RICE +
+        slab(
+          '#C6394B',
+          '#F08A96',
+          `<path d="M26 46 Q50 40 74 46" fill="none" stroke="#E86E7C" stroke-width="3" stroke-linecap="round" opacity=".75"/>` +
+            `<path d="M30 55 Q50 50 70 55" fill="none" stroke="#E86E7C" stroke-width="2.5" stroke-linecap="round" opacity=".55"/>`
+        )
+      );
+    case 2: // tamago: a yellow block with a nori belt
+      return (
+        SHADOW +
+        RICE +
+        `<rect x="16" y="32" width="68" height="32" rx="8" fill="#FFD447" ${O}/>` +
+        `<path d="M22 42 L78 42 M22 51 L78 51" stroke="#E7A800" stroke-width="2.5" stroke-opacity=".8"/>` +
+        `<path d="M22 37 Q40 34 60 35" fill="none" stroke="#fff" stroke-opacity=".55" stroke-width="3" stroke-linecap="round"/>` +
+        `<rect x="42" y="27" width="16" height="42" rx="3" fill="#1E2A22" ${O}/>` +
+        `<path d="M46 31 L46 64" stroke="#3E5A48" stroke-width="2" stroke-opacity=".8"/>` +
+        `<ellipse cx="30" cy="38" rx="7" ry="3.5" fill="#fff" opacity=".55" transform="rotate(-12 30 38)"/>`
+      );
+    case 3: // cucumber maki: a cut roll, rice and a green centre
+      return (
+        `<ellipse cx="52" cy="82" rx="32" ry="6" fill="${INK}" opacity=".18"/>` +
+        `<circle cx="50" cy="54" r="33" fill="#1E2A22" ${O}/>` +
+        `<circle cx="50" cy="54" r="26" fill="#FFF8EA"/>` +
+        `<circle cx="50" cy="54" r="26" fill="none" stroke="#F5E9D2" stroke-width="3"/>` +
+        `<g fill="#fff" opacity=".9"><ellipse cx="36" cy="46" rx="3" ry="1.8" transform="rotate(-30 36 46)"/><ellipse cx="62" cy="44" rx="3" ry="1.8" transform="rotate(20 62 44)"/><ellipse cx="34" cy="62" rx="3" ry="1.8" transform="rotate(30 34 62)"/><ellipse cx="66" cy="63" rx="3" ry="1.8" transform="rotate(-20 66 63)"/><ellipse cx="50" cy="33" rx="3" ry="1.8"/><ellipse cx="50" cy="75" rx="3" ry="1.8"/></g>` +
+        `<circle cx="50" cy="54" r="11" fill="#7BCB4B" stroke="${INK}" stroke-width="4"/>` +
+        `<circle cx="50" cy="54" r="6" fill="#CFEFB2"/><circle cx="50" cy="54" r="2.2" fill="#4E9E2F"/>` +
+        `<path d="M24 40 Q32 27 46 24" fill="none" stroke="#fff" stroke-opacity=".35" stroke-width="3.5" stroke-linecap="round"/>` +
+        `<ellipse cx="42" cy="46" rx="4" ry="2" fill="#fff" opacity=".7" transform="rotate(-30 42 46)"/>`
+      );
+    case 4: // grilled eggplant: glossy purple with a torch mark and a calyx
+      return (
+        SHADOW +
+        RICE +
+        slab(
+          '#8E5BE0',
+          '#C9A9FF',
+          `<path d="M40 46 Q52 42 66 50" fill="none" stroke="#3F2A6E" stroke-width="5" stroke-linecap="round" opacity=".55"/>` +
+            `<path d="M46 47 Q54 45 62 49" fill="none" stroke="#2A1F1A" stroke-width="2" stroke-linecap="round" opacity=".5"/>`
+        ) +
+        `<path d="M15 52 L5 42 L19 45 Z" fill="#3F8F3A" ${O}/>`
+      );
+    case 5: // shrimp: curled tail, red stripes
+      return (
+        SHADOW +
+        RICE +
+        `<path d="M13 58 Q13 35 34 33 Q56 31 76 37 Q92 43 90 56 Q88 64 78 62 Q60 60 50 62 Q32 66 13 58 Z" fill="#FF9A5C" ${O}/>` +
+        `<path d="M30 37 L26 60 M44 34 L40 62 M58 34 L54 62" stroke="#E5484D" stroke-width="4" stroke-linecap="round" opacity=".55"/>` +
+        `<path d="M32 36 L28 58 M46 33 L42 60" stroke="#FFE1CF" stroke-width="2.5" stroke-linecap="round" opacity=".9"/>` +
+        `<path d="M76 38 Q96 28 98 44 Q97 54 88 57" fill="#F5843B" ${O}/>` +
+        `<path d="M84 36 Q92 34 94 42" fill="none" stroke="#fff" stroke-opacity=".5" stroke-width="2.5" stroke-linecap="round"/>` +
+        `<path d="M20 44 Q36 36 54 36" fill="none" stroke="#FFD2BC" stroke-opacity=".8" stroke-width="3.5" stroke-linecap="round"/>` +
+        `<ellipse cx="30" cy="42" rx="8" ry="3.5" fill="#fff" opacity=".6" transform="rotate(-10 30 42)"/>`
+      );
+    case 6: // wasabi: a green mound with a leaf
+      return (
+        `<ellipse cx="52" cy="78" rx="30" ry="6" fill="${INK}" opacity=".18"/>` +
+        `<path d="M22 70 Q20 44 40 46 Q46 30 58 38 Q80 30 78 54 Q88 68 66 74 Q44 80 22 70 Z" fill="#7BC142" ${O}/>` +
+        `<path d="M30 60 Q36 48 50 48" fill="none" stroke="#B7E28A" stroke-width="4" stroke-linecap="round" opacity=".85"/>` +
+        `<ellipse cx="38" cy="54" rx="6" ry="3" fill="#fff" opacity=".45" transform="rotate(-20 38 54)"/>` +
+        `<path d="M58 40 Q66 26 84 28 Q80 42 64 44 Z" fill="#5DBB57" ${O}/><path d="M62 41 L80 30" stroke="#2F7A2B" stroke-width="2" stroke-linecap="round"/>`
       );
     default:
       return '';

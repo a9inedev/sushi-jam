@@ -9,10 +9,15 @@ import {
   backgroundSvg,
   bonsaiSvg,
   characterSvg,
+  clocheSvg,
+  flagSvg,
   foodSvg,
   lanternSvg,
   norenSvg,
+  plateBaseSvg,
   tankSvg,
+  DECOR_ART,
+  THEMES,
 } from '../src/art/index';
 
 async function alphaMask(svg: string, size: number, sourceSize = 100): Promise<Uint8Array> {
@@ -144,5 +149,35 @@ describe('dimmed variant', () => {
     }
     expect(sameAlpha / (a.length / 4)).toBeGreaterThan(0.98);
     expect(darker / opaque).toBeGreaterThan(0.9);
+  });
+});
+
+describe('plates', () => {
+  it('every plate variant rasterises with a solid dish', async () => {
+    for (const color of [0, 3, 6])
+      for (const [vip, double, special] of [
+        [false, false, false],
+        [true, false, false],
+        [false, true, false],
+        [false, false, true],
+      ] as [boolean, boolean, boolean][]) {
+        const cov = coverage(await alphaMask(plateBaseSvg(color, vip, double, special), 40));
+        expect(cov, `plate ${color} vip=${vip} double=${double} special=${special}`).toBeGreaterThan(0.45);
+      }
+    expect(coverage(await alphaMask(clocheSvg(), 40))).toBeGreaterThan(0.3);
+    expect(coverage(await alphaMask(flagSvg(), 40))).toBeGreaterThan(0.04);
+  });
+});
+
+describe('size budgets', () => {
+  const kb = (svg: string) => Buffer.byteLength(svg) / 1024;
+  it('no sprite exceeds its budget (style guide: character 6 KB, plate 5 KB, decor 5 KB, room 40 KB)', () => {
+    for (const c of CHARACTERS)
+      for (const st of SPRITE_STATES) expect(kb(characterSvg(c.color, st, true, true, 'yukata')), c.id).toBeLessThan(6);
+    for (const s of SUSHI) expect(kb(foodSvg(s.color)), s.id).toBeLessThan(5);
+    for (const color of [0, 1]) expect(kb(plateBaseSvg(color, true, true, true))).toBeLessThan(5);
+    expect(kb(clocheSvg())).toBeLessThan(5);
+    for (const [id, a] of Object.entries(DECOR_ART)) expect(kb(a.svg()), id).toBeLessThan(5);
+    for (const th of THEMES) expect(kb(backgroundSvg(th)), th.id).toBeLessThan(40);
   });
 });

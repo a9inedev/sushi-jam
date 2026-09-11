@@ -23,7 +23,7 @@ const extra = fs
 if (extra.length) console.warn('postbuild: extra files in dist (not needed by the page): ' + extra.join(', '));
 const bytes = Buffer.byteLength(html);
 console.log(`postbuild: dist/index.html is ${(bytes / 1024).toFixed(1)} KB, single file`);
-if (bytes > 5 * 1024 * 1024) {
-  console.error('postbuild: build exceeds the 5 MB budget');
+if (bytes > 1024 * 1024) {
+  console.error('postbuild: build exceeds the 1 MB budget');
   process.exit(1);
 }

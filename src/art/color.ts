@@ -24,4 +24,4 @@ export const lighten = (hex: string, t: number): string => mix(hex, '#FFFFFF', t
 export const darken = (hex: string, t: number): string => mix(hex, '#000000', t);
 
 /** The style guide's ink colour, used for soft outlines and features. */
-export const INK = '#2A2320';
+export const INK = '#2A1F1A';
