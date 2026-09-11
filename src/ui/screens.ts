@@ -1,6 +1,8 @@
 /* Full-screen panels: demo ad, shop, starter offer, daily bonus, dev panel and the map. */
 
 import { sfx } from '../audio/audio';
+import { easeBack } from '../engine/util';
+import { reducedMotion } from '../anim/motion';
 import { COLORS, GOLD, H, TIER_COLOR, W } from '../data/constants';
 import { CHARACTERS } from '../art/characters';
 import { DECOR_ART } from '../art/decor';
@@ -479,7 +481,12 @@ export function drawScreen(): void {
     drawAd(sc);
     return;
   }
-  dim(0.7);
+  // Every card slides up with an ease-out-back while its dim and shadow fade in, within 220 ms.
+  const u = reducedMotion() ? 1 : Math.min(1, sc.t / 0.22);
+  dim(0.7 * Math.min(1, u * 1.6));
+  ctx.save();
+  ctx.globalAlpha = Math.min(1, u * 1.5);
+  ctx.translate(0, (1 - easeBack(u)) * 40);
   if (sc.type === 'shop') drawShop(sc);
   else if (sc.type === 'offer') drawOffer();
   else if (sc.type === 'daily') drawDaily(sc);
@@ -493,6 +500,7 @@ export function drawScreen(): void {
   else if (sc.type === 'settings') drawSettings(sc);
   else if (sc.type === 'pause') drawPause(sc);
   else if (sc.type === 'confirm') drawConfirm(sc);
+  ctx.restore();
 }
 
 /** The Modes tab of the map: the daily puzzle with its streak calendar, rush with its best, zen with its rung. */

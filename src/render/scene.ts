@@ -246,13 +246,56 @@ export function drawBelt(): void {
   }
 }
 
+let steamAt = 0;
+
+/** Plates ride the belt; on the corners they wobble a little, and every few seconds a hot one lets off steam. */
 export function drawPlatesOnBelt(): void {
-  const L = cur();
-  for (const p of L.belt) {
-    if (p.state !== 'belt') continue;
-    const q = BELT.pointAt(p.t);
-    drawPlate(q.x, q.y, p, 15, { timer: p.timer, timerMax: 1.6 / L.speed });
+  const L = cur(),
+    b = BELT,
+    gt = G.gt,
+    reduced = reducedMotion();
+  const onBelt = L.belt.filter((p) => p.state === 'belt');
+  if (!reduced && gt - steamAt > 2.6 && onBelt.length) {
+    steamAt = gt;
+    const hot = onBelt.filter((p) => !p.covered)[Math.floor(gt * 7) % Math.max(1, onBelt.length)];
+    if (hot) {
+      const q = b.pointAt(hot.t);
+      particles.emit('steam', q.x + 2, q.y - 14, 3);
+    }
   }
+  for (const p of onBelt) {
+    const q = b.pointAt(p.t);
+    const corner = Math.abs(q.x - b.cx) > b.w / 2 - b.r - 1 && Math.abs(q.y - b.cy) > b.h / 2 - b.r - 1;
+    if (corner && !reduced) {
+      ctx.save();
+      ctx.translate(q.x, q.y);
+      ctx.rotate(Math.sin(gt * 14 + p.t * 40) * 0.07);
+      drawPlate(0, 0, p, 15, { timer: p.timer, timerMax: 1.6 / L.speed });
+      ctx.restore();
+    } else drawPlate(q.x, q.y, p, 15, { timer: p.timer, timerMax: 1.6 / L.speed });
+  }
+}
+
+/** The lanterns light the top of nearby sprites: a warm overlay that breathes with the glow pulse. */
+export function drawLanternLight(): void {
+  const P = activeTheme().palette;
+  const th = activeTheme();
+  const lit = decorOf(th.id).some((d) => d.slot === 'hang' && S.decor.includes(d.id));
+  ctx.save();
+  ctx.globalCompositeOperation = 'overlay';
+  const spots: [number, number, number][] = [[240, 108, 150]];
+  if (lit) spots.push([18, 120, 120], [462, 120, 120]);
+  for (const [x, y, r] of spots) {
+    const g = ctx.createRadialGradient(x, y, 6, x, y, r);
+    g.addColorStop(0, `rgba(255,179,92,${0.22 + G.glowPulse * 0.12})`);
+    g.addColorStop(1, 'rgba(255,179,92,0)');
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, 7);
+    ctx.fill();
+  }
+  ctx.restore();
+  void P;
 }
 
 export function drawKitchen(): void {

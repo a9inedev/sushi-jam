@@ -60,6 +60,7 @@ import {
   drawGrid,
   drawKitchen,
   drawParticles,
+  drawLanternLight,
   drawPlatesOnBelt,
   drawSeats,
   drawToasts,
@@ -244,6 +245,7 @@ function draw(): void {
   drawHud();
   drawBelt();
   drawPlatesOnBelt();
+  drawLanternLight();
   drawKitchen();
   drawSeats();
   drawGrid();
