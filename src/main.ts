@@ -82,6 +82,7 @@ import {
 } from './data/curve-remote';
 import { leaveMode, restartLevel, startMode, type SideMode } from './meta/modes';
 import { editorApi } from './ui/editor';
+import { reducedMotion } from './anim/motion';
 import {
   applyCachedEvents,
   claimEvent,
@@ -224,6 +225,7 @@ function update(dt: number): void {
   particles.update(G.screen ? 0 : dt);
   tickEvents();
   heartbeat();
+  G.glowPulse = reducedMotion() ? 0.5 : 0.5 + 0.5 * Math.sin(G.gt * 0.9);
   for (let i = G.toasts.length - 1; i >= 0; i--) {
     const t = G.toasts[i];
     t.t += dt;

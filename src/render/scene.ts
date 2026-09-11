@@ -17,6 +17,8 @@ import { drawDiner } from './diner';
 import { drawPlate } from './plate';
 import { coinIcon, glyph, rrect, textW, txt } from './primitives';
 
+const INK = '#2A1F1A';
+
 export function drawBg(): void {
   const th = activeTheme(),
     P = th.palette;
@@ -76,6 +78,14 @@ export function drawDecor(): void {
         ctx.save();
         ctx.translate(x + sw, box.y);
         ctx.rotate(sw * 0.025);
+        // The warm glow behind the lantern: a radial gradient that breathes with the lantern pulse.
+        const glow = ctx.createRadialGradient(0, 38, 4, 0, 38, 60);
+        glow.addColorStop(0, `rgba(255,179,92,${0.5 + G.glowPulse * 0.2})`);
+        glow.addColorStop(1, 'rgba(255,179,92,0)');
+        ctx.fillStyle = glow;
+        ctx.beginPath();
+        ctx.arc(0, 38, 60, 0, 7);
+        ctx.fill();
         ctx.drawImage(img, -box.w / 2, 0, box.w, box.h);
         ctx.restore();
       }
@@ -90,6 +100,95 @@ export function drawDecor(): void {
   }
 }
 
+/** The belt as a conveyor: a dark rubber track with a chevron tread that scrolls with the plates, steel side rails
+    with highlights, rollers at the corners, and a warm reflection of the lanterns on the top rail. */
+function drawConveyor(
+  b: typeof BELT,
+  P: { beltRail: string; beltTrack: string; beltDash: string; glow: string },
+  phase: number
+): void {
+  const x = b.cx - b.w / 2,
+    y = b.cy - b.h / 2;
+  ctx.save();
+  // Occlusion under the whole belt.
+  ctx.strokeStyle = 'rgba(42,31,26,.22)';
+  ctx.lineWidth = 44;
+  rrect(x, y + 4, b.w, b.h, b.r);
+  ctx.stroke();
+  // Rails: chocolate edge, steel, a bright line on the outer top edge.
+  ctx.lineWidth = 40;
+  ctx.strokeStyle = INK;
+  rrect(x, y, b.w, b.h, b.r);
+  ctx.stroke();
+  ctx.lineWidth = 36;
+  ctx.strokeStyle = P.beltRail;
+  ctx.stroke();
+  ctx.lineWidth = 3;
+  ctx.strokeStyle = 'rgba(255,255,255,.55)';
+  rrect(x - 17, y - 17, b.w + 34, b.h + 34, b.r + 17);
+  ctx.stroke();
+  ctx.strokeStyle = 'rgba(42,31,26,.35)';
+  rrect(x + 15, y + 15, b.w - 30, b.h - 30, Math.max(4, b.r - 15));
+  ctx.stroke();
+  // Rubber track.
+  ctx.lineWidth = 26;
+  ctx.strokeStyle = P.beltTrack;
+  rrect(x, y, b.w, b.h, b.r);
+  ctx.stroke();
+  // Chevron tread: short angled strokes along the path, scrolling with the plates.
+  ctx.lineWidth = 2;
+  ctx.strokeStyle = P.beltDash;
+  ctx.lineCap = 'round';
+  const step = 16 / b.total;
+  const off = phase % step;
+  for (let t = -off; t < 1; t += step) {
+    const tt = ((t % 1) + 1) % 1;
+    const p = b.pointAt(tt),
+      q = b.pointAt((tt + 0.004) % 1);
+    const ang = Math.atan2(q.y - p.y, q.x - p.x);
+    ctx.save();
+    ctx.translate(p.x, p.y);
+    ctx.rotate(ang);
+    ctx.beginPath();
+    ctx.moveTo(-4, -8);
+    ctx.lineTo(2, 0);
+    ctx.lineTo(-4, 8);
+    ctx.stroke();
+    ctx.restore();
+  }
+  // Rollers at the four corners.
+  ctx.lineWidth = 2;
+  // Rollers sit on the track at the middle of each corner arc.
+  const d = b.r * Math.SQRT1_2;
+  for (const [cx, cy] of [
+    [x + b.r - d, y + b.r - d],
+    [x + b.w - b.r + d, y + b.r - d],
+    [x + b.w - b.r + d, y + b.h - b.r + d],
+    [x + b.r - d, y + b.h - b.r + d],
+  ]) {
+    ctx.fillStyle = P.beltRail;
+    ctx.strokeStyle = INK;
+    ctx.beginPath();
+    ctx.arc(cx, cy, 7, 0, 7);
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = 'rgba(255,255,255,.6)';
+    ctx.beginPath();
+    ctx.arc(cx - 2, cy - 2, 2.2, 0, 7);
+    ctx.fill();
+  }
+  // The lanterns' warm reflection on the top rail.
+  ctx.lineWidth = 6;
+  ctx.lineCap = 'round';
+  ctx.strokeStyle = P.glow;
+  ctx.globalAlpha = 0.28 + G.glowPulse * 0.12;
+  ctx.beginPath();
+  ctx.moveTo(x + b.r + 10, y - 12);
+  ctx.lineTo(x + b.w - b.r - 10, y - 12);
+  ctx.stroke();
+  ctx.restore();
+}
+
 export function drawBelt(): void {
   const L = cur(),
     b = BELT,
@@ -102,22 +201,8 @@ export function drawBelt(): void {
     ctx.stroke();
     ctx.restore();
   }
-  ctx.save();
-  ctx.lineWidth = 38;
   const P = activeTheme().palette;
-  ctx.strokeStyle = P.beltRail;
-  rrect(b.cx - b.w / 2, b.cy - b.h / 2, b.w, b.h, b.r);
-  ctx.stroke();
-  ctx.lineWidth = 30;
-  ctx.strokeStyle = P.beltTrack;
-  ctx.stroke();
-  ctx.setLineDash([14, 18]);
-  ctx.lineDashOffset = -L.beltPhase * b.total;
-  ctx.lineWidth = 22;
-  ctx.strokeStyle = P.beltDash;
-  ctx.stroke();
-  ctx.setLineDash([]);
-  ctx.restore();
+  drawConveyor(b, P, L.beltPhase);
   txt(
     t('hud.belt', { a: L.belt.length, b: L.beltCap }),
     405,

@@ -62,6 +62,8 @@ export interface Screen {
 export const G = {
   L: null as RuntimeLevel | null,
   buttons: [] as Button[],
+  /** 0..1, the lanterns' slow breath. Frozen at 0.5 under reduce motion. */
+  glowPulse: 0.5,
   toasts: [] as Toast[],
   screen: null as Screen | null,
   pending: [] as Array<() => void>,
