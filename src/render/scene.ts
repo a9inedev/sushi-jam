@@ -15,7 +15,7 @@ import { S } from '../meta/save';
 import { ctx } from './canvas';
 import { drawDiner } from './diner';
 import { drawPlate } from './plate';
-import { coinIcon, glyph, rrect, textW, txt } from './primitives';
+import { coinIcon, glyph, rrect, textW, txt, UI, wood } from './primitives';
 
 const INK = '#2A1F1A';
 
@@ -259,29 +259,54 @@ export function drawKitchen(): void {
   const L = cur(),
     k = KITCHEN;
   ctx.save();
-  ctx.shadowColor = 'rgba(0,0,0,.25)';
-  ctx.shadowBlur = 10;
-  ctx.shadowOffsetY = 4;
-  ctx.fillStyle = '#3A302A';
-  rrect(k.x, k.y, k.w, k.h, 12);
-  ctx.fill();
+  ctx.shadowColor = 'rgba(18,26,58,.4)';
+  ctx.shadowBlur = 14;
+  ctx.shadowOffsetY = 6;
+  wood(k.x, k.y, k.w, k.h, 12, UI.woodDark);
   ctx.shadowColor = 'transparent';
-  ctx.fillStyle = '#E5484D';
-  rrect(k.x, k.y, k.w, 20, 12);
+  // Warm light inside the hatch.
+  const warm = ctx.createRadialGradient(k.x + k.w / 2, k.y + 40, 6, k.x + k.w / 2, k.y + 40, k.w * 0.6);
+  warm.addColorStop(0, 'rgba(255,179,92,.42)');
+  warm.addColorStop(1, 'rgba(255,179,92,0)');
+  ctx.fillStyle = warm;
+  rrect(k.x + 3, k.y + 3, k.w - 6, k.h - 6, 10);
   ctx.fill();
-  ctx.fillStyle = '#3A302A';
+  // The ledge the next-up plates sit on.
+  ctx.fillStyle = UI.wood;
+  ctx.strokeStyle = UI.ink;
+  ctx.lineWidth = 1.5;
+  rrect(k.x + 12, k.y + 54, 110, 8, 3);
+  ctx.fill();
+  ctx.stroke();
+  // Red noren valance across the top with scalloped panels.
+  ctx.fillStyle = UI.lacquer;
+  rrect(k.x, k.y, k.w, 22, 12);
+  ctx.fill();
   ctx.fillRect(k.x, k.y + 12, k.w, 10);
-  txt(t('hud.kitchen'), k.x + 12, k.y + 11, 12, 800, '#fff', 'left', 'middle');
+  ctx.fillStyle = UI.lacquerDark;
+  for (let x = k.x + 8; x < k.x + k.w - 8; x += 24) {
+    ctx.beginPath();
+    ctx.moveTo(x, k.y + 22);
+    ctx.quadraticCurveTo(x + 12, k.y + 30, x + 24, k.y + 22);
+    ctx.closePath();
+    ctx.fill();
+  }
+  ctx.fillStyle = 'rgba(255,255,255,.3)';
+  ctx.fillRect(k.x + 8, k.y + 2, k.w - 16, 2);
+  txt(t('hud.kitchen'), k.x + 12, k.y + 11, 12, 800, UI.rice, 'left', 'middle', '-0.3px');
   const vis = L.kitchen.slice(0, L.visibleNext);
   vis.forEach((p, i) => drawPlate(k.x + 30 + i * 34, k.y + 46, p, 12, { showHidden: true }));
   for (let i = vis.length; i < 3 && i < L.kitchen.length; i++) {
-    ctx.fillStyle = '#5A4E45';
+    ctx.fillStyle = 'rgba(42,31,26,.55)';
+    ctx.strokeStyle = UI.ink;
+    ctx.lineWidth = 1.5;
     ctx.beginPath();
     ctx.arc(k.x + 30 + i * 34, k.y + 46, 12, 0, 7);
     ctx.fill();
-    txt('?', k.x + 30 + i * 34, k.y + 47, 15, 800, '#B8ACA0', 'center', 'middle');
+    ctx.stroke();
+    txt('?', k.x + 30 + i * 34, k.y + 47, 15, 800, UI.cream, 'center', 'middle');
   }
-  txt(t('hud.platesLeft', { n: L.kitchen.length }), k.x + k.w - 14, k.y + 46, 14, 800, '#FFF7E8', 'right', 'middle');
+  txt(t('hud.platesLeft', { n: L.kitchen.length }), k.x + k.w - 14, k.y + 46, 14, 800, UI.rice, 'right', 'middle');
   ctx.restore();
 }
 
@@ -427,10 +452,13 @@ export function drawToasts(): void {
     ctx.save();
     ctx.globalAlpha = Math.max(0, a);
     const w = textW(t.text, 15, 800) + 30;
-    ctx.fillStyle = 'rgba(42,35,32,.9)';
+    ctx.fillStyle = 'rgba(18,26,58,.92)';
     rrect(240 - w / 2, y - 15, w, 30, 15);
     ctx.fill();
-    txt(t.text, 240, y + 1, 15, 800, '#fff', 'center', 'middle');
+    ctx.strokeStyle = 'rgba(255,248,234,.35)';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+    txt(t.text, 240, y + 1, 15, 800, UI.rice, 'center', 'middle');
     ctx.restore();
     y += 36;
   }

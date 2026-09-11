@@ -18,11 +18,65 @@ import { puzzleStreak } from '../engine/modes-core';
 import { S } from '../meta/save';
 import { ctx } from '../render/canvas';
 import { drawMechIcon } from '../render/icons';
-import { card, coinIcon, dim, rrect, textW, txt, wrapText } from '../render/primitives';
+import { card, coinIcon, dim, rrect, textW, txt, UI, wrapText } from '../render/primitives';
+import { drawPlate } from '../render/plate';
 import { drawConfetti } from '../render/scene';
 import { button } from './buttons';
 import { tierLabel } from './hud';
 import { drawShareBtn } from './ranks';
+
+/** The fail card's spilled tray: a tipped tray and two plates at angles behind the timer. */
+function drawSpill(cx: number, cy: number, cw: number): void {
+  ctx.save();
+  ctx.globalAlpha = 0.9;
+  ctx.translate(cx + cw - 72, cy + 168);
+  ctx.rotate(0.35);
+  ctx.fillStyle = UI.woodDark;
+  ctx.strokeStyle = UI.ink;
+  ctx.lineWidth = 2;
+  rrect(-34, -12, 68, 24, 6);
+  ctx.fill();
+  ctx.stroke();
+  ctx.restore();
+  ctx.save();
+  ctx.translate(cx + 60, cy + 190);
+  ctx.rotate(-0.5);
+  drawPlate(0, 0, { color: 0 }, 13);
+  ctx.restore();
+  ctx.save();
+  ctx.translate(cx + cw - 50, cy + 200);
+  ctx.rotate(0.7);
+  drawPlate(0, 0, { color: 2 }, 11);
+  ctx.restore();
+}
+
+/** The win card's receipt: a paper strip with perforated edges and a gold PAID stamp. */
+function drawReceipt(cx: number, cy: number, cw: number): void {
+  ctx.save();
+  ctx.fillStyle = UI.cream;
+  ctx.strokeStyle = 'rgba(42,31,26,.4)';
+  ctx.lineWidth = 1.5;
+  rrect(cx + 40, cy + 82, cw - 80, 56, 3);
+  ctx.fill();
+  ctx.stroke();
+  ctx.setLineDash([3, 4]);
+  ctx.beginPath();
+  ctx.moveTo(cx + 48, cy + 90);
+  ctx.lineTo(cx + cw - 48, cy + 90);
+  ctx.moveTo(cx + 48, cy + 130);
+  ctx.lineTo(cx + cw - 48, cy + 130);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.translate(cx + cw - 78, cy + 108);
+  ctx.rotate(-0.28);
+  ctx.strokeStyle = UI.gold;
+  ctx.lineWidth = 2.5;
+  ctx.globalAlpha = 0.9;
+  rrect(-26, -11, 52, 22, 4);
+  ctx.stroke();
+  txt(t('hud.paid'), 0, 1, 13, 800, UI.gold, 'center', 'middle', '-0.5px');
+  ctx.restore();
+}
 
 export function getLevelLabelQuick(n: number): string {
   return (isAuthored(n) ? t('tier.authored') : '') + tierLabel(schedTier(n));
@@ -135,18 +189,45 @@ export function drawStatusOverlay(): void {
       'middle'
     );
     const frac = L.failT / 10;
+    drawSpill(cx, cy, cw);
+    // The countdown as a kitchen timer: a steel body, a knob, ticks, the red arc.
     ctx.save();
-    ctx.lineWidth = 6;
-    ctx.strokeStyle = '#EADFC4';
+    ctx.fillStyle = 'rgba(42,31,26,.28)';
     ctx.beginPath();
-    ctx.arc(240, cy + 182, 26, 0, 7);
+    ctx.ellipse(242, cy + 214, 30, 7, 0, 0, 7);
+    ctx.fill();
+    const tg = ctx.createRadialGradient(232, cy + 172, 6, 240, cy + 182, 34);
+    tg.addColorStop(0, '#F2F5F9');
+    tg.addColorStop(0.7, '#C9CFD8');
+    tg.addColorStop(1, '#8E97A6');
+    ctx.fillStyle = tg;
+    ctx.strokeStyle = UI.ink;
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.arc(240, cy + 182, 32, 0, 7);
+    ctx.fill();
     ctx.stroke();
-    ctx.strokeStyle = frac > 0.3 ? '#E5484D' : '#B9B2A5';
+    ctx.fillStyle = UI.lacquer;
+    rrect(232, cy + 142, 16, 10, 3);
+    ctx.fill();
+    ctx.stroke();
+    ctx.strokeStyle = 'rgba(42,31,26,.45)';
+    ctx.lineWidth = 1.5;
+    for (let i = 0; i < 12; i++) {
+      const a = (i / 12) * Math.PI * 2;
+      ctx.beginPath();
+      ctx.moveTo(240 + Math.cos(a) * 26, cy + 182 + Math.sin(a) * 26);
+      ctx.lineTo(240 + Math.cos(a) * 29, cy + 182 + Math.sin(a) * 29);
+      ctx.stroke();
+    }
+    ctx.lineWidth = 6;
+    ctx.lineCap = 'round';
+    ctx.strokeStyle = frac > 0.3 ? UI.lacquer : '#B9B2A5';
     ctx.beginPath();
-    ctx.arc(240, cy + 182, 26, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * frac);
+    ctx.arc(240, cy + 182, 22, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * frac);
     ctx.stroke();
     ctx.restore();
-    txt(Math.ceil(L.failT), 240, cy + 184, 22, 800, '#2A2320', 'center', 'middle');
+    txt(Math.ceil(L.failT), 240, cy + 184, 22, 800, UI.ink, 'center', 'middle');
     const live = L.failT > 0;
     const buying = store.busy === 'rescue';
     button(
@@ -192,8 +273,9 @@ export function drawStatusOverlay(): void {
   } else {
     card(cx, cy, cw, ch, '#2FB36B', t('win.title'));
     drawShareBtn(cx + cw - 34, cy + 22, { type: 'level', n: L.n });
+    drawReceipt(cx, cy, cw);
     coinIcon(196, cy + 108, 16);
-    txt('+' + L.earned, 220, cy + 109, 34, 800, '#2A2320', 'left', 'middle');
+    txt('+' + L.earned, 220, cy + 109, 34, 800, UI.gold, 'left', 'middle');
     txt(
       L.streakBonus > 0 ? t('win.streak', { n: S.streak, b: L.streakBonus }) : t('win.streakHint'),
       240,

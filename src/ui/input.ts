@@ -12,6 +12,8 @@ export function onTap(x: number, y: number): void {
   audio();
   for (const b of G.buttons)
     if (inRect(x, y, b)) {
+      // One-frame press: the box is drawn pressed for the next few frames even if the pointer lifts at once.
+      G.pressed = { x: b.x, y: b.y, w: b.w, h: b.h, until: G.gt + 0.09 };
       if (b.onDrag) {
         b.onDrag(x, y);
         G.drag = b;
@@ -48,6 +50,9 @@ export function bindInput(): void {
   cv.addEventListener('pointerdown', (e) => {
     e.preventDefault();
     const p = toGame(e);
+    G.pointer.x = p.x;
+    G.pointer.y = p.y;
+    G.pointer.down = true;
     onTap(p.x, p.y);
     if (G.drag) {
       try {
@@ -58,6 +63,10 @@ export function bindInput(): void {
     }
   });
   cv.addEventListener('pointermove', (e) => {
+    const q = toGame(e);
+    G.pointer.x = q.x;
+    G.pointer.y = q.y;
+    G.pointer.hover = e.pointerType === 'mouse';
     if (!G.drag || !G.drag.onDrag) return;
     e.preventDefault();
     const p = toGame(e);
@@ -65,7 +74,13 @@ export function bindInput(): void {
   });
   const end = () => {
     G.drag = null;
+    G.pointer.down = false;
   };
+  cv.addEventListener('pointerleave', () => {
+    G.pointer.x = -1;
+    G.pointer.y = -1;
+    G.pointer.hover = false;
+  });
   cv.addEventListener('pointerup', end);
   cv.addEventListener('pointercancel', end);
   window.addEventListener('pagehide', () => {

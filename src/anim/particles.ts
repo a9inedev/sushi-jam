@@ -1,7 +1,7 @@
 /* Pooled particles. A fixed pool of slots is reused; emitting when the pool is full drops the request.
    Simulation is pure (unit-tested); drawing takes a context so the module stays DOM-free. */
 
-import { COIN_POS, COLORS, GOLD, H, W } from '../data/constants';
+import { COIN_POS, GOLD, H, W } from '../data/constants';
 import { easeIn, easeInOut, easeOut } from '../engine/util';
 
 export type ParticleKind = 'crumb' | 'shard' | 'steam' | 'coin' | 'confetti' | 'bonk' | 'puff' | 'spark';
@@ -152,7 +152,7 @@ export class ParticleSystem {
           p.vy = 160 + Math.random() * 160;
           p.rot = Math.random() * 6;
           p.vr = (Math.random() - 0.5) * 8;
-          p.color = COLORS[i % COLORS.length].hex;
+          p.color = ['#FFB7C5', '#FF8FA3', '#FFF8EA', '#E9B949', '#C8323B'][i % 5];
           p.size = 8 + Math.random() * 6;
           p.life = 6;
           break;
@@ -290,8 +290,20 @@ export class ParticleSystem {
           ctx.save();
           ctx.translate(p.x, p.y);
           ctx.rotate(p.rot);
-          ctx.fillStyle = p.color;
-          ctx.fillRect(-p.size / 2, -p.size * 0.3, p.size, p.size * 0.6);
+          if (p.color === '#E9B949') coinIcon(0, 0, p.size * 0.45);
+          else {
+            // A petal: a teardrop with a notch at the tip.
+            ctx.fillStyle = p.color;
+            ctx.beginPath();
+            ctx.moveTo(0, -p.size * 0.5);
+            ctx.bezierCurveTo(p.size * 0.6, -p.size * 0.2, p.size * 0.5, p.size * 0.5, 0, p.size * 0.35);
+            ctx.bezierCurveTo(-p.size * 0.5, p.size * 0.5, -p.size * 0.6, -p.size * 0.2, 0, -p.size * 0.5);
+            ctx.fill();
+            ctx.fillStyle = 'rgba(255,255,255,.35)';
+            ctx.beginPath();
+            ctx.ellipse(-p.size * 0.15, -p.size * 0.1, p.size * 0.18, p.size * 0.1, -0.6, 0, 7);
+            ctx.fill();
+          }
           ctx.restore();
           break;
         case 'bonk': {

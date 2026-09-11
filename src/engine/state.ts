@@ -64,6 +64,10 @@ export const G = {
   buttons: [] as Button[],
   /** 0..1, the lanterns' slow breath. Frozen at 0.5 under reduce motion. */
   glowPulse: 0.5,
+  /** The pointer, for hover and pressed looks. x < 0 means none. */
+  pointer: { x: -1, y: -1, down: false, hover: false },
+  /** The box tapped most recently, drawn pressed until `until` (game time). */
+  pressed: null as { x: number; y: number; w: number; h: number; until: number } | null,
   toasts: [] as Toast[],
   screen: null as Screen | null,
   pending: [] as Array<() => void>,

@@ -23,7 +23,7 @@ import { buyDecor, buyProduct } from '../meta/economy';
 import { clearSave, S, save } from '../meta/save';
 import { ctx } from '../render/canvas';
 import { drawPlate } from '../render/plate';
-import { card, coinIcon, dim, rrect, txt } from '../render/primitives';
+import { card, coinIcon, dim, lanternIcon, paper, rrect, txt, UI, wood } from '../render/primitives';
 import { button, closeBtn } from './buttons';
 import { dateKey, puzzleStreak } from '../engine/modes-core';
 import { startMode } from '../meta/modes';
@@ -139,13 +139,11 @@ function drawShop(sc: Screen): void {
   );
   PRODUCTS.forEach((p, i) => {
     const y = 250 + i * 86;
-    ctx.fillStyle = '#FFFDF7';
-    rrect(50, y, 380, 76, 12);
+    wood(44, y + 70, 392, 9, 3, UI.wood);
+    ctx.fillStyle = 'rgba(42,31,26,.22)';
+    rrect(50, y + 62, 380, 12, 6);
     ctx.fill();
-    ctx.strokeStyle = '#EADFC4';
-    ctx.lineWidth = 1;
-    rrect(50, y, 380, 76, 12);
-    ctx.stroke();
+    paper(50, y, 380, 72, 12, UI.rice);
     txt(t('product.' + p.id + '.name'), 66, y + 24, 18, 800, '#2A2320', 'left', 'middle');
     txt(t('product.' + p.id + '.desc'), 66, y + 50, 12, 700, '#5A4E45', 'left', 'middle');
     const owned = (p.id === 'noads' && S.noAds) || (p.id === 'season' && S.season.premium);
@@ -407,29 +405,48 @@ function drawMap(sc: Screen): void {
     const home = L.mode === 'level' ? L.n : S.level;
     const start = Math.max(1, home - 5);
     ctx.save();
+    paper(50, 262, 380, 560, 12, UI.cream);
     const pts: { lvl: number; x: number; y: number }[] = [];
     drawEventBanner(50, 200, 380, 56);
     for (let i = 0; i < 14; i++) pts.push({ lvl: start + i, x: 240 + Math.sin(i * 0.95) * 130, y: 780 - i * 38 });
-    ctx.strokeStyle = '#D9CBB0';
-    ctx.lineWidth = 10;
     ctx.lineCap = 'round';
-    ctx.beginPath();
-    pts.forEach((p, i) => (i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y)));
-    ctx.stroke();
+    ctx.lineJoin = 'round';
+    for (const [wd, col] of [
+      [18, 'rgba(122,74,34,.28)'],
+      [9, 'rgba(122,74,34,.45)'],
+      [3, 'rgba(42,31,26,.35)'],
+    ] as [number, string][]) {
+      ctx.strokeStyle = col;
+      ctx.lineWidth = wd;
+      ctx.beginPath();
+      pts.forEach((p, i) => (i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y)));
+      ctx.stroke();
+    }
     for (const p of pts) {
       const cleared = p.lvl < S.level,
         curL = p.lvl === home,
         st = schedTier(p.lvl);
-      ctx.fillStyle = cleared ? '#2FB36B' : curL ? GOLD : '#E4D6B4';
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, curL ? 20 + Math.sin(gt * 4) * 2 : 16, 0, 7);
-      ctx.fill();
-      ctx.strokeStyle = TIER_COLOR[st];
-      ctx.lineWidth = 3;
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, curL ? 20 : 16, 0, 7);
-      ctx.stroke();
-      txt(p.lvl, p.x, p.y + 1, curL ? 16 : 13, 800, cleared || curL ? '#fff' : '#8A8378', 'center', 'middle');
+      if (curL) {
+        // The current level: a lantern, breathing.
+        lanternIcon(p.x, p.y - 4, 15 + Math.sin(gt * 4), 0.5 + G.glowPulse * 0.5);
+        txt(p.lvl, p.x, p.y, 15, 800, UI.rice, 'center', 'middle');
+      } else {
+        // A stamp: cream disc, a double ring in the tier colour, cleared ones inked green.
+        ctx.fillStyle = cleared ? '#2FB36B' : UI.cream;
+        ctx.strokeStyle = cleared ? '#1F8A4E' : TIER_COLOR[st];
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 16, 0, 7);
+        ctx.fill();
+        ctx.stroke();
+        ctx.globalAlpha = 0.55;
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 12.5, 0, 7);
+        ctx.stroke();
+        ctx.globalAlpha = 1;
+        txt(p.lvl, p.x, p.y + 1, 13, 800, cleared ? UI.rice : TIER_COLOR[st], 'center', 'middle', '-0.5px');
+      }
       if (isAuthored(p.lvl)) {
         ctx.fillStyle = '#E5484D';
         ctx.beginPath();
@@ -627,13 +644,11 @@ function drawDecorShop(sc: Screen): void {
   decorOf(sel.id).forEach((d, i) => {
     const y = 286 + i * 96,
       owned = S.decor.includes(d.id);
-    ctx.fillStyle = '#FFFDF7';
-    rrect(50, y, 380, 84, 12);
+    wood(44, y + 78, 392, 9, 3, UI.wood);
+    ctx.fillStyle = 'rgba(42,31,26,.22)';
+    rrect(50, y + 70, 380, 12, 6);
     ctx.fill();
-    ctx.strokeStyle = '#EADFC4';
-    ctx.lineWidth = 1;
-    rrect(50, y, 380, 84, 12);
-    ctx.stroke();
+    paper(50, y, 380, 80, 12, UI.rice);
     drawDecorPreview(d.id, 62, y + 14, 56, sel.palette.accent, false);
     txt(t('decor.' + d.id + '.name'), 130, y + 26, 18, 800, '#2A2320', 'left', 'middle');
     txt(t('decor.' + d.id + '.desc'), 130, y + 54, 12, 700, '#5A4E45', 'left', 'middle');

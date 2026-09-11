@@ -6,8 +6,8 @@ import type { Tier } from '../engine/types';
 import { t } from '../i18n';
 import { S, save } from '../meta/save';
 import { ctx } from '../render/canvas';
-import { coinIcon, rrect, textW, txt } from '../render/primitives';
-import { badge, boosterButton, button, iconBtn } from './buttons';
+import { coinBowl, lanternIcon, orderSlip, rrect, stamp, textW, txt, UI } from '../render/primitives';
+import { boosterButton, button, iconBtn } from './buttons';
 import { drawHudEventBar } from './events';
 import { drawHudLives } from './lives';
 
@@ -65,29 +65,20 @@ export function drawHud(): void {
   const bw = textW(tier, 13, 800) + 26;
   // Level label and tier badge sit on the thumb side; the buttons on the other.
   const lx = left ? 20 : W - 20 - tw;
-  txt(label, lx, 46, 28, 800, '#FFF7E8');
+  // The level label on a paper order slip with a clip, the tier as an ink stamp.
+  orderSlip(lx - 10, 18, tw + 20, 40);
+  txt(label, lx, 46, 28, 800, UI.ink);
   const bx = left ? 28 + tw : lx - 8 - bw;
-  badge(tier, bx, 26, tierColor);
+  stamp(tier, bx, 26, tierColor);
   if (L.mode === 'rush')
     txt(t('mode.rushScore', { n: L.score }), left ? 20 : W - 20, 74, 15, 800, GOLD, left ? 'left' : 'right', 'middle');
   else drawHudEventBar(left ? 20 : W - 20, 68, !left);
   drawHudLives(left ? W - 20 : 20, 88, left);
   if (S.streak > 1 && L.mode === 'level') {
-    const fx0 = left ? bx + bw + 12 : bx - 22;
-    ctx.save();
-    ctx.fillStyle = '#F5843B';
-    ctx.beginPath();
-    ctx.moveTo(fx0, 46);
-    ctx.quadraticCurveTo(fx0 - 9, 36, fx0 - 2, 26);
-    ctx.quadraticCurveTo(fx0, 32, fx0 + 3, 28);
-    ctx.quadraticCurveTo(fx0 + 9, 38, fx0, 46);
-    ctx.fill();
-    ctx.fillStyle = GOLD;
-    ctx.beginPath();
-    ctx.arc(fx0, 41, 3.5, 0, 7);
-    ctx.fill();
-    ctx.restore();
-    txt(S.streak, fx0 + 12, 39, 15, 800, '#F5843B', left ? 'left' : 'left', 'middle');
+    // The streak as a paper lantern that burns brighter the longer it runs.
+    const fx0 = left ? bx + bw + 14 : bx - 22;
+    lanternIcon(fx0, 38, 8, Math.min(1, (S.streak - 1) / 6));
+    txt(S.streak, fx0 + 13, 39, 15, 800, UI.glow, 'left', 'middle');
   }
   // Tapping the level label five times within two seconds opens the dev panel.
   G.buttons.push({
@@ -133,9 +124,9 @@ export function drawHud(): void {
   const pop = 1 + G.coinPop * 0.15;
   const cp = coinPos();
   ctx.save();
-  ctx.translate(cp.x, cp.y);
+  ctx.translate(cp.x, cp.y + 2);
   ctx.scale(pop, pop);
-  coinIcon(0, 0, 11);
+  coinBowl(0, 0, 11);
   ctx.restore();
   if (left) txt(S.coins.toLocaleString(), 382, 39, 22, 800, GOLD, 'left', 'middle');
   else txt(S.coins.toLocaleString(), cp.x - 18, 39, 22, 800, GOLD, 'right', 'middle');
